@@ -1,0 +1,71 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Database\Seeders;
+
+use App\Modules\Identity\Models\User;
+use App\Modules\Identity\Support\Roles;
+use App\Modules\Organizations\Models\Branch;
+use App\Modules\Organizations\Models\Organization;
+use App\Modules\Organizations\Models\Page;
+use App\Modules\Organizations\Models\WorkingCalendarDay;
+use App\Modules\Pricing\Models\Material;
+use App\Modules\Pricing\Models\Size;
+use App\Modules\Pricing\Models\SizeChart;
+use Illuminate\Database\Seeder;
+use Illuminate\Support\Str;
+
+/**
+ * Development data only. Refuses to run in production (run --class=PermissionSeeder there).
+ */
+class DatabaseSeeder extends Seeder
+{
+    public function run(): void
+    {
+        if (app()->isProduction()) {
+            $this->command->error('DatabaseSeeder is for development only. Run --class=PermissionSeeder in production.');
+
+            return;
+        }
+
+        $this->call(PermissionSeeder::class);
+        $this->call(CatalogSeeder::class);
+
+        $org = Organization::query()->firstOrCreate(['name' => 'Demo Garments'], ['legal_name' => 'Demo Garments (Pvt) Ltd', 'default_currency' => 'LKR']);
+
+        // ASSUMPTION (client question Q22 open): Monday to Saturday working, Sunday off.
+        foreach (range(1, 7) as $day) {
+            WorkingCalendarDay::query()->updateOrCreate(['organization_id' => $org->id, 'iso_weekday' => $day], ['is_working_day' => $day !== 7]);
+        }
+
+        $colombo = Branch::query()->firstOrCreate(['code' => 'CMB'], ['organization_id' => $org->id, 'name' => 'Colombo', 'is_active' => true]);
+        Branch::query()->firstOrCreate(['code' => 'KDY'], ['organization_id' => $org->id, 'name' => 'Kandy', 'is_active' => true]);
+
+        Page::query()->firstOrCreate(['code' => 'JRSY'], [
+            'organization_id' => $org->id, 'name' => 'Demo Jerseys', 'platform' => 'facebook',
+            'invoice_prefix' => 'JRSY', 'invoice_header_name' => 'Demo Jerseys', 'is_active' => true,
+        ]);
+
+        // Development samples only (real sizes and fabrics are configured by the client).
+        $chart = SizeChart::query()->firstOrCreate(['name' => SizeChart::STANDARD]);
+        foreach (['XS', 'S', 'M', 'L', 'XL', '2XL'] as $i => $size) {
+            Size::query()->firstOrCreate(['size_chart_id' => $chart->id, 'code' => $size], ['label' => $size, 'sort_order' => $i]);
+        }
+        Material::query()->firstOrCreate(['code' => 'sample_fabric'], ['name' => 'Sample fabric', 'is_active' => true]);
+
+        $email = (string) env('SEED_ADMIN_EMAIL', 'admin@example.com');
+        $password = (string) env('SEED_ADMIN_PASSWORD', '');
+        $generated = $password === '';
+        if ($generated) {
+            $password = Str::password(16);
+        }
+
+        if (! User::query()->where('email', $email)->exists()) {
+            $admin = User::query()->create(['name' => 'System Owner', 'email' => $email, 'password' => $password]);
+            $admin->assignRole(Roles::SUPER_ADMIN);
+            $admin->branches()->syncWithoutDetaching([$colombo->id]);
+            $this->command->info("Admin created: {$email}".($generated ? " / password: {$password} (shown once, change it)" : ''));
+        }
+    }
+}

@@ -1,0 +1,20 @@
+<?php
+
+declare(strict_types=1);
+
+use Illuminate\Support\Facades\Schedule;
+
+/*
+| Shared hosting (profile A): one cron entry runs the scheduler every minute:
+|   * * * * * cd /path/to/backend && php artisan schedule:run >> /dev/null 2>&1
+| The scheduler then drains the database queue for up to ~50 s, so no long-running worker is needed.
+| On a VPS (profile B) remove the queue:work entry and run Horizon under Supervisor instead.
+*/
+
+Schedule::command('queue:work database --queue=default,notifications,documents,imports --stop-when-empty --max-time=50 --tries=3 --backoff=30')
+    ->everyMinute()
+    ->withoutOverlapping(5)
+    ->runInBackground();
+
+Schedule::command('queue:prune-failed --hours=720')->daily();
+Schedule::command('sanctum:prune-expired --hours=24')->daily();

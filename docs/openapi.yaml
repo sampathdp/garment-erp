@@ -1,0 +1,676 @@
+openapi: 3.1.0
+info:
+  title: Garment ERP API
+  version: 1.0.0-phase02
+  description: |
+    Phase 01 and 02 endpoints. Conventions: API_STANDARDS.md.
+    Authentication is a Sanctum SPA cookie session. Call GET /sanctum/csrf-cookie first and send
+    X-XSRF-TOKEN on every state-changing request.
+servers:
+  - url: http://localhost:8000/api/v1
+    description: Local
+  - url: https://api.example.lk/api/v1
+    description: Production (placeholder)
+security:
+  - sessionCookie: []
+tags:
+  - name: System
+  - name: Identity
+  - name: Organizations
+  - name: Notifications
+
+paths:
+  /health:
+    get:
+      operationId: health
+      tags: [System]
+      security: []
+      summary: Liveness and readiness probe (no internal details)
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Health" }
+        "503":
+          description: A dependency is failing
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Health" }
+
+  /auth/login:
+    post:
+      operationId: auth.login
+      tags: [Identity]
+      security: []
+      summary: Start a session (stateful frontend origins only)
+      parameters:
+        - $ref: "#/components/parameters/XsrfToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email, maxLength: 191 }
+                password: { type: string, maxLength: 200 }
+                remember: { type: boolean }
+      responses:
+        "200":
+          description: Signed in; session cookie set and rotated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/CurrentUser" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "419": { $ref: "#/components/responses/CsrfMismatch" }
+        "422": { $ref: "#/components/responses/ValidationFailed" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /auth/logout:
+    post:
+      operationId: auth.logout
+      tags: [Identity]
+      summary: End the session
+      parameters:
+        - $ref: "#/components/parameters/XsrfToken"
+      responses:
+        "204": { description: Signed out; session invalidated }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+
+  /auth/me:
+    get:
+      operationId: auth.me
+      tags: [Identity]
+      summary: Current user, permissions and data scope (for UI only)
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/CurrentUser" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /branches:
+    get:
+      operationId: branches.index
+      tags: [Organizations]
+      x-permission: branches.view
+      summary: Branches visible to the user
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PerPage"
+        - name: sort
+          in: query
+          schema: { type: string, enum: [name, -name, code, -code, created_at, -created_at], default: name }
+        - name: filter[is_active]
+          in: query
+          schema: { type: boolean }
+        - name: filter[search]
+          in: query
+          schema: { type: string, maxLength: 100 }
+      responses:
+        "200":
+          description: Page of branches
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: "#/components/schemas/Branch" } }
+                  meta: { $ref: "#/components/schemas/PaginationMeta" }
+                  links: { $ref: "#/components/schemas/PaginationLinks" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/ValidationFailed" }
+
+  /branches/{branch}:
+    get:
+      operationId: branches.show
+      tags: [Organizations]
+      x-permission: branches.view
+      parameters:
+        - { name: branch, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200":
+          description: Branch
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Branch" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /pages:
+    get:
+      operationId: pages.index
+      tags: [Organizations]
+      x-permission: pages.view
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PerPage"
+        - name: sort
+          in: query
+          schema: { type: string, enum: [name, -name, code, -code, created_at, -created_at], default: name }
+      responses:
+        "200":
+          description: Page of pages
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: "#/components/schemas/PageResource" } }
+                  meta: { $ref: "#/components/schemas/PaginationMeta" }
+                  links: { $ref: "#/components/schemas/PaginationLinks" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /pages/{page}:
+    get:
+      operationId: pages.show
+      tags: [Organizations]
+      x-permission: pages.view
+      parameters:
+        - { name: page, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200":
+          description: Page
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/PageResource" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  # ---------------------------------------------------------------- Phase 02
+  # Every state-changing call needs X-XSRF-TOKEN. Error envelope and status codes: API_STANDARDS.md.
+  # Policy order: out of scope 404 → not assigned 404 → permission 403 → state 409.
+  /auth/forgot-password:
+    post:
+      operationId: auth.forgot-password
+      tags: [Identity]
+      security: []
+      summary: Email a single-use reset link (same answer for unknown, inactive and active accounts)
+      x-rate-limit: 5/min per IP; one email per account per 60 s
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, required: [email], properties: { email: { type: string, format: email, maxLength: 191 } } } } }
+      responses:
+        "202": { description: Accepted (generic message) }
+        "422": { $ref: "#/components/responses/ValidationFailed" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /auth/reset-password:
+    post:
+      operationId: auth.reset-password
+      tags: [Identity]
+      security: []
+      summary: Set a new password with a reset token (ends all sessions; does not sign in)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, token, password, password_confirmation]
+              properties:
+                email: { type: string, format: email }
+                token: { type: string, maxLength: 200 }
+                password: { type: string, minLength: 10, description: "letters + numbers, not in breach lists" }
+                password_confirmation: { type: string }
+      responses:
+        "200": { description: Password reset }
+        "422": { description: "Validation failed, or code=invalid_reset_token (wrong, used or expired token)" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /auth/profile:
+    patch:
+      operationId: auth.profile
+      tags: [Identity]
+      summary: Update own name and phone (email/roles are administrator-only)
+      requestBody:
+        content: { application/json: { schema: { type: object, required: [name], properties: { name: { type: string, maxLength: 120 }, phone: { type: [string, "null"] } } } } }
+      responses:
+        "200": { description: Updated current user, content: { application/json: { schema: { type: object, properties: { data: { $ref: "#/components/schemas/CurrentUser" } } } } } }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "422": { $ref: "#/components/responses/ValidationFailed" }
+
+  /auth/password:
+    put:
+      operationId: auth.password
+      tags: [Identity]
+      summary: Change own password (re-checks the current one; ends the other sessions)
+      requestBody:
+        content: { application/json: { schema: { type: object, required: [current_password, password, password_confirmation], properties: { current_password: { type: string }, password: { type: string, minLength: 10 }, password_confirmation: { type: string } } } } }
+      responses:
+        "204": { description: Changed; this session continues with a new ID }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "422": { $ref: "#/components/responses/ValidationFailed" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /users:
+    get:
+      operationId: users.index
+      tags: [Identity]
+      x-permission: users.view
+      summary: Users sharing a branch or page with the caller (everyone for full-scope admins)
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PerPage"
+        - { name: sort, in: query, schema: { type: string, enum: [name, -name, email, -email, created_at, -created_at, last_login_at, -last_login_at] } }
+        - { name: "filter[search]", in: query, schema: { type: string } }
+        - { name: "filter[is_active]", in: query, schema: { type: boolean } }
+        - { name: "filter[role]", in: query, schema: { type: string } }
+        - { name: "filter[branch_id]", in: query, schema: { type: integer } }
+        - { name: "filter[page_id]", in: query, schema: { type: integer } }
+      responses:
+        "200": { description: Paginated UserResource list }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    post:
+      operationId: users.store
+      tags: [Identity]
+      x-permission: users.manage
+      summary: Create a user with the password entered by the administrator (password + password_confirmation, min 10, letters and numbers); no email is sent
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, email, roles]
+              properties:
+                name: { type: string }
+                email: { type: string, format: email }
+                phone: { type: [string, "null"] }
+                roles: { type: array, items: { type: string } }
+                branch_ids: { type: array, items: { type: integer } }
+                page_ids: { type: array, items: { type: integer } }
+                owner_page_ids: { type: array, items: { type: integer }, description: subset of page_ids }
+                send_invite: { type: boolean }
+      responses:
+        "201": { description: Created UserResource }
+        "403": { description: "Forbidden, or code=privilege_escalation (roles with permissions the caller lacks)" }
+        "422": { description: "Validation failed, including branches/pages outside the caller's scope" }
+
+  /users/{user}:
+    get:
+      operationId: users.show
+      tags: [Identity]
+      x-permission: users.view
+      summary: User with roles, branches, pages and abilities
+      responses: { "200": { description: UserResource }, "404": { $ref: "#/components/responses/NotFound" } }
+    patch:
+      operationId: users.update
+      tags: [Identity]
+      x-permission: users.manage
+      summary: Edit name, email, phone (an email change ends the user's sessions)
+      responses: { "200": { description: UserResource }, "403": { $ref: "#/components/responses/Forbidden" }, "404": { $ref: "#/components/responses/NotFound" }, "422": { $ref: "#/components/responses/ValidationFailed" } }
+
+  /users/{user}/status:
+    put:
+      operationId: users.status
+      tags: [Identity]
+      x-permission: users.manage
+      summary: "Activate or deactivate ({is_active, reason}); deactivation ends all sessions. 409 own_account on yourself"
+      responses: { "200": { description: UserResource }, "409": { description: own_account } }
+
+  /users/{user}/roles:
+    put:
+      operationId: users.roles
+      tags: [Identity]
+      x-permission: users.manage
+      summary: "Replace roles ({roles: string[]}); 403 privilege_escalation; 409 own_account"
+      responses: { "200": { description: UserResource } }
+
+  /users/{user}/assignments:
+    put:
+      operationId: users.assignments
+      tags: [Identity]
+      x-permission: users.manage
+      summary: "Set {branch_ids, page_ids, owner_page_ids}; assignments outside the caller's scope are kept"
+      responses: { "200": { description: UserResource } }
+
+  /users/{user}/password-reset:
+    post:
+      operationId: users.password-reset
+      tags: [Identity]
+      x-permission: users.manage
+      summary: "Email the user a reset (or setup) link; {sign_out: true} ends their sessions"
+      responses: { "204": { description: Sent } }
+
+  /users/{user}/activity:
+    get:
+      operationId: users.activity
+      tags: [Identity]
+      x-permission: users.view + audit.view
+      summary: Audit entries performed by or on the user (newest first)
+      responses: { "200": { description: Paginated AuditLogResource list } }
+
+  /roles:
+    get:
+      operationId: roles.index
+      tags: [Identity]
+      x-permission: roles.view | roles.manage
+      summary: All roles with permissions, user counts and abilities
+      responses: { "200": { description: RoleResource list } }
+    post:
+      operationId: roles.store
+      tags: [Identity]
+      x-permission: roles.manage
+      summary: "Create a role {name, label, description, permissions}; only permissions the caller holds"
+      responses: { "201": { description: RoleResource }, "403": { description: privilege_escalation } }
+
+  /roles/{role}:
+    get:
+      operationId: roles.show
+      tags: [Identity]
+      responses: { "200": { description: RoleResource } }
+    patch:
+      operationId: roles.update
+      tags: [Identity]
+      x-permission: roles.manage
+      summary: "Edit label/description/permissions (system roles cannot be renamed); 409 role_locked for super_admin"
+      responses: { "200": { description: RoleResource } }
+    delete:
+      operationId: roles.destroy
+      tags: [Identity]
+      x-permission: roles.manage
+      summary: "Delete an unused custom role; 409 role_system / role_in_use / role_locked"
+      responses: { "204": { description: Deleted } }
+
+  /permissions:
+    get:
+      operationId: permissions.index
+      tags: [Identity]
+      x-permission: roles.view | roles.manage
+      summary: Grouped, labelled permission catalogue (permissions are defined in code)
+      responses: { "200": { description: "[{key, label, permissions: [{name, label}]}]" } }
+
+  /pages/{page}/members:
+    get:
+      operationId: pages.members.index
+      tags: [Organizations]
+      x-permission: pages.view + users.view
+      summary: Users associated with the page and whether they are Page Owners
+      responses: { "200": { description: Member list }, "404": { $ref: "#/components/responses/NotFound" } }
+    put:
+      operationId: pages.members.update
+      tags: [Organizations]
+      x-permission: pages.manage + users.manage
+      summary: "Replace members {members: [{user_id, is_owner}]}; every changed user must be one the caller may administer"
+      responses: { "200": { description: Member list }, "422": { $ref: "#/components/responses/ValidationFailed" } }
+
+  # POST /branches, PATCH /branches/{branch} (branches.manage; creating needs scope.all_branches; code immutable)
+  # POST /pages, PATCH /pages/{page} (pages.manage; creating needs scope.all_pages; code and invoice_prefix immutable;
+  # pricing: currency, default_advance_percent 30–100, default_delivery_fee_minor)
+
+  /notifications:
+    get:
+      operationId: notifications.index
+      tags: [Notifications]
+      summary: Caller's own notifications
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PerPage"
+      responses:
+        "200": { description: Page of notifications }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+
+  /notifications/unread-count:
+    get:
+      operationId: notifications.unread-count
+      tags: [Notifications]
+      summary: Polled every 30 s by the frontend
+      responses:
+        "200":
+          description: Unread count
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: object, properties: { unread: { type: integer } } }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+
+  /notifications/mark-all-read:
+    post:
+      operationId: notifications.mark-all-read
+      tags: [Notifications]
+      parameters:
+        - $ref: "#/components/parameters/XsrfToken"
+      responses:
+        "200": { description: Number of notifications marked read }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+
+  # ---- Phase 03: customers, order intake, urgent approval, payments ----
+  # All routes: session cookie + policy (401 / 403 / 404 other page or branch / 409 state / 422 validation).
+  /customers:
+    get:
+      operationId: customers.index
+      tags: [Customers]
+      description: "Page-scoped. filter[search] = name, customer code or phone (normalised); filter[page_id]; sort=name|customer_code|created_at."
+      responses: { "200": { description: Paginated customers } }
+    post:
+      operationId: customers.store
+      tags: [Customers]
+      description: "page_id, branch_id?, name, phone, whatsapp, other_phone?, address?, confirm_distinct?. 409 duplicate_customer (same name and phone on the page); 422 possible_duplicate_customer (same phone, different name) until confirm_distinct=true."
+      responses: { "201": { description: Customer } }
+  /customers/{customer}:
+    get: { operationId: customers.show, tags: [Customers], responses: { "200": { description: Customer with abilities } } }
+    patch: { operationId: customers.update, tags: [Customers], description: "page_id is prohibited.", responses: { "200": { description: Customer } } }
+    delete: { operationId: customers.destroy, tags: [Customers], description: "Soft delete; 409 customer_has_orders.", responses: { "204": { description: Deleted } } }
+  /order-types:
+    get: { operationId: order-types.index, tags: [Catalog], description: "filter[active]=1", responses: { "200": { description: "{ data: { items: [{id, code, name, is_active}] } }" } } }
+    post: { operationId: order-types.store, tags: [Catalog], description: "pricing.manage. code (immutable), name, is_active.", responses: { "201": { description: Entry } } }
+  /order-types/{id}:
+    patch: { operationId: order-types.update, tags: [Catalog], description: "name, is_active (code prohibited).", responses: { "200": { description: Entry } } }
+  /product-categories:
+    get: { operationId: product-categories.index, tags: [Catalog], responses: { "200": { description: Categories } } }
+    post: { operationId: product-categories.store, tags: [Catalog], responses: { "201": { description: Entry } } }
+  /product-categories/{id}:
+    patch: { operationId: product-categories.update, tags: [Catalog], responses: { "200": { description: Entry } } }
+  /orders:
+    get:
+      operationId: orders.index
+      tags: [Orders]
+      description: "filter[group]=intake|urgent|approved, filter[status]=csv, filter[search] (job no., customer name or phone), filter[customer_id|page_id|branch_id]; sort=created_at|due_date|order_no."
+      responses: { "200": { description: Paginated orders } }
+    post:
+      operationId: orders.store
+      tags: [Orders]
+      description: >-
+        branch_id, page_id, customer_id OR customer{name, phone, whatsapp, other_phone?, address?, confirm_distinct?},
+        order_type_id, due_date (Y-m-d, after today), product_type_id, gross_quantity, unit_price_minor, delivery_fee_minor?, discount_minor?, submit?.
+        Server-owned fields (status, order_no, totals, advance, is_urgent, urgent_status, payment_status, ...) are prohibited (422).
+        The job number, totals, 30% advance and urgency are calculated on the server.
+      responses: { "201": { description: Order detail } }
+  /orders/{order}:
+    get: { operationId: orders.show, tags: [Orders], responses: { "200": { description: "Order with advance, urgent_approval slots, history and abilities" } } }
+    patch:
+      operationId: orders.update
+      tags: [Orders]
+      description: "version (required) + any of order_type_id, due_date, product_type_id, gross_quantity, unit_price_minor, delivery_fee_minor, discount_minor. Draft or pre-approval only (409 after approval); 409 version_conflict. A due-date change re-runs the seven-day rule."
+      responses: { "200": { description: Order } }
+  /orders/{order}/submit:
+    post: { operationId: orders.submit, tags: [Orders], description: "{ version }. Draft only.", responses: { "200": { description: Order } } }
+  /orders/{order}/urgent-decisions:
+    post:
+      operationId: orders.urgent-decisions
+      tags: [Orders]
+      description: "{ slot: second_admin|operation_admin, decision: approved|rejected, reason (required when rejected) }. Slot permission orders.urgent.approve_admin / orders.urgent.approve_operations; one decision per slot; two different people (403 separation_of_duties); 409 already_decided / not urgent."
+      responses: { "200": { description: Order } }
+  /orders/{order}/payments:
+    get: { operationId: orders.payments.index, tags: [Payments], responses: { "200": { description: "{ data: { items: Payment[] } }" } } }
+    post:
+      operationId: orders.payments.store
+      tags: [Payments]
+      description: "multipart: amount_minor, method (bank_transfer|cash|card|online|cheque), reference_no (required for bank_transfer/online/cheque), payment_date (≤ today), notes?, evidence (required for bank_transfer/online/cheque). Header Idempotency-Key (UUID): a repeat returns the first payment (200). status/verified_by are prohibited."
+      responses: { "201": { description: Payment } }
+  /payments:
+    get: { operationId: payments.index, tags: [Payments], description: "Verification queue: filter[status]=pending_verification, filter[search], filter[order_id].", responses: { "200": { description: Paginated payments } } }
+  /payments/{payment}:
+    get: { operationId: payments.show, tags: [Payments], description: "Includes evidence.url (5-minute signed URL), verification history and abilities.", responses: { "200": { description: Payment } } }
+  /payments/{payment}/verify:
+    post: { operationId: payments.verify, tags: [Payments], description: "{ notes? }. payments.verify; never the recorder (403); 409 when already decided.", responses: { "200": { description: Payment } } }
+  /payments/{payment}/reject:
+    post: { operationId: payments.reject, tags: [Payments], description: "{ reason } required.", responses: { "200": { description: Payment } } }
+  /payments/{payment}/evidence:
+    get: { operationId: payments.evidence, tags: [Payments], description: "Signed URL only (403 without signature) + payment policy (404 out of scope).", responses: { "200": { description: File stream } } }
+  # Phase 05 — bulk production. Status-changing requests send the job's `version` (409 version_conflict).
+  /bulk-jobs:
+    get: { operationId: bulk-jobs.index, tags: [Bulk], description: "Dashboards. bulk.view = every job in scope (Operation Admin); bulk.view_assigned = own jobs (Bulk Designer). filter[status] (comma list), filter[mode]=internal|external|unassigned, filter[open], filter[mine], filter[search]; sort=due_date|-due_date|created_at|-created_at (default: due date, urgent first).", responses: { "200": { description: Paginated bulk jobs } } }
+  /bulk-jobs/assignees:
+    get: { operationId: bulk-jobs.assignees, tags: [Bulk], description: "bulk.assign: { designers[], suppliers[] }.", responses: { "200": { description: Assignees } } }
+  /bulk-jobs/{job}:
+    get: { operationId: bulk-jobs.show, tags: [Bulk], description: "Detail with assignment history, measurements (+history), checklist (+client confirmation), versions with reviews, evidence, completion.missing and abilities.", responses: { "200": { description: Bulk job } } }
+  /bulk-jobs/{job}/job-card:
+    get: { operationId: bulk-jobs.job-card, tags: [Bulk], description: "Read model assembled from the authoritative records (order, approved design, measurements, confirmed list).", responses: { "200": { description: Job card } } }
+  /bulk-jobs/{job}/garment-list:
+    get: { operationId: bulk-jobs.garment-list, tags: [Bulk], description: "The confirmed (locked) list version the job refers to, read-only. /export streams CSV.", responses: { "200": { description: List } } }
+  /bulk-jobs/{job}/documents/{document}:
+    get: { operationId: bulk-jobs.documents.download, tags: [Bulk], description: "Signed URL + job policy; only the job's files and the approved/final design files (404 otherwise).", responses: { "200": { description: File stream } } }
+  /bulk-jobs/{job}/assignment:
+    post: { operationId: bulk-jobs.assign, tags: [Bulk], description: "{ version, mode: internal|external, bulk_designer_id (internal), supplier_id (external), notes?, reason (required to reassign) }. bulk.assign; external changes and mode switches need bulk.assignment_override (403 external_assignment_restricted); 409 advance_short / no_change / version_conflict.", responses: { "200": { description: Bulk job } } }
+  /bulk-jobs/{job}/measurements:
+    put: { operationId: bulk-jobs.measurements.update, tags: [Bulk], description: "{ values: { field_key: decimal } }. Internal: assigned designer (bulk.measure); external: bulk.manage_external. 422 per field (range, decimals, unknown field); 409 in review / completed.", responses: { "200": { description: Bulk job } } }
+  /bulk-jobs/{job}/measurements/corrections:
+    post: { operationId: bulk-jobs.measurements.correct, tags: [Bulk], description: "{ values, reason }. bulk.correct_measurements; completed jobs only, until printing starts (409 production_finalized).", responses: { "200": { description: Bulk job } } }
+  /bulk-jobs/{job}/checklist/items/{item}:
+    patch: { operationId: bulk-jobs.checklist.items.update, tags: [Bulk], description: "{ is_completed?, notes? }. 409 checklist_confirmed after the client confirmation.", responses: { "200": { description: Bulk job } } }
+  /bulk-jobs/{job}/checklist/client-confirmation:
+    post: { operationId: bulk-jobs.checklist.confirm, tags: [Bulk], description: "multipart { channel, comment?, evidence? }. bulk.approve + Page Owner of the page; 409 checklist_incomplete / checklist_already_confirmed.", responses: { "200": { description: Bulk job } } }
+  /bulk-jobs/{job}/versions:
+    post: { operationId: bulk-jobs.versions.store, tags: [Bulk], description: "multipart { version, preview?, files[]? (PDF/CDR, at least one file), external_url?, notes? }. Assigned designer; 409 list_not_locked.", responses: { "200": { description: Bulk job } } }
+  /bulk-jobs/{job}/corrections:
+    post: { operationId: bulk-jobs.corrections.store, tags: [Bulk], description: "{ version, reason }. bulk.approve + Page Owner of the page (403 not_page_owner); in review only.", responses: { "200": { description: Bulk job } } }
+  /bulk-jobs/{job}/approve:
+    post: { operationId: bulk-jobs.approve, tags: [Bulk], description: "{ version, comment? }. Locks the approved list reference; 409 list_changed.", responses: { "200": { description: Bulk job } } }
+  /bulk-jobs/{job}/final:
+    post: { operationId: bulk-jobs.final.store, tags: [Bulk], description: "multipart { version, files[] (required), preview?, transfer_url (WeTransfer, required), notes? }. Approved internal jobs; 409 bulk_incomplete with errors per area.", responses: { "200": { description: Bulk job (completed) } } }
+  /bulk-jobs/{job}/external/evidence:
+    post: { operationId: bulk-jobs.external.evidence, tags: [Bulk], description: "multipart { file (image/PDF), note? }. bulk.manage_external.", responses: { "200": { description: Bulk job } } }
+  /bulk-jobs/{job}/external/complete:
+    post: { operationId: bulk-jobs.external.complete, tags: [Bulk], description: "{ version, notes? }. No WeTransfer link; same mandatory data (409 bulk_incomplete).", responses: { "200": { description: Bulk job (completed) } } }
+  /bulk-setup:
+    get: { operationId: bulk-setup.index, tags: [Bulk], description: "bulk.configure: measurement fields, checklist templates, suppliers. POST/PATCH measurement-fields, checklist-templates (new version), suppliers.", responses: { "200": { description: Setup } } }
+
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: garment-erp-session
+      description: HttpOnly Sanctum session cookie (name derives from APP_NAME).
+
+  parameters:
+    Page: { name: page, in: query, schema: { type: integer, minimum: 1, default: 1 } }
+    PerPage: { name: per_page, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 25 } }
+    XsrfToken: { name: X-XSRF-TOKEN, in: header, required: true, schema: { type: string } }
+
+  responses:
+    Unauthenticated:
+      description: No valid session
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+    Forbidden:
+      description: Permission missing, account inactive, or non-frontend origin
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+    NotFound:
+      description: Not found or outside the user's branch/page scope
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+    CsrfMismatch:
+      description: Missing or invalid CSRF token
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+    ValidationFailed:
+      description: Field validation errors
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+    TooManyRequests:
+      description: Rate limited (see Retry-After)
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+
+  schemas:
+    Error:
+      type: object
+      required: [message, code, request_id]
+      properties:
+        message: { type: string }
+        code: { type: string, examples: [validation_failed, forbidden, not_found] }
+        errors:
+          type: object
+          additionalProperties: { type: array, items: { type: string } }
+        request_id: { type: [string, "null"], format: uuid }
+    PaginationMeta:
+      type: object
+      properties:
+        page: { type: integer }
+        per_page: { type: integer }
+        total: { type: integer }
+        last_page: { type: integer }
+    PaginationLinks:
+      type: object
+      properties:
+        next: { type: [string, "null"] }
+        prev: { type: [string, "null"] }
+    Health:
+      type: object
+      properties:
+        status: { type: string, enum: [ok, degraded] }
+        checks:
+          type: object
+          properties:
+            database: { type: string, enum: [ok, fail] }
+            cache: { type: string, enum: [ok, fail] }
+    ScopeRef:
+      type: object
+      properties:
+        id: { type: integer }
+        code: { type: string }
+        name: { type: string }
+    CurrentUser:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        email: { type: string }
+        roles: { type: array, items: { type: string } }
+        permissions: { type: array, items: { type: string } }
+        scope:
+          type: object
+          properties:
+            all_branches: { type: boolean }
+            all_pages: { type: boolean }
+            branches: { type: array, items: { $ref: "#/components/schemas/ScopeRef" } }
+            pages: { type: array, items: { $ref: "#/components/schemas/ScopeRef" } }
+    Branch:
+      type: object
+      properties:
+        id: { type: integer }
+        code: { type: string }
+        name: { type: string }
+        address: { type: [string, "null"] }
+        phone: { type: [string, "null"] }
+        is_active: { type: boolean }
+        created_at: { type: [string, "null"], format: date-time }
+    PageResource:
+      type: object
+      properties:
+        id: { type: integer }
+        code: { type: string }
+        name: { type: string }
+        platform: { type: string, enum: [facebook, instagram, website, walk_in, other] }
+        external_url: { type: [string, "null"] }
+        invoice_prefix: { type: string }
+        is_active: { type: boolean }
+        created_at: { type: [string, "null"], format: date-time }

@@ -1,0 +1,4 @@
+# Local toolchain (Composer, PHP wrapper, exported CA bundle). Machine-specific; never commit.
+/.tools/
+.DS_Store
+Thumbs.db

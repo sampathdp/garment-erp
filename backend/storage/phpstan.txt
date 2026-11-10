@@ -1,0 +1,1 @@
+Note: Using configuration file D:\React\garment-erp\backend\phpstan.neon.

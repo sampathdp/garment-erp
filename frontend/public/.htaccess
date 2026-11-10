@@ -1,0 +1,38 @@
+# Apache config for the static export on shared hosting (profile A).
+# Deployed with the contents of `out/` into the app subdomain's document root.
+
+Options -Indexes -MultiViews
+DirectoryIndex index.html
+
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-Frame-Options "DENY"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+    Header always set Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=()"
+    Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains" env=HTTPS
+    # CSP: Phase 01 baseline. The App Router injects inline bootstrap scripts; Phase 15 replaces
+    # 'unsafe-inline' in script-src with build-time hashes (see SECURITY_STANDARDS.md §4).
+    # Set connect-src to the real API origin at deploy time.
+    Header always set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://api.example.lk; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'"
+
+    # HTML must revalidate (new deploys); hashed assets are immutable.
+    <FilesMatch "\.html$">
+        Header set Cache-Control "no-cache"
+    </FilesMatch>
+    <If "%{REQUEST_URI} =~ m#^/_next/static/#">
+        Header set Cache-Control "public, max-age=31536000, immutable"
+    </If>
+</IfModule>
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    # Force HTTPS
+    RewriteCond %{HTTPS} !=on
+    RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+    # Unknown paths -> exported 404 page
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^ /404.html [L]
+</IfModule>
+
+ErrorDocument 404 /404.html
