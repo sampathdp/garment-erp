@@ -42,6 +42,14 @@
 - `checklist_runs.cutting_job_id` (index `(cutting_job_id, stage)`); `checklist_run_items.responsible_user_id`.
 - `production_issues`: see §6; indexes `(order_id, status)`, `(cutting_job_id, status)`, `(assigned_to, status)`, `(type, status)`. New `production_issue_events`. New document category `issue_photo` (JPG/PNG/WebP ≤ 10 MB).
 
+**Phase 08 changes** (`2026_11_16_000001_add_sewing_delivery_outbox_tables`):
+- `sewing_jobs`: CHECK `chk_sj_target` dropped, `mode` nullable (Q21 open), `status` widened to 30 (`pending | in_progress | completed`), `version`, `started_by`, `completed_by`, `notes`; UNIQUE `cutting_job_id`; index `(status, created_at)`.
+- `deliveries`: `method` nullable until dispatch / pickup, `status` widened (`ready | dispatched | delivered`), `version`, `dispatched_by`, `delivered_by`; UNIQUE `order_id`; index `(status, delivered_at)`. COD collections are `payments` rows with `method = cod` and `delivery_id`.
+- New `delivery_documents` (delivery, document → `documents`, type `delivery_sheet | waybill | delivery_photo | customer_photo`, notes, uploaded_by, created_at; index `(delivery_id, type)`).
+- `orders`: `completed_by`, `completion_notes` (`completed_at` existed); index `(status, completed_at)` for completion reports.
+- New `notification_outbox` (one row per recipient: `notification_id` UUID UNIQUE = the in-app notification id, `user_id`, `event`, JSON `payload` (display data, allowed exception like `notifications.data`), `status pending | sent | failed`, `attempts`, `available_at`, `sent_at`, `last_error`; index `(status, available_at)`).
+- Reports and dashboards add no tables: aggregates use the indexes above and are cached in the cache store (60 s dashboard sections, 10 min report aggregates).
+
 Target: **MySQL 8 (8.4 LTS preferred), InnoDB, utf8mb4.** The default collation is `utf8mb4_unicode_ci` because the shared host may run MariaDB; set `DB_COLLATION=utf8mb4_0900_ai_ci` on MySQL 8. Local development and the fast test suite use SQLite; CI also runs the full suite on MySQL 8.4.
 
 ## 1. Global standards

@@ -630,6 +630,38 @@ paths:
     post: { operationId: production-issues.transitions.store, tags: [Issues], description: "Managers or the assignee. { version, to, note?, resolution? }. resolution required for resolved; closing/reopening managers only (403); 409 invalid_transition / version_conflict.", responses: { "200": { description: Production issue } } }
   /production-issues/{issue}/assignees:
     get: { operationId: production-issues.assignees, tags: [Issues], description: "production.issues.manage: users who can be assigned.", responses: { "200": { description: Users } } }
+  /sewing-jobs:
+    get: { operationId: sewing-jobs.index, tags: [Sewing], description: "production.view or sewing.manage. filter[status], filter[open]. One sewing job per completed cutting job.", responses: { "200": { description: Paginated sewing jobs } } }
+  /sewing-jobs/{job}:
+    get: { operationId: sewing-jobs.show, tags: [Sewing], description: "Sewing job with abilities { start, complete }.", responses: { "200": { description: Sewing job } } }
+  /sewing-jobs/{job}/start:
+    post: { operationId: sewing-jobs.start, tags: [Sewing], description: "sewing.manage. { version }.", responses: { "200": { description: Sewing job } } }
+  /sewing-jobs/{job}/complete:
+    post: { operationId: sewing-jobs.complete, tags: [Sewing], description: "sewing.manage. { version, sewn_quantity (= received), notes? }. Order → ready_for_delivery; opens the delivery.", responses: { "200": { description: Sewing job } } }
+  /deliveries:
+    get: { operationId: deliveries.index, tags: [Delivery], description: "delivery.view (branch-scoped). filter[status] (ready,dispatched,delivered), filter[open], filter[missing_documents], filter[search]; sort=due_date|created_at|delivered_at (±).", responses: { "200": { description: Paginated deliveries } } }
+  /deliveries/{delivery}:
+    get: { operationId: deliveries.show, tags: [Delivery], description: "Detail: dispatch, delivery, documents (signed URLs), completion.blockers, abilities { dispatch, deliver, upload_document, complete_job }.", responses: { "200": { description: Delivery } } }
+  /deliveries/{delivery}/dispatch:
+    post: { operationId: deliveries.dispatch, tags: [Delivery], description: "delivery.dispatch. { version, method: courier|own_vehicle, courier_name (courier), tracking_no?, scheduled_date?, notes? }. COD = outstanding verified balance.", responses: { "200": { description: Delivery } } }
+  /deliveries/{delivery}/deliver:
+    post: { operationId: deliveries.deliver, tags: [Delivery], description: "delivery.confirm. { version, method? (pickup when not dispatched), received_by, cod_collected_minor? (≤ balance; recorded as a cod payment pending verification), notes? }.", responses: { "200": { description: Delivery } } }
+  /deliveries/{delivery}/documents:
+    post: { operationId: deliveries.documents.store, tags: [Delivery], description: "delivery.dispatch or delivery.confirm. multipart { type: delivery_sheet|waybill|delivery_photo|customer_photo, file (image/PDF ≤ 10 MB), notes? }.", responses: { "200": { description: Delivery } } }
+  /deliveries/{delivery}/documents/{document}:
+    get: { operationId: deliveries.documents.download, tags: [Delivery], description: "Signed 5-minute URL + delivery policy.", responses: { "200": { description: File } } }
+  /deliveries/{delivery}/complete:
+    post: { operationId: deliveries.complete, tags: [Delivery], description: "orders.complete. { version, notes? }. 409 job_incomplete with errors { production?, checks?, issues?, delivery?, documents?, balance? }.", responses: { "200": { description: Delivery } } }
+  /dashboard:
+    get: { operationId: dashboard.show, tags: [Reporting], description: "Signed-in users. { sections: [{ key, title, metrics: [{ key, label, value, link }], items?, jobs_by_status?, branches? }] } chosen by permission and limited to the user's scope; cached 60 s.", responses: { "200": { description: Dashboard } } }
+  /reports:
+    get: { operationId: reports.index, tags: [Reporting], description: "reports.view. Report catalogue.", responses: { "200": { description: Reports } } }
+  /reports/{report}:
+    get: { operationId: reports.show, tags: [Reporting], description: "reports.view. filter[from], filter[to] (Y-m-d, default last 90 days), filter[branch_id], filter[page_id], filter[days] (upcoming-due). Aggregates cached 10 min; overdue-jobs, upcoming-due and outstanding-balance are paginated.", responses: { "200": { description: Report } } }
+  /notifications/poll:
+    get: { operationId: notifications.poll, tags: [Notifications], description: "Own notifications. ?since=<server_time> → { unread, new (max 20), server_time }.", responses: { "200": { description: Poll result } } }
+  /notifications/{notification}/read:
+    post: { operationId: notifications.read, tags: [Notifications], description: "Mark one own notification read (POST …/unread to mark it unread). 404 for other users' notifications.", responses: { "200": { description: Notification } } }
   /production-issues/{issue}/image:
     get: { operationId: production-issues.image, tags: [Issues], description: "Signed 5-minute URL + issue policy.", responses: { "200": { description: Image } } }
   /bulk-setup:

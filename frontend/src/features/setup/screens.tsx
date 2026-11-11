@@ -71,150 +71,7 @@ export function WorkflowSettingsScreen() {
 
 /* ---------- Garment list fields and sizes ---------- */
 
-export function GarmentSetupScreen() {
-  const query = useGarmentSetup();
-  const mutate = useSetupMutation();
-  const { can } = useAuth();
-  const { notify } = useToast();
-  const manage = can("pricing.manage");
-  const [field, setField] = useState({ product_type_id: "", key: "", label: "", input_type: "text", garment_option_set_id: "", is_required: false, affects_price: false, warn_on_duplicate: false });
-  const [option, setOption] = useState({ set: "", code: "", label: "" });
-  const [size, setSize] = useState({ chart: "", code: "", label: "" });
-  const [setForm, setSetForm] = useState({ code: "", name: "" });
-
-  if (query.isPending) return <LoadingState />;
-  if (query.error) return <ErrorState error={query.error} />;
-  const d = query.data;
-  const run = (method: "post" | "patch", path: string, body: object, done?: () => void) => mutate.mutate({ method, path, body }, { onSuccess: () => (notify("Saved", "success"), done?.()) });
-
-  return (
-    <RequirePermission anyOf={["pricing.view", "pricing.manage", "garment_lists.view"]}>
-      <div className="flex flex-col gap-6">
-        <PageHeader title="Name / number list setup" description="Fields per product category, select options and sizes. Dynamic configuration without code changes." />
-        <FormError message={errorText(mutate.error)} />
-        {d.categories.map((c) => (
-          <Section key={c.id} title={c.name} description={`Size chart: ${d.size_charts.find((s) => s.id === c.size_chart_id)?.name ?? "—"}`}>
-            {manage && (
-              <div className="mb-4 sm:max-w-xs">
-                <SelectField label="Size chart" options={d.size_charts.map((s) => ({ value: String(s.id), label: s.name }))} value={String(c.size_chart_id)} onChange={(e) => run("patch", `garment-setup/categories/${c.id}`, { size_chart_id: Number(e.target.value) })} />
-              </div>
-            )}
-            <ul className="divide-y divide-line/60 rounded-xl border border-line bg-surface text-xs shadow-xs">
-              {c.fields.map((f) => (
-                <li key={f.id} className="flex flex-wrap items-center justify-between gap-2 p-3">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="font-semibold text-ink text-sm">{f.label}</span>
-                    <span className="font-mono text-xs text-muted bg-subtle px-1.5 py-0.5 rounded">{f.key} · {f.input_type}</span>
-                    {f.is_required && <Badge tone="brand">Required</Badge>}
-                    {f.affects_price && <Badge tone="warning">Affects price</Badge>}
-                    {f.warn_on_duplicate && <Badge tone="neutral">Duplicate warning</Badge>}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <StatusBadge active={f.is_active} />
-                    {manage && <Button variant="ghost" size="sm" onClick={() => run("patch", `garment-setup/fields/${f.id}`, { is_active: !f.is_active })}>{f.is_active ? "Deactivate" : "Activate"}</Button>}
-                    {manage && <Button variant="ghost" size="sm" onClick={() => run("patch", `garment-setup/fields/${f.id}`, { is_required: !f.is_required })}>{f.is_required ? "Make optional" : "Make required"}</Button>}
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </Section>
-        ))}
-
-        {manage && (
-          <Section title="Add Custom Garment Field">
-            <div className="grid gap-3 sm:grid-cols-4">
-              <SelectField label="Category" options={[{ value: "", label: "Select category" }, ...d.categories.map((c) => ({ value: String(c.id), label: c.name }))]} value={field.product_type_id} onChange={(e) => setField({ ...field, product_type_id: e.target.value })} />
-              <TextField label="Key" hint="lower_case, immutable" value={field.key} onChange={(e) => setField({ ...field, key: e.target.value.toLowerCase() })} />
-              <TextField label="Label" value={field.label} onChange={(e) => setField({ ...field, label: e.target.value })} />
-              <SelectField label="Type" options={d.field_types.map((t) => ({ value: t, label: t }))} value={field.input_type} onChange={(e) => setField({ ...field, input_type: e.target.value })} />
-              {field.input_type === "select" && (
-                <SelectField label="Options from" options={[{ value: "", label: "Select option set" }, ...d.option_sets.map((s) => ({ value: String(s.id), label: s.name }))]} value={field.garment_option_set_id} onChange={(e) => setField({ ...field, garment_option_set_id: e.target.value })} />
-              )}
-              <div className="flex items-center pt-4">
-                <Checkbox label="Required" checked={field.is_required} onChange={(e) => setField({ ...field, is_required: e.target.checked })} />
-              </div>
-              <div className="flex items-center pt-4">
-                <Checkbox label="Affects price" checked={field.affects_price} onChange={(e) => setField({ ...field, affects_price: e.target.checked })} />
-              </div>
-              <div className="flex items-center pt-4">
-                <Checkbox label="Warn on duplicates" checked={field.warn_on_duplicate} onChange={(e) => setField({ ...field, warn_on_duplicate: e.target.checked })} />
-              </div>
-            </div>
-            <div className="mt-4 flex justify-end">
-              <Button onClick={() => run("post", "garment-setup/fields", { ...field, product_type_id: Number(field.product_type_id), garment_option_set_id: field.garment_option_set_id ? Number(field.garment_option_set_id) : null })}>Add field</Button>
-            </div>
-          </Section>
-        )}
-
-        <Section title="Garment Option Sets">
-          <div className="flex flex-col gap-4">
-            {d.option_sets.map((s) => (
-              <div key={s.id} className="rounded-xl border border-line bg-surface p-4 shadow-xs">
-                <p className="font-bold text-sm text-ink">{s.name} <span className="font-mono text-xs text-muted font-normal">({s.code})</span></p>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {s.options.length === 0 ? (
-                    <span className="text-xs text-muted">No options configured.</span>
-                  ) : (
-                    s.options.map((o) => (
-                      <span key={o.id} className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-subtle px-2.5 py-1 text-xs font-medium text-ink">
-                        <span>{o.label}</span>
-                        {manage && (
-                          <button type="button" className="text-[10px] font-semibold text-brand hover:underline cursor-pointer" onClick={() => run("patch", `garment-setup/options/${o.id}`, { is_active: !o.is_active })}>
-                            {o.is_active ? "(disable)" : "(enable)"}
-                          </button>
-                        )}
-                      </span>
-                    ))
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-          {manage && (
-            <div className="mt-6 border-t border-line/60 pt-4 grid gap-3 sm:grid-cols-4">
-              <SelectField label="Option set" options={[{ value: "", label: "Select set" }, ...d.option_sets.map((s) => ({ value: String(s.id), label: s.name }))]} value={option.set} onChange={(e) => setOption({ ...option, set: e.target.value })} />
-              <TextField label="Option code" value={option.code} onChange={(e) => setOption({ ...option, code: e.target.value.toLowerCase() })} />
-              <TextField label="Option label" value={option.label} onChange={(e) => setOption({ ...option, label: e.target.value })} />
-              <div className="flex items-end"><Button size="sm" onClick={() => run("post", `garment-setup/option-sets/${option.set}/options`, { code: option.code, label: option.label }, () => setOption({ ...option, code: "", label: "" }))}>Add option</Button></div>
-              <TextField label="New set code" value={setForm.code} onChange={(e) => setSetForm({ ...setForm, code: e.target.value.toLowerCase() })} />
-              <TextField label="New set name" value={setForm.name} onChange={(e) => setSetForm({ ...setForm, name: e.target.value })} />
-              <div className="flex items-end"><Button size="sm" variant="secondary" onClick={() => run("post", "garment-setup/option-sets", setForm, () => setSetForm({ code: "", name: "" }))}>Create option set</Button></div>
-            </div>
-          )}
-        </Section>
-
-        <Section title="Size Charts & Profiles">
-          <div className="grid gap-3 sm:grid-cols-2">
-            {d.size_charts.map((c) => (
-              <div key={c.id} className="rounded-xl border border-line bg-surface p-4 shadow-xs">
-                <span className="font-bold text-sm text-ink">{c.name}</span>
-                <div className="mt-2 flex flex-wrap gap-1.5">
-                  {c.sizes.length === 0 ? (
-                    <span className="text-xs text-danger">No sizes configured</span>
-                  ) : (
-                    c.sizes.map((s) => (
-                      <span key={s.id} className="rounded bg-subtle px-2 py-0.5 text-xs font-semibold text-ink">
-                        {s.label}
-                      </span>
-                    ))
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-          {manage && (
-            <div className="mt-6 border-t border-line/60 pt-4 grid gap-3 sm:grid-cols-4">
-              <SelectField label="Select chart" options={[{ value: "", label: "Choose chart" }, ...d.size_charts.map((c) => ({ value: String(c.id), label: c.name }))]} value={size.chart} onChange={(e) => setSize({ ...size, chart: e.target.value })} />
-              <TextField label="Size code" maxLength={10} placeholder="e.g. XL" value={size.code} onChange={(e) => setSize({ ...size, code: e.target.value })} />
-              <TextField label="Display label" maxLength={40} placeholder="e.g. Extra Large" value={size.label} onChange={(e) => setSize({ ...size, label: e.target.value })} />
-              <div className="flex items-end"><Button size="sm" onClick={() => run("post", `garment-setup/size-charts/${size.chart}/sizes`, { code: size.code, label: size.label || size.code, sort_order: d.size_charts.find((c) => String(c.id) === size.chart)?.sizes.length ?? 0 }, () => setSize({ ...size, code: "", label: "" }))}>Add size</Button></div>
-            </div>
-          )}
-        </Section>
-      </div>
-    </RequirePermission>
-  );
-}
+export { GarmentSetupScreen } from "./garment-setup-screen";
 
 /* ---------- Price lists ---------- */
 
@@ -297,7 +154,6 @@ function RuleForm({ listId, rule, onDone }: { listId: number; rule: PriceRule | 
       <div className="grid gap-3 sm:grid-cols-2">
         <SelectField label="Category *" options={[{ value: "", label: "Select category" }, ...(categories.data ?? []).map((c) => ({ value: String(c.id), label: c.name }))]} value={v.product_type_id} onChange={(e) => setV({ ...v, product_type_id: e.target.value, conditions: {} })} />
         <SelectField label="Material" options={[{ value: "", label: "Any material" }, ...(materials.data ?? []).map((m) => ({ value: String(m.id), label: m.name }))]} value={v.material_id} onChange={(e) => setV({ ...v, material_id: e.target.value })} />
-        <SelectField label="Branch" options={[{ value: "", label: "Any branch" }, ...(branches.data?.data ?? []).map((b) => ({ value: String(b.id), label: b.name }))]} value={v.branch_id} onChange={(e) => setV({ ...v, branch_id: e.target.value })} />
         <TextField label="Rule Label" placeholder="e.g. Standard Sublimation" value={v.label} onChange={(e) => setV({ ...v, label: e.target.value })} />
         <TextField label="From quantity *" inputMode="numeric" value={v.min_qty} onChange={(e) => setV({ ...v, min_qty: e.target.value })} />
         <TextField label="To quantity" inputMode="numeric" placeholder="Leave empty for unlimited" value={v.max_qty} onChange={(e) => setV({ ...v, max_qty: e.target.value })} />
@@ -368,7 +224,7 @@ function PriceListDetail({ id }: { id: number }) {
               <tr>
                 <th className="px-4 py-3">Category</th>
                 <th className="px-4 py-3">Conditions</th>
-                <th className="px-4 py-3">Material / Branch</th>
+                <th className="px-4 py-3">Material</th>
                 <th className="px-4 py-3">Quantity Tier</th>
                 <th className="px-4 py-3">Unit Price</th>
                 {editable && <th className="px-4 py-3 text-right">Actions</th>}
@@ -385,7 +241,7 @@ function PriceListDetail({ id }: { id: number }) {
                     {r.conditions.map((c) => `${c.field_key}=${c.option_code}`).join(", ") || "Any"}
                   </td>
                   <td className="px-4 py-3 text-xs text-muted">
-                    {r.material?.name ?? "Any"} / {r.branch?.code ?? "Any"}
+                    {r.material?.name ?? "Any"}
                   </td>
                   <td className="px-4 py-3 font-semibold text-ink">
                     {r.min_qty}{r.max_qty ? `–${r.max_qty}` : "+"} pcs

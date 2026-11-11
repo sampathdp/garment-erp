@@ -32,6 +32,7 @@ use App\Modules\Cutting\Models\CuttingJobAssignment;
 use App\Modules\Cutting\Models\CuttingJobEvent;
 use App\Modules\Cutting\Models\CuttingJobQuantity;
 use App\Modules\Delivery\Models\Delivery;
+use App\Modules\Delivery\Models\DeliveryDocument;
 use App\Modules\Design\Models\DesignCorrectionRequest;
 use App\Modules\Design\Models\DesignReview;
 use App\Modules\Design\Models\DesignTask;
@@ -51,6 +52,7 @@ use App\Modules\Identity\Models\Role;
 use App\Modules\Identity\Models\User;
 use App\Modules\Invoices\Models\Invoice;
 use App\Modules\Invoices\Models\InvoiceItem;
+use App\Modules\Notifications\Models\NotificationOutbox;
 use App\Modules\Orders\Models\Order;
 use App\Modules\Orders\Models\OrderItem;
 use App\Modules\Orders\Models\OrderItemOption;
@@ -122,6 +124,8 @@ final class MorphMap
             'cutting_job_quantity' => CuttingJobQuantity::class,
             'defect_type' => DefectType::class,
             'delivery' => Delivery::class,
+            'delivery_document' => DeliveryDocument::class,
+            'notification_outbox' => NotificationOutbox::class,
             'design_correction_request' => DesignCorrectionRequest::class,
             'design_review' => DesignReview::class,
             'design_task' => DesignTask::class,

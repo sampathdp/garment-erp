@@ -9,7 +9,7 @@ import { DataTable, type Column } from "@/components/ui/data-table";
 import { TextField } from "@/components/ui/field";
 import { Badge, Checkbox, FormError, PageHeader, Section, SelectField, TextAreaField } from "@/components/ui/form-controls";
 import { Modal } from "@/components/ui/modal";
-import { PhoneIcon, PlusIcon, SearchIcon, UserIcon, UsersIcon } from "@/components/ui/icons";
+import { ChevronRightIcon, PhoneIcon, PlusIcon, SearchIcon, UserIcon, UsersIcon } from "@/components/ui/icons";
 import { RequirePermission, WithIdParam } from "@/components/ui/record-page";
 import { EmptyState, ErrorState, LoadingState } from "@/components/ui/states";
 import { useToast } from "@/components/ui/toast";
@@ -66,13 +66,6 @@ function CustomerForm({ customer, onDone }: { customer: Customer | null; onDone:
             onChange={(e) => setV({ ...v, page_id: e.target.value })}
           />
         )}
-        <SelectField
-          label="Default Branch"
-          options={[{ value: "", label: "None (Global)" }, ...(branches.data?.data ?? []).map((b) => ({ value: String(b.id), label: b.name }))]}
-          value={v.branch_id}
-          error={errors.branch_id?.[0]}
-          onChange={(e) => setV({ ...v, branch_id: e.target.value })}
-        />
         <TextField label="Customer name *" placeholder="e.g. Ruwan Silva" maxLength={150} value={v.name} error={errors.name?.[0]} onChange={(e) => setV({ ...v, name: e.target.value })} />
         <TextField label="Phone number *" type="tel" placeholder="077 123 4567" maxLength={20} value={v.phone} error={errors.phone?.[0]} onChange={(e) => setV({ ...v, phone: e.target.value })} />
         <TextField label="WhatsApp number *" type="tel" placeholder="077 123 4567" maxLength={20} value={v.whatsapp} error={errors.whatsapp?.[0]} onChange={(e) => setV({ ...v, whatsapp: e.target.value })} />
@@ -144,6 +137,22 @@ export function CustomersScreen() {
         <Badge tone={c.orders_count ? "brand" : "neutral"}>
           {c.orders_count ?? 0} {c.orders_count === 1 ? "job" : "jobs"}
         </Badge>
+      ),
+    },
+    {
+      key: "actions",
+      header: "Actions",
+      className: "text-right",
+      cell: (c) => (
+        <div className="flex items-center justify-end gap-1.5">
+          <Link
+            href={`/customers/view/?id=${c.id}`}
+            className="inline-flex items-center gap-1 rounded-lg border border-line bg-surface px-2.5 py-1.5 text-xs font-semibold text-ink shadow-xs hover:border-brand/40 hover:bg-subtle hover:text-brand transition shrink-0"
+          >
+            <span>View</span>
+            <ChevronRightIcon size={13} />
+          </Link>
+        </div>
       ),
     },
   ];
@@ -257,7 +266,7 @@ function CustomerDetail({ id }: { id: number }) {
                   {c.customer_code}
                 </span>
               </div>
-              <p className="mt-1 text-xs text-muted">Sales Channel: {c.page?.name ?? "Default"} · Primary Branch: {c.branch?.name ?? "All branches"}</p>
+              <p className="mt-1 text-xs text-muted">Company / Shop: {c.page?.name ?? "Default"}</p>
             </div>
           </div>
           <div className="flex items-center gap-2">

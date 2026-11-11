@@ -73,12 +73,13 @@ The client confirmed that sewing is a stage. It is placed between `cutting` and 
 | printing | cutting | printed quantity recorded; any external gate pass returned or closed. **Phase 07:** applied by `OpenCuttingJob` when the first gate pass is recorded after Printing Completed | `printing.record_gate_pass` |
 | cutting | sewing | cut quantity recorded. **Phase 07:** applied by `CompleteCuttingJob` (§3.11a) | `cutting.complete` |
 | sewing | quality_check | sewn quantity recorded; any external gate pass returned or closed | `sewing.manage` |
+| sewing | ready_for_delivery | **Phase 08:** sewing completed with sewn = received (quality checks already passed at cutting); opens the delivery record (§3.12a) | `sewing.manage` |
 | quality_check | ready_for_delivery | passed quantity = ordered quantity, or shortfall approved by a manager | `qc.inspect` |
 | quality_check | printing / cutting / sewing | rework required (defects recorded) | `qc.inspect` |
 | ready_for_delivery | out_for_delivery | delivery record created; COD amount set to the outstanding balance (balance does **not** need to be paid first) | `delivery.dispatch` |
 | out_for_delivery | delivered | proof of delivery recorded; COD collection recorded as a payment pending verification | `delivery.confirm` |
 | ready_for_delivery | delivered | customer pickup with proof; balance paid at pickup recorded as a payment | `delivery.confirm` |
-| delivered | completed | verified balance = 0 (COD verified by accounts), or write-off approved | `orders.complete` |
+| delivered | completed | verified balance = 0 (COD verified by accounts), or write-off approved. **Phase 08:** plus production completed, mandatory checks done, no blocking issue, required delivery document (§3.12a) | `orders.complete` |
 | any active | on_hold | reason required | `orders.hold` |
 | on_hold | previous state | — | `orders.hold` |
 | draft … print_preparation | cancelled | reason required; refund handling recorded | `orders.cancel` |
@@ -243,6 +244,18 @@ A bulk job (`bulk_jobs`, one per order, UNIQUE `order_id`) is created automatica
 - For COD, the delivery record stores the amount to collect (= outstanding balance at dispatch). The collected cash is recorded as a payment with method `cod`, which Accounts then verifies. Courier COD remittances may arrive later and in batches **[Q23]**.
 - Completion needs a verified balance of 0, or an approved write-off.
 
+### 3.12a Sewing, delivery and final completion (Phase 08 implementation)
+- **Sewing (minimal step, user decision 2026-11-11)**: `RunSewing::open()` creates one sewing job per cutting job inside the cutting completion transaction (received = pieces cut). `sewing.manage` starts it and completes it with the sewn quantity, which must equal the received quantity (a shortfall is reported as a production issue). Completion moves the order `sewing → ready_for_delivery` (new edge; the quality checks already ran at cutting, `quality_check` stays for a later final inspection) and opens the delivery. Internal/external sewing is still Q21.
+- **Delivery record** (`deliveries`, UNIQUE `order_id`, opened by `OpenDelivery`): statuses Ready for Delivery → Out for Delivery (courier / own vehicle) → Delivered, or Ready → Delivered for a customer pickup. Delivery staff (`delivery.view`, branch-scoped) see job no., customer, branch/page, quantity, product details, production status, delivery status, method, outstanding balance and missing documents. Delivery staff, Page Owners and sales owner notified when a job is ready.
+- **Dispatch** (`delivery.dispatch`): method, courier (required for courier), tracking no., scheduled date, notes; COD amount = outstanding VERIFIED balance at dispatch; order → `out_for_delivery`.
+- **Delivered** (`delivery.confirm`): recipient name, notes, cash collected (≤ outstanding) recorded as a `cod` payment PENDING verification (recorded by the delivery user, verified by a different user — separation of duties); order → `delivered`.
+- **Documents** (`delivery.dispatch` or `delivery.confirm`, until the job is closed): delivery sheet, waybill, delivery photo, customer photo — image/PDF ≤ 10 MB checked by content, private disk, type, uploader, upload time, 5-minute signed URLs + policy. Required before completion by method (user decision): courier → waybill; own vehicle → delivery sheet; pickup → delivery or customer photo.
+- **Final completion** (`orders.complete`, Operation Admin and Delivery Staff by default; `CompleteJob` + `JobCompletion::blockers()`): cutting and sewing completed; every mandatory cutting task and quality check done (re-checked); no unresolved blocking production issue; delivered; required document present; VERIFIED balance = 0 (invariant 11 kept, user decision; write-offs are not implemented yet, so a remaining balance always blocks). Otherwise 409 `job_incomplete` with errors grouped by `production`, `checks`, `issues`, `delivery`, `documents`, `balance`. Records `orders.completed_at/by` and the notes; order → `completed`; Page Owners, sales owner and `orders.complete` holders notified.
+
+### 3.12b Dashboards and reports (Phase 08 implementation)
+- **Dashboard** (`GET /dashboard`, every signed-in user): sections chosen by PERMISSION — company overview (`users.view` + `reports.view`), page owner (design/bulk/sample approval permissions), designer (`designs.view_assigned`), bulk designer (`bulk.view_assigned`), operations (`bulk.assign` / `printing.manage` / `cutting.manage`), cutting staff (`cutting.view_assigned`), delivery (`delivery.view`). Every figure is limited to the user's branch × page scope and, for task roles, to their own assignments. Each section is cached 60 s per user.
+- **Reports** (`reports.view`; Page Owner, Second Admin, Operation Admin, Super Admin): jobs by status, jobs by branch/page, overdue jobs, upcoming due dates, payment status, advance collection, outstanding invoice balance, design / bulk / printing / cutting completion time, production issue summary. Filters: date range (default the last 90 days, Colombo dates), branch, page. Aggregates are single GROUP BY queries cached 10 minutes per scope fingerprint + filters; list reports are paginated and not cached.
+
 ### 3.13 Notifications (minimum set)
 
 | Event | Recipients |
@@ -282,6 +295,15 @@ A bulk job (`bulk_jobs`, one per order, UNIQUE `order_id`) is created automatica
 | Delivery date at risk (scheduled daily check) | Branch manager |
 
 Channels: in-app (database, always on). The UI polls for new notifications because shared hosting cannot run a WebSocket server (Reverb). Realtime push is added only if the hosting changes. Email, SMS and WhatsApp depend on [Q12].
+
+**Phase 08 delivery guarantee (transactional outbox):** `Notify` resolves recipients by permission and scope and writes one `notification_outbox` row per recipient INSIDE the business transaction (a rollback notifies no one). After commit a queued job (`DeliverOutboxNotifications`) delivers the rows as in-app notifications using the outbox UUID as the notification id (idempotent); the scheduler sweeps pending rows every minute (`notifications:dispatch-outbox`, time-boxed), retries failures with exponential backoff and marks a row `failed` after 8 attempts (logged). Users get history, unread filter, mark one read / unread, mark all read, deep links (in-app paths only) and `GET /notifications/poll?since=` for near-real-time updates (the bell polls every 20 s). Redis and Reverb are not used: shared hosting has neither (profile A); on a VPS (profile B) Reverb could push the same rows without changing the outbox.
+
+| Phase 08 event | Recipients |
+|---|---|
+| Job ready for delivery | Delivery staff (`delivery.dispatch`) in scope, Page Owners, sales owner |
+| Job dispatched | Page Owners, sales owner |
+| Job delivered | Page Owners, sales owner; payment verifiers when COD was collected |
+| Job completed | Page Owners, sales owner, `orders.complete` holders in scope |
 
 ### 3.14 Audit history
 Every state transition, payment action, approval, price list change, invoice action, gate pass action, list lock/unlock, permission change and login is written to the append-only audit log with actor, time, IP, before/after values and a request ID.

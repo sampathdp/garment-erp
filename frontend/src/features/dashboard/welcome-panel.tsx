@@ -178,60 +178,31 @@ export function WelcomePanel() {
         </div>
       </div>
 
-      {/* Scope Info: Branches & Facebook Pages */}
-      <div className="grid gap-6 md:grid-cols-2">
-        <div className="rounded-xl border border-line bg-surface p-6 shadow-xs">
-          <div className="flex items-center gap-2.5 mb-4 border-b border-line/60 pb-3">
-            <div className="flex size-8 items-center justify-center rounded-lg bg-brand/10 text-brand">
-              <BuildingIcon size={16} />
-            </div>
-            <div>
-              <h2 className="text-sm font-bold text-ink">Your Assigned Branches</h2>
-              <p className="text-xs text-muted">Physical branch offices in your operational scope</p>
-            </div>
+      {/* Scope Info: Companies & Shops */}
+      <div className="rounded-xl border border-line bg-surface p-6 shadow-xs">
+        <div className="flex items-center gap-2.5 mb-4 border-b border-line/60 pb-3">
+          <div className="flex size-8 items-center justify-center rounded-lg bg-brand/10 text-brand">
+            <GlobeIcon size={16} />
           </div>
-          <div className="flex flex-wrap gap-2">
-            {branches.length > 0 ? (
-              branches.map((b, idx) => (
-                <span
-                  key={idx}
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-subtle px-3 py-1.5 text-xs font-medium text-ink"
-                >
-                  <span className="size-1.5 rounded-full bg-brand" />
-                  {b}
-                </span>
-              ))
-            ) : (
-              <span className="text-xs text-muted">No specific branches assigned.</span>
-            )}
+          <div>
+            <h2 className="text-sm font-bold text-ink">Authorized Companies & Shops</h2>
+            <p className="text-xs text-muted">Store and sales pipelines you are authorized to manage</p>
           </div>
         </div>
-
-        <div className="rounded-xl border border-line bg-surface p-6 shadow-xs">
-          <div className="flex items-center gap-2.5 mb-4 border-b border-line/60 pb-3">
-            <div className="flex size-8 items-center justify-center rounded-lg bg-brand/10 text-brand">
-              <GlobeIcon size={16} />
-            </div>
-            <div>
-              <h2 className="text-sm font-bold text-ink">Facebook Sales Channels</h2>
-              <p className="text-xs text-muted">Page pipelines you are authorized to manage</p>
-            </div>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {pages.length > 0 ? (
-              pages.map((p, idx) => (
-                <span
-                  key={idx}
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-subtle px-3 py-1.5 text-xs font-medium text-ink"
-                >
-                  <span className="size-1.5 rounded-full bg-brand" />
-                  {p}
-                </span>
-              ))
-            ) : (
-              <span className="text-xs text-muted">No specific pages assigned.</span>
-            )}
-          </div>
+        <div className="flex flex-wrap gap-2">
+          {pages.length > 0 ? (
+            pages.map((p, idx) => (
+              <span
+                key={idx}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-subtle px-3 py-1.5 text-xs font-medium text-ink"
+              >
+                <span className="size-1.5 rounded-full bg-brand" />
+                {p}
+              </span>
+            ))
+          ) : (
+            <span className="text-xs text-muted">No specific companies or shops assigned.</span>
+          )}
         </div>
       </div>
     </div>

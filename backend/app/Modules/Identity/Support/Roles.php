@@ -103,6 +103,7 @@ final class Roles
                     P::ISSUES_REPORT, P::ISSUES_MANAGE,
                     P::CUTTING_VIEW, P::CUTTING_MANAGE, P::CUTTING_COMPLETE, P::CUTTING_CONFIGURE, P::SEWING_MANAGE,
                     P::QC_VIEW, P::QC_INSPECT, P::GATE_PASSES_VIEW, P::GATE_PASSES_REQUEST, P::DELIVERY_VIEW,
+                    P::ORDERS_COMPLETE, P::REPORTS_VIEW,
                 ],
             ],
             self::EXTERNAL_BULK_DESIGNER => [
@@ -120,7 +121,7 @@ final class Roles
                 'description' => 'Dispatches and confirms deliveries of assigned branches and records cash on delivery.',
                 'permissions' => [
                     P::SCOPE_ALL_PAGES, P::BRANCHES_VIEW,
-                    P::ORDERS_VIEW, P::DELIVERY_VIEW, P::DELIVERY_DISPATCH, P::DELIVERY_CONFIRM,
+                    P::ORDERS_VIEW, P::DELIVERY_VIEW, P::DELIVERY_DISPATCH, P::DELIVERY_CONFIRM, P::ORDERS_COMPLETE,
                     P::PAYMENTS_RECORD, P::GATE_PASSES_VIEW,
                 ],
             ],

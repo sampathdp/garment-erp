@@ -6,17 +6,17 @@ namespace App\Modules\Orders\Support;
 
 use App\Modules\Identity\Models\User;
 use App\Modules\Identity\Support\Permissions;
+use App\Modules\Notifications\Support\Notify;
 use App\Modules\Notifications\Support\Recipients;
 use App\Modules\Notifications\WorkflowNotification;
 use App\Modules\Orders\Enums\UrgentApprovalSlot;
 use App\Modules\Orders\Models\Order;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Notification;
 
 /**
- * Order-intake notifications (WORKFLOW_REQUIREMENTS.md §3.13). Recipients are resolved AFTER
- * the transaction commits and delivered through the queue (WorkflowNotification is queued).
+ * Order-intake notifications (WORKFLOW_REQUIREMENTS.md §3.13). Recipients are resolved inside
+ * the business transaction and written to the notification outbox (Notify), which delivers
+ * them after commit and retries until they arrive.
  *
  * | Event                         | Recipients                                                        |
  * |-------------------------------|-------------------------------------------------------------------|
@@ -31,7 +31,7 @@ use Illuminate\Support\Facades\Notification;
  */
 final class OrderNotifier
 {
-    public function __construct(private readonly Recipients $recipients) {}
+    public function __construct(private readonly Recipients $recipients, private readonly Notify $notify) {}
 
     public function orderCreated(Order $order, User $actor): void
     {
@@ -120,18 +120,16 @@ final class OrderNotifier
         });
     }
 
+    /** Phase 08: runs inside the business transaction, so the outbox rows commit with the change. */
     private function later(callable $callback): void
     {
-        DB::afterCommit($callback);
+        $callback();
     }
 
     /** @param  Collection<int, User>  $users */
     private function send(Collection $users, WorkflowNotification $notification): void
     {
-        $unique = $users->unique('id')->values();
-        if ($unique->isNotEmpty()) {
-            Notification::send($unique, $notification);
-        }
+        $this->notify->send(fn () => $users, $notification);
     }
 
     /** @return array<string, scalar|null> */

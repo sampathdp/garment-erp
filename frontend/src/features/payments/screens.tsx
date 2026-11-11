@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { TextField } from "@/components/ui/field";
 import { Badge, FormError, PageHeader, Section, SelectField, TextAreaField } from "@/components/ui/form-controls";
-import { CheckCircleIcon, CreditCardIcon, ExternalLinkIcon, SearchIcon, XIcon } from "@/components/ui/icons";
+import { CheckCircleIcon, ChevronRightIcon, CreditCardIcon, ExternalLinkIcon, SearchIcon, XIcon } from "@/components/ui/icons";
 import { Modal } from "@/components/ui/modal";
 import { RequirePermission, WithIdParam } from "@/components/ui/record-page";
 import { EmptyState, ErrorState, LoadingState } from "@/components/ui/states";
@@ -60,6 +60,22 @@ export function PaymentsScreen() {
     { key: "reference", header: "Reference", cell: (p) => <span className="font-mono text-xs text-muted">{p.reference_no ?? "—"}</span> },
     { key: "by", header: "Submitted by", cell: (p) => <span className="text-xs text-muted">{p.recorded_by?.name ?? "—"}</span> },
     { key: "status", header: "Verification Status", cell: (p) => <PaymentStatusBadge status={p.status} /> },
+    {
+      key: "actions",
+      header: "Actions",
+      className: "text-right",
+      cell: (p) => (
+        <div className="flex items-center justify-end gap-1.5">
+          <Link
+            href={`/payments/view/?id=${p.id}`}
+            className="inline-flex items-center gap-1 rounded-lg border border-line bg-surface px-2.5 py-1.5 text-xs font-semibold text-ink shadow-xs hover:border-brand/40 hover:bg-subtle hover:text-brand transition shrink-0"
+          >
+            <span>{p.status === "pending_verification" ? "Review" : "View"}</span>
+            <ChevronRightIcon size={13} />
+          </Link>
+        </div>
+      ),
+    },
   ];
 
   return (

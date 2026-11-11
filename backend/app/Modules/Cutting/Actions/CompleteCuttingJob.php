@@ -15,6 +15,7 @@ use App\Modules\Cutting\Support\CuttingWorkflow;
 use App\Modules\Identity\Models\User;
 use App\Modules\Orders\Actions\TransitionOrder;
 use App\Modules\Orders\Enums\OrderStatus;
+use App\Modules\Sewing\Actions\RunSewing;
 use App\Support\Exceptions\ApiException;
 use Illuminate\Support\Facades\DB;
 
@@ -35,6 +36,7 @@ final class CompleteCuttingJob
         private readonly CuttingChecklists $checklists,
         private readonly TransitionOrder $transition,
         private readonly CuttingNotifications $notify,
+        private readonly RunSewing $sewing,
     ) {}
 
     public function handle(User $actor, CuttingJob $job, int $expectedVersion, ?string $notes): CuttingJob
@@ -60,6 +62,7 @@ final class CompleteCuttingJob
             ]);
             $this->workflow->save($job);
             $this->transition->handle($order, OrderStatus::Sewing, $actor, 'Cutting completed.');
+            $this->sewing->open($job, $order, $actor); // Phase 08: the job becomes available to sewing (once)
             $this->notify->completed($job, $order, $actor);
 
             return $job;

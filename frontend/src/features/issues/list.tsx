@@ -5,7 +5,7 @@ import { useState } from "react";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { TextField } from "@/components/ui/field";
 import { Badge, Checkbox, PageHeader, SelectField } from "@/components/ui/form-controls";
-import { SearchIcon } from "@/components/ui/icons";
+import { ChevronRightIcon, SearchIcon } from "@/components/ui/icons";
 import { RequirePermission } from "@/components/ui/record-page";
 import { formatDateTime } from "@/lib/format";
 import { useDebounced } from "@/lib/use-debounced";
@@ -27,7 +27,7 @@ export function IssueList() {
       ),
     },
     { key: "job", header: "Job No.", cell: (i) => <span className="font-mono text-xs">{i.job_no}</span> },
-    { key: "page", header: "Branch / page", cell: (i) => <span className="text-xs">{i.branch} · {i.page.code}</span> },
+    { key: "page", header: "Company / Shop", cell: (i) => <span className="text-xs">{i.page.code}</span> },
     {
       key: "category",
       header: "Category",
@@ -53,6 +53,22 @@ export function IssueList() {
     },
     { key: "assigned", header: "Assigned to", cell: (i) => <span className="text-xs">{i.assigned_to?.name ?? "—"}</span> },
     { key: "status", header: "Status", sortKey: "status", cell: (i) => <Badge tone={issueStatusTone(i.status.value)} dot>{i.status.label}</Badge> },
+    {
+      key: "actions",
+      header: "Actions",
+      className: "text-right",
+      cell: (i) => (
+        <div className="flex items-center justify-end gap-1.5">
+          <Link
+            href={`/issues/view/?id=${i.id}`}
+            className="inline-flex items-center gap-1 rounded-lg border border-line bg-surface px-2.5 py-1.5 text-xs font-semibold text-ink shadow-xs hover:border-brand/40 hover:bg-subtle hover:text-brand transition shrink-0"
+          >
+            <span>View</span>
+            <ChevronRightIcon size={13} />
+          </Link>
+        </div>
+      ),
+    },
   ];
 
   return (

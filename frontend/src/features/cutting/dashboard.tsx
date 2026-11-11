@@ -5,7 +5,7 @@ import { useState } from "react";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { TextField } from "@/components/ui/field";
 import { Badge, Checkbox, PageHeader, SelectField } from "@/components/ui/form-controls";
-import { SearchIcon } from "@/components/ui/icons";
+import { ChevronRightIcon, SearchIcon } from "@/components/ui/icons";
 import { RequirePermission } from "@/components/ui/record-page";
 import { useAuth } from "@/features/auth/auth-provider";
 import { formatBusinessDate } from "@/lib/format";
@@ -32,7 +32,7 @@ export function CuttingDashboard() {
         </Link>
       ),
     },
-    { key: "page", header: "Branch / page", cell: (j) => <span className="text-xs">{j.branch} · {j.page.code}</span> },
+    { key: "page", header: "Company / Shop", cell: (j) => <span className="text-xs">{j.page.code}</span> },
     {
       key: "preview",
       header: "Design",
@@ -106,6 +106,22 @@ export function CuttingDashboard() {
         <div className="flex flex-col items-start gap-1">
           <Badge tone={cuttingStatusTone(j.status.value)} dot>{j.status.label}</Badge>
           {j.open_issue_count > 0 && <Badge tone="danger">{j.open_issue_count} open issue{j.open_issue_count > 1 ? "s" : ""}</Badge>}
+        </div>
+      ),
+    },
+    {
+      key: "actions",
+      header: "Actions",
+      className: "text-right",
+      cell: (j) => (
+        <div className="flex items-center justify-end gap-1.5">
+          <Link
+            href={`/cutting/view/?id=${j.id}`}
+            className="inline-flex items-center gap-1 rounded-lg border border-line bg-surface px-2.5 py-1.5 text-xs font-semibold text-ink shadow-xs hover:border-brand/40 hover:bg-subtle hover:text-brand transition shrink-0"
+          >
+            <span>View</span>
+            <ChevronRightIcon size={13} />
+          </Link>
         </div>
       ),
     },

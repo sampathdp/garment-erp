@@ -63,7 +63,9 @@ enum OrderStatus: string
             self::PrintSampleReview => [self::PrintPreparation, self::Printing],
             self::Printing => [self::Cutting],
             self::Cutting => [self::Sewing],
-            self::Sewing => [self::QualityCheck],
+            // Phase 07/08: the quality checks run at the cutting stage, so sewing completion releases
+            // the job for delivery directly; quality_check stays for a later final inspection.
+            self::Sewing => [self::QualityCheck, self::ReadyForDelivery],
             self::QualityCheck => [self::ReadyForDelivery, self::Printing, self::Cutting, self::Sewing],
             self::ReadyForDelivery => [self::OutForDelivery, self::Delivered],
             self::OutForDelivery => [self::Delivered],

@@ -1,25 +1,50 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
+import { useEffect, useRef } from "react";
 import { api } from "@/lib/api-client";
 
 export const notificationKeys = {
   unreadCount: ["notifications", "unread-count"] as const,
+  poll: ["notifications", "poll"] as const,
 };
 
+interface PollResult {
+  unread: number;
+  new: { id: string; data: { title?: string; message?: string; link?: string | null } }[];
+  server_time: string;
+}
+
 /**
- * Shared hosting cannot run WebSockets, so the unread count is polled every 30 s
- * and polling pauses while the tab is hidden (refetchIntervalInBackground: false).
+ * Near-real-time notifications without WebSockets (shared hosting cannot run Reverb): the
+ * cheap `notifications/poll` endpoint is called every 20 s with the last server time, and
+ * polling pauses while the tab is hidden. New notifications refresh the inbox and the dashboard.
  */
 export function useUnreadCount() {
-  return useQuery({
-    queryKey: notificationKeys.unreadCount,
-    queryFn: ({ signal }) => api.get<{ data: { unread: number } }>("notifications/unread-count", undefined, signal).then((r) => r.data.unread),
-    refetchInterval: 30_000,
+  const since = useRef<string | null>(null);
+  const queryClient = useQueryClient();
+  const query = useQuery({
+    queryKey: notificationKeys.poll,
+    queryFn: async ({ signal }) => {
+      const r = await api.get<{ data: PollResult }>("notifications/poll", { since: since.current ?? undefined }, signal);
+      since.current = r.data.server_time;
+      return r.data;
+    },
+    refetchInterval: 20_000,
     refetchIntervalInBackground: false,
-    staleTime: 25_000,
+    staleTime: 15_000,
   });
+  const fresh = query.data?.new.length ?? 0;
+
+  useEffect(() => {
+    if (fresh > 0) {
+      void queryClient.invalidateQueries({ queryKey: ["notifications", "list"] });
+      void queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+    }
+  }, [fresh, query.data?.server_time, queryClient]);
+
+  return { ...query, data: query.data?.unread };
 }
 
 export function NotificationBell() {

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge, FormError, Section, SelectField, TextAreaField } from "@/components/ui/form-controls";
 import { TextField } from "@/components/ui/field";
@@ -12,8 +12,12 @@ import {
   CreditCardIcon,
   ExternalLinkIcon,
   PaletteIcon,
+  PencilIcon,
+  PlusIcon,
+  ScissorsIcon,
   ShirtIcon,
 } from "@/components/ui/icons";
+import { Modal } from "@/components/ui/modal";
 import { useToast } from "@/components/ui/toast";
 import { useMaterials, useOrderInvoices } from "@/features/setup/api";
 import { ApiError } from "@/lib/api-client";
@@ -29,6 +33,8 @@ export function JobDetailsPanel({ order }: { order: Order }) {
   const { save, submit } = useJobDetailsMutations(order.id);
   const { notify } = useToast();
   const editable = order.abilities?.manage_job_details ?? false;
+  const [isOpen, setIsOpen] = useState(false);
+
   const [v, setV] = useState({
     material_id: String(details?.material?.id ?? ""),
     material_details: details?.material_details ?? "",
@@ -37,7 +43,23 @@ export function JobDetailsPanel({ order }: { order: Order }) {
     overall_remarks: details?.overall_remarks ?? "",
   });
   const [attachment, setAttachment] = useState<File | null>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      setV({
+        material_id: String(details?.material?.id ?? ""),
+        material_details: details?.material_details ?? "",
+        design_instructions: details?.design_instructions ?? "",
+        custom_notes: details?.custom_notes ?? "",
+        overall_remarks: details?.overall_remarks ?? "",
+      });
+      setAttachment(null);
+    }
+  }, [isOpen, details]);
+
   if (!details) return null;
+
+  const hasDetails = Boolean(details.material || details.design_instructions || details.submitted_at);
 
   const errors = save.error instanceof ApiError ? save.error.fieldErrors : submit.error instanceof ApiError ? submit.error.fieldErrors : {};
   const formError = [save.error, submit.error].find((e) => e instanceof ApiError && !e.isValidation) as ApiError | undefined;
@@ -48,99 +70,303 @@ export function JobDetailsPanel({ order }: { order: Order }) {
       {
         onSuccess: (saved) => {
           setAttachment(null);
-          if (thenSubmit) submit.mutate(saved.version, { onSuccess: () => notify("Job details submitted. The design task was created.", "success") });
-          else notify("Job details saved", "success");
+          if (thenSubmit) {
+            submit.mutate(saved.version, {
+              onSuccess: () => {
+                notify("Job details submitted. The design task was created.", "success");
+                setIsOpen(false);
+              },
+            });
+          } else {
+            notify("Job details saved successfully", "success");
+            setIsOpen(false);
+          }
         },
       },
     );
 
+  const onDirectSubmit = () => {
+    submit.mutate(order.version, {
+      onSuccess: () => {
+        notify("Job details submitted. The design task was created.", "success");
+      },
+    });
+  };
+
   return (
-    <Section title="Job details" description="Fabric, material and design instructions for the designer. Added after the advance payment is approved.">
-      <FormError message={formError?.message ?? null} />
-      <fieldset disabled={!editable} className="grid gap-4 sm:grid-cols-2">
-        <SelectField
-          label="Fabric type *"
-          options={[{ value: "", label: "Select fabric" }, ...(materials.data ?? []).map((m) => ({ value: String(m.id), label: m.name }))]}
-          value={v.material_id}
-          error={errors.material_id?.[0]}
-          onChange={(e) => setV({ ...v, material_id: e.target.value })}
-        />
-        <TextField
-          label="Material details"
-          maxLength={1000}
-          value={v.material_details}
-          placeholder="e.g. 180 GSM dry-fit cotton blend"
-          error={errors.material_details?.[0]}
-          onChange={(e) => setV({ ...v, material_details: e.target.value })}
-        />
-        <div className="sm:col-span-2">
-          <TextAreaField
-            label="Design instructions *"
-            maxLength={5000}
-            rows={5}
-            placeholder="Specify collar styling, sleeve piping, crest placement, vector Pantone colors, etc."
-            value={v.design_instructions}
-            error={errors.design_instructions?.[0]}
-            onChange={(e) => setV({ ...v, design_instructions: e.target.value })}
-          />
+    <div className="rounded-2xl border border-line bg-surface p-5 shadow-xs flex flex-col gap-4">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-line pb-4">
+        <div className="flex items-start gap-3">
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-brand/10 text-brand">
+            <ScissorsIcon size={20} />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h3 className="text-sm font-bold text-ink">Job Details & Manufacturing Instructions</h3>
+              {details.submitted_at ? (
+                <Badge tone="success" dot>Submitted to Design</Badge>
+              ) : hasDetails ? (
+                <Badge tone="brand" dot>Draft Saved</Badge>
+              ) : (
+                <Badge tone="warning" dot>Pending Configuration</Badge>
+              )}
+            </div>
+            <p className="text-xs text-muted mt-0.5">
+              Fabric specifications, vector sketch attachments, and styling instructions for the design queue.
+            </p>
+          </div>
         </div>
-        <TextAreaField
-          label="Custom notes"
-          maxLength={2000}
-          placeholder="Internal notes or specific customer requests"
-          value={v.custom_notes}
-          error={errors.custom_notes?.[0]}
-          onChange={(e) => setV({ ...v, custom_notes: e.target.value })}
-        />
-        <TextAreaField
-          label="Overall remarks"
-          maxLength={2000}
-          placeholder="Production remarks or packaging instructions"
-          value={v.overall_remarks}
-          error={errors.overall_remarks?.[0]}
-          onChange={(e) => setV({ ...v, overall_remarks: e.target.value })}
-        />
-        <div className="sm:col-span-2 flex flex-col gap-2 rounded-xl border border-dashed border-line bg-subtle/30 p-4">
-          <label htmlFor="design-attachment" className="text-xs font-semibold uppercase tracking-wider text-muted">
-            Design instruction attachment (Vector sketch, reference PDF or mockup)
-          </label>
-          <div className="flex flex-wrap items-center gap-3">
-            <input
-              id="design-attachment"
-              type="file"
-              accept={ATTACHMENT_TYPES}
-              className="text-xs text-muted file:mr-3 file:rounded-lg file:border-0 file:bg-surface file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-ink file:shadow-xs hover:file:bg-subtle"
-              onChange={(e) => setAttachment(e.target.files?.[0] ?? null)}
-            />
-            {details.attachment && (
-              <a
-                className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-surface px-3 py-1.5 text-xs font-semibold text-brand shadow-xs hover:bg-subtle"
-                href={details.attachment.url}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <ExternalLinkIcon size={13} />
-                Open {details.attachment.name}
-              </a>
+
+        {editable && (
+          <Button
+            size="sm"
+            variant={hasDetails ? "outline" : "primary"}
+            icon={hasDetails ? <PencilIcon size={13} /> : <PlusIcon size={14} />}
+            onClick={() => setIsOpen(true)}
+            className="shrink-0 text-xs font-semibold"
+          >
+            {hasDetails ? "Edit Job Details" : "Configure Job Details"}
+          </Button>
+        )}
+      </div>
+
+      {/* Content */}
+      {hasDetails ? (
+        <div className="flex flex-col gap-4">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {/* Fabric Spec */}
+            <div className="flex flex-col gap-1 rounded-xl border border-line/60 bg-subtle/30 p-3.5">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-muted">
+                Fabric Material & Weight
+              </span>
+              <p className="text-sm font-bold text-ink mt-0.5">
+                {details.material?.name ?? "Fabric not specified"}
+              </p>
+              <p className="text-xs text-muted">
+                {details.material_details || "Standard GSM specification"}
+              </p>
+            </div>
+
+            {/* Attachment */}
+            <div className="flex flex-col gap-1 rounded-xl border border-line/60 bg-subtle/30 p-3.5">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-muted">
+                Vector Attachment / Mockup
+              </span>
+              {details.attachment ? (
+                <a
+                  href={details.attachment.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 font-semibold text-xs text-brand hover:underline mt-1 truncate"
+                >
+                  <ExternalLinkIcon size={13} className="shrink-0" />
+                  <span className="truncate">{details.attachment.name}</span>
+                </a>
+              ) : (
+                <p className="text-xs text-muted italic mt-1">No reference file attached</p>
+              )}
+            </div>
+
+            {/* Workflow Status */}
+            <div className="flex flex-col gap-1 rounded-xl border border-line/60 bg-subtle/30 p-3.5">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-muted">
+                Workflow Status
+              </span>
+              <p className="text-sm font-bold text-ink mt-0.5">
+                {details.submitted_at ? "Submitted to Queue" : "Draft Instructions"}
+              </p>
+              <p className="text-xs text-muted">
+                {details.submitted_at ? formatDateTime(details.submitted_at) : "Awaiting submission to design"}
+              </p>
+            </div>
+
+            {/* Design Instructions */}
+            <div className="sm:col-span-2 lg:col-span-3 flex flex-col gap-1 rounded-xl border border-line/60 bg-subtle/20 p-4">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-muted">
+                Design Instructions
+              </span>
+              <p className="text-xs text-ink leading-relaxed whitespace-pre-wrap mt-1">
+                {details.design_instructions || "No custom instructions specified."}
+              </p>
+            </div>
+
+            {/* Custom Notes & Remarks if available */}
+            {(details.custom_notes || details.overall_remarks) && (
+              <div className="sm:col-span-2 lg:col-span-3 grid gap-3 sm:grid-cols-2">
+                {details.custom_notes && (
+                  <div className="flex flex-col gap-1 rounded-xl border border-line/60 bg-subtle/20 p-3.5">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-muted">
+                      Custom Notes
+                    </span>
+                    <p className="text-xs text-muted leading-relaxed mt-0.5">{details.custom_notes}</p>
+                  </div>
+                )}
+                {details.overall_remarks && (
+                  <div className="flex flex-col gap-1 rounded-xl border border-line/60 bg-subtle/20 p-3.5">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-muted">
+                      Overall Remarks
+                    </span>
+                    <p className="text-xs text-muted leading-relaxed mt-0.5">{details.overall_remarks}</p>
+                  </div>
+                )}
+              </div>
             )}
           </div>
-          {errors.attachment?.[0] && <p className="text-xs text-danger">{errors.attachment[0]}</p>}
+
+          {/* Quick Submit Banner if drafted but not submitted yet */}
+          {!details.submitted_at && order.abilities?.submit_job_details && (
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-brand/30 bg-brand/5 p-3.5 text-xs">
+              <div className="flex items-center gap-2 text-ink">
+                <CheckCircleIcon size={16} className="text-brand shrink-0" />
+                <span>Job instructions are drafted. Ready to dispatch this job to the design department?</span>
+              </div>
+              <Button
+                size="sm"
+                loading={submit.isPending}
+                onClick={onDirectSubmit}
+                className="shrink-0 text-xs font-semibold"
+              >
+                Send to Design Queue
+              </Button>
+            </div>
+          )}
         </div>
-      </fieldset>
-      {details.submitted_at && <p className="mt-3 text-xs text-muted">Submitted {formatDateTime(details.submitted_at)}.</p>}
-      {editable && (
-        <div className="mt-4 flex flex-wrap gap-2">
-          <Button variant="secondary" loading={save.isPending} onClick={() => onSave(false)}>
-            Save details
-          </Button>
-          {order.abilities?.submit_job_details && (
-            <Button loading={save.isPending || submit.isPending} onClick={() => onSave(true)}>
-              Save and send to design
+      ) : (
+        <div className="rounded-xl border border-dashed border-line bg-subtle/20 p-8 text-center flex flex-col items-center justify-center gap-2">
+          <div className="flex size-10 items-center justify-center rounded-xl bg-subtle text-muted mb-1">
+            <ScissorsIcon size={20} />
+          </div>
+          <h4 className="text-sm font-bold text-ink">Job Details & Fabric Instructions Not Set</h4>
+          <p className="text-xs text-muted max-w-md leading-relaxed">
+            Specify fabric selection, material details, vector sketch attachments, and styling notes before dispatching to the design team.
+          </p>
+          {editable && (
+            <Button
+              size="sm"
+              icon={<PlusIcon size={14} />}
+              onClick={() => setIsOpen(true)}
+              className="mt-2 text-xs font-semibold"
+            >
+              Configure Job Details
             </Button>
           )}
         </div>
       )}
-    </Section>
+
+      {/* Modal: Configure Job Details */}
+      <Modal
+        open={isOpen}
+        title={`Job Details & Design Instructions — Job ${order.order_no}`}
+        onClose={() => setIsOpen(false)}
+      >
+        <form noValidate onSubmit={(e) => e.preventDefault()} className="flex flex-col gap-4">
+          <FormError message={formError?.message ?? null} />
+
+          <fieldset disabled={!editable} className="grid gap-4 sm:grid-cols-2">
+            <SelectField
+              label="Fabric type *"
+              options={[
+                { value: "", label: "Select fabric" },
+                ...(materials.data ?? []).map((m) => ({ value: String(m.id), label: m.name })),
+              ]}
+              value={v.material_id}
+              error={errors.material_id?.[0]}
+              onChange={(e) => setV({ ...v, material_id: e.target.value })}
+            />
+
+            <TextField
+              label="Material details"
+              maxLength={1000}
+              value={v.material_details}
+              placeholder="e.g. 180 GSM dry-fit cotton blend"
+              error={errors.material_details?.[0]}
+              onChange={(e) => setV({ ...v, material_details: e.target.value })}
+            />
+
+            <div className="sm:col-span-2">
+              <TextAreaField
+                label="Design instructions *"
+                maxLength={5000}
+                rows={5}
+                placeholder="Specify collar styling, sleeve piping, crest placement, vector Pantone colors, etc."
+                value={v.design_instructions}
+                error={errors.design_instructions?.[0]}
+                onChange={(e) => setV({ ...v, design_instructions: e.target.value })}
+              />
+            </div>
+
+            <TextAreaField
+              label="Custom notes"
+              maxLength={2000}
+              placeholder="Internal notes or specific customer requests"
+              value={v.custom_notes}
+              error={errors.custom_notes?.[0]}
+              onChange={(e) => setV({ ...v, custom_notes: e.target.value })}
+            />
+
+            <TextAreaField
+              label="Overall remarks"
+              maxLength={2000}
+              placeholder="Production remarks or packaging instructions"
+              value={v.overall_remarks}
+              error={errors.overall_remarks?.[0]}
+              onChange={(e) => setV({ ...v, overall_remarks: e.target.value })}
+            />
+
+            <div className="sm:col-span-2 flex flex-col gap-2 rounded-xl border border-dashed border-line bg-subtle/30 p-4">
+              <label htmlFor="design-attachment" className="text-xs font-semibold uppercase tracking-wider text-muted">
+                Design instruction attachment (Vector sketch, reference PDF or mockup)
+              </label>
+              <div className="flex flex-wrap items-center gap-3">
+                <input
+                  id="design-attachment"
+                  type="file"
+                  accept={ATTACHMENT_TYPES}
+                  className="text-xs text-muted file:mr-3 file:rounded-lg file:border-0 file:bg-surface file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-ink file:shadow-xs hover:file:bg-subtle cursor-pointer"
+                  onChange={(e) => setAttachment(e.target.files?.[0] ?? null)}
+                />
+                {details.attachment && (
+                  <a
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-surface px-3 py-1.5 text-xs font-semibold text-brand shadow-xs hover:bg-subtle"
+                    href={details.attachment.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <ExternalLinkIcon size={13} />
+                    Current: {details.attachment.name}
+                  </a>
+                )}
+              </div>
+              {errors.attachment?.[0] && <p className="text-xs text-danger">{errors.attachment[0]}</p>}
+            </div>
+          </fieldset>
+
+          <div className="flex flex-wrap items-center justify-end gap-2 pt-3 border-t border-line">
+            <Button variant="secondary" onClick={() => setIsOpen(false)}>
+              Cancel
+            </Button>
+            {editable && (
+              <Button
+                variant="outline"
+                loading={save.isPending}
+                onClick={() => onSave(false)}
+              >
+                Save details
+              </Button>
+            )}
+            {order.abilities?.submit_job_details && (
+              <Button
+                loading={save.isPending || submit.isPending}
+                onClick={() => onSave(true)}
+              >
+                Save and send to design
+              </Button>
+            )}
+          </div>
+        </form>
+      </Modal>
+    </div>
   );
 }
 

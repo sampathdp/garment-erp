@@ -2,20 +2,29 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { Button } from "@/components/ui/button";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { TextField } from "@/components/ui/field";
 import { Badge, PageHeader, SelectField } from "@/components/ui/form-controls";
-import { PlusIcon, SearchIcon, AlertTriangleIcon } from "@/components/ui/icons";
+import { AlertTriangleIcon, ChevronRightIcon, CreditCardIcon, PlusIcon, SearchIcon } from "@/components/ui/icons";
+import { Modal } from "@/components/ui/modal";
 import { RequirePermission } from "@/components/ui/record-page";
 import { useAuth } from "@/features/auth/auth-provider";
+import { RecordPaymentForm } from "@/features/payments/record-payment-form";
 import { formatBusinessDate, formatMoney } from "@/lib/format";
 import { useDebounced } from "@/lib/use-debounced";
 import { type Order, type OrderGroup, PAYMENT_STATUS_LABELS, statusTone, useOrders } from "./api";
 
-export function OrderStatusBadge({ order }: { order: Pick<Order, "status"> }) {
+export function OrderStatusBadge({ order }: { order: Pick<Order, "status"> & { advance?: Order["advance"] } }) {
+  const isPartialAdvance =
+    order.status.value === "pending_payment_verification" &&
+    order.advance &&
+    order.advance.verified_minor > 0 &&
+    !order.advance.meets_requirement;
+
   return (
-    <Badge tone={statusTone(order.status.value)} dot>
-      {order.status.label}
+    <Badge tone={isPartialAdvance ? "warning" : statusTone(order.status.value)} dot>
+      {isPartialAdvance ? "Advance Shortfall" : order.status.label}
     </Badge>
   );
 }
@@ -37,7 +46,7 @@ export function PaymentStatusCell({ order }: { order: Order }) {
 }
 
 const PRESETS: Record<"all" | OrderGroup, { title: string; description: string; statuses?: { value: string; label: string }[] }> = {
-  all: { title: "All Orders", description: "All garment jobs across your authorized branches and sales pages." },
+  all: { title: "All Orders", description: "All garment jobs across your authorized sales channels and shops." },
   intake: {
     title: "Drafts and Pending Payment",
     description: "Jobs waiting to be finalized or awaiting verified 30% advance deposit.",
@@ -64,6 +73,7 @@ export function OrdersScreen({ group }: { group?: OrderGroup }) {
   const preset = PRESETS[group ?? "all"];
   const { can } = useAuth();
   const [params, setParams] = useState({ page: 1, sort: group === "approved" ? "due_date" : "-created_at", search: "", status: "" });
+  const [payOrder, setPayOrder] = useState<Order | null>(null);
   const query = useOrders({ ...useDebounced(params), group });
 
   const columns: Column<Order>[] = [
@@ -92,13 +102,9 @@ export function OrdersScreen({ group }: { group?: OrderGroup }) {
     },
     {
       key: "page",
-      header: "Channel / Branch",
+      header: "Company / Shop",
       cell: (o) => (
-        <div className="flex items-center gap-1.5 text-xs">
-          <span className="font-semibold text-ink">{o.page.code}</span>
-          <span className="text-muted">/</span>
-          <span className="text-muted">{o.branch.code}</span>
-        </div>
+        <span className="font-semibold text-ink text-xs">{o.page.name || o.page.code}</span>
       ),
     },
     { key: "category", header: "Category", cell: (o) => o.product_category?.name ?? "—" },
@@ -136,6 +142,33 @@ export function OrdersScreen({ group }: { group?: OrderGroup }) {
         ) : (
           <span className="text-xs text-muted">Standard</span>
         ),
+    },
+    {
+      key: "actions",
+      header: "Actions",
+      className: "text-right",
+      cell: (o) => (
+        <div className="flex items-center justify-end gap-1.5">
+          {!o.advance.meets_requirement && o.status.value !== "draft" && can("orders.create") && (
+            <Button
+              size="sm"
+              variant="outline"
+              icon={<CreditCardIcon size={12} />}
+              onClick={() => setPayOrder(o)}
+              className="text-xs font-semibold text-brand hover:bg-brand/10 border-brand/30 shrink-0"
+            >
+              Add payment
+            </Button>
+          )}
+          <Link
+            href={`/orders/view/?id=${o.id}`}
+            className="inline-flex items-center gap-1 rounded-lg border border-line bg-surface px-2.5 py-1.5 text-xs font-semibold text-ink shadow-xs hover:border-brand/40 hover:bg-subtle hover:text-brand transition shrink-0"
+          >
+            <span>View</span>
+            <ChevronRightIcon size={13} />
+          </Link>
+        </div>
+      ),
     },
   ];
 
@@ -194,8 +227,26 @@ export function OrdersScreen({ group }: { group?: OrderGroup }) {
           onSortChange={(sort) => setParams((p) => ({ ...p, page: 1, sort }))}
           onPageChange={(page) => setParams((p) => ({ ...p, page }))}
           emptyTitle="No orders found"
-          emptyDescription="You only see orders belonging to your assigned branches and sales channels."
+          emptyDescription="You only see orders belonging to your assigned companies and shops."
         />
+
+        {payOrder && (
+          <Modal
+            open={payOrder !== null}
+            title={`Record Payment — Job ${payOrder.order_no}`}
+            onClose={() => setPayOrder(null)}
+          >
+            <RecordPaymentForm
+              orderId={payOrder.id}
+              currency={payOrder.currency}
+              suggestedMinor={payOrder.advance.shortfall_minor}
+              onDone={() => {
+                setPayOrder(null);
+                void query.refetch();
+              }}
+            />
+          </Modal>
+        )}
       </div>
     </RequirePermission>
   );

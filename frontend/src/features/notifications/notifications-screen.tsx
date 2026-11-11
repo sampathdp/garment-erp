@@ -4,7 +4,7 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tansta
 import Link from "next/link";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { PageHeader } from "@/components/ui/form-controls";
+import { Checkbox, PageHeader } from "@/components/ui/form-controls";
 import { BellIcon, CheckIcon, ChevronLeftIcon, ChevronRightIcon } from "@/components/ui/icons";
 import { EmptyState, ErrorState, LoadingState } from "@/components/ui/states";
 import { api, type Paginated } from "@/lib/api-client";
@@ -20,34 +20,38 @@ interface AppNotification {
 }
 
 /** Only in-app paths are followed (the payload comes from our API, but never trust a link blindly). */
-const safeLink = (link: string | null | undefined) => (link && link.startsWith("/") && !link.startsWith("//") ? link : null);
+export const safeLink = (link: string | null | undefined) => (link && link.startsWith("/") && !link.startsWith("//") ? link : null);
 
 export function NotificationsScreen() {
   const [page, setPage] = useState(1);
+  const [unreadOnly, setUnreadOnly] = useState(false);
   const queryClient = useQueryClient();
   const query = useQuery({
-    queryKey: ["notifications", "list", page],
-    queryFn: ({ signal }) => api.get<Paginated<AppNotification>>("notifications", { page }, signal),
+    queryKey: ["notifications", "list", page, unreadOnly],
+    queryFn: ({ signal }) => api.get<Paginated<AppNotification>>("notifications", { page, "filter[unread]": unreadOnly ? 1 : undefined }, signal),
     placeholderData: keepPreviousData,
     refetchInterval: 60_000,
   });
-  const markAll = useMutation({
-    mutationFn: () => api.post("notifications/mark-all-read"),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["notifications"] });
-      void queryClient.invalidateQueries({ queryKey: notificationKeys.unreadCount });
-    },
-  });
+  const refresh = () => {
+    void queryClient.invalidateQueries({ queryKey: ["notifications", "list"] });
+    void queryClient.invalidateQueries({ queryKey: notificationKeys.poll });
+  };
+  const markAll = useMutation({ mutationFn: () => api.post("notifications/mark-all-read"), onSuccess: refresh });
+  const toggle = useMutation({ mutationFn: (n: AppNotification) => api.post(`notifications/${n.id}/${n.read_at ? "unread" : "read"}`), onSuccess: refresh });
+  const open = useMutation({ mutationFn: (id: string) => api.post(`notifications/${id}/read`), onSuccess: refresh });
 
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Notifications"
-        description="Real-time alerts for urgent approvals, verified payments, and design feedback."
+        description="Job alerts for your work: approvals, payments, production steps, issues and deliveries. Updated every few seconds."
         actions={
-          <Button variant="secondary" size="sm" icon={<CheckIcon size={14} />} loading={markAll.isPending} onClick={() => markAll.mutate()}>
-            Mark all as read
-          </Button>
+          <div className="flex items-center gap-3">
+            <Checkbox label="Unread only" checked={unreadOnly} onChange={(e) => (setUnreadOnly(e.target.checked), setPage(1))} />
+            <Button variant="secondary" size="sm" icon={<CheckIcon size={14} />} loading={markAll.isPending} onClick={() => markAll.mutate()}>
+              Mark all as read
+            </Button>
+          </div>
         }
       />
       {query.isPending ? (
@@ -55,38 +59,34 @@ export function NotificationsScreen() {
       ) : query.error ? (
         <ErrorState error={query.error} onRetry={() => query.refetch()} />
       ) : query.data.data.length === 0 ? (
-        <EmptyState title="No notifications yet" description="You're all caught up! When jobs require your attention, alerts will show here." />
+        <EmptyState title={unreadOnly ? "No unread notifications" : "No notifications yet"} description="When jobs require your attention, alerts will show here." />
       ) : (
         <div className="flex flex-col gap-4">
-          <ul className="divide-y divide-line/60 rounded-2xl border border-line bg-surface shadow-xs overflow-hidden">
+          <ul className="divide-y divide-line/60 overflow-hidden rounded-2xl border border-line bg-surface shadow-xs">
             {query.data.data.map((n) => {
               const href = safeLink(n.data.link);
               const isUnread = !n.read_at;
-              const content = (
-                <div className="flex items-start gap-3.5">
+              return (
+                <li key={n.id} className={`flex items-start gap-3.5 p-4 transition hover:bg-subtle/50 ${isUnread ? "border-l-4 border-brand bg-brand-soft/20" : ""}`}>
                   <div className={`mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg ${isUnread ? "bg-brand/10 text-brand" : "bg-subtle text-muted"}`}>
                     <BellIcon size={16} />
                   </div>
                   <div className="flex-1">
                     <div className="flex flex-wrap items-center justify-between gap-1">
-                      <p className={`text-sm font-semibold ${isUnread ? "text-ink" : "text-muted"}`}>
-                        {n.data.title ?? n.type}
-                      </p>
+                      {href ? (
+                        <Link href={href} onClick={() => isUnread && open.mutate(n.id)} className={`text-sm font-semibold hover:underline ${isUnread ? "text-ink" : "text-muted"}`}>
+                          {n.data.title ?? n.type}
+                        </Link>
+                      ) : (
+                        <p className={`text-sm font-semibold ${isUnread ? "text-ink" : "text-muted"}`}>{n.data.title ?? n.type}</p>
+                      )}
                       <p className="text-[11px] text-muted">{formatDateTime(n.created_at)}</p>
                     </div>
-                    {n.data.message && <p className="mt-0.5 text-xs text-muted leading-relaxed">{n.data.message}</p>}
+                    {n.data.message && <p className="mt-0.5 text-xs leading-relaxed text-muted">{n.data.message}</p>}
                   </div>
-                </div>
-              );
-              return (
-                <li key={n.id} className={`p-4 transition hover:bg-subtle/50 ${isUnread ? "bg-brand-soft/20 border-l-4 border-brand" : ""}`}>
-                  {href ? (
-                    <Link href={href} className="block group">
-                      {content}
-                    </Link>
-                  ) : (
-                    content
-                  )}
+                  <Button size="sm" variant="ghost" onClick={() => toggle.mutate(n)} aria-label={isUnread ? "Mark as read" : "Mark as unread"}>
+                    {isUnread ? "Mark read" : "Mark unread"}
+                  </Button>
                 </li>
               );
             })}

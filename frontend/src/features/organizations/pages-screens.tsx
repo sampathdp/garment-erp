@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { TextField } from "@/components/ui/field";
 import { Badge, Checkbox, FormError, PageHeader, Section, SelectField, StatusBadge, TextAreaField } from "@/components/ui/form-controls";
-import { GlobeIcon, PlusIcon, SearchIcon, UserIcon } from "@/components/ui/icons";
+import { ChevronRightIcon, GlobeIcon, PlusIcon, SearchIcon, UserIcon } from "@/components/ui/icons";
 import { RequirePermission, WithIdParam } from "@/components/ui/record-page";
 import { EmptyState, ErrorState, LoadingState } from "@/components/ui/states";
 import { useToast } from "@/components/ui/toast";
@@ -29,7 +29,7 @@ export function PagesScreen() {
     { key: "code", header: "Code", sortKey: "code", cell: (p) => <span className="font-mono text-xs font-bold text-muted bg-subtle px-2 py-0.5 rounded">{p.code}</span> },
     {
       key: "name",
-      header: "Channel Name",
+      header: "Company / Shop Name",
       sortKey: "name",
       cell: (p) => (
         <div className="flex items-center gap-2">
@@ -44,19 +44,35 @@ export function PagesScreen() {
     { key: "owners", header: "Page Owners", cell: (p) => <span className="text-xs font-medium text-ink">{p.owners?.map((o) => o.name).join(", ") || "—"}</span> },
     { key: "advance", header: "Default Advance", cell: (p) => <Badge tone="brand">{p.pricing.default_advance_percent}%</Badge> },
     { key: "status", header: "Status", cell: (p) => <StatusBadge active={p.is_active} /> },
+    {
+      key: "actions",
+      header: "Actions",
+      className: "text-right",
+      cell: (p) => (
+        <div className="flex items-center justify-end gap-1.5">
+          <Link
+            href={`/settings/pages/view/?id=${p.id}`}
+            className="inline-flex items-center gap-1 rounded-lg border border-line bg-surface px-2.5 py-1.5 text-xs font-semibold text-ink shadow-xs hover:border-brand/40 hover:bg-subtle hover:text-brand transition shrink-0"
+          >
+            <span>Configure</span>
+            <ChevronRightIcon size={13} />
+          </Link>
+        </div>
+      ),
+    },
   ];
 
   return (
     <RequirePermission anyOf={["pages.view"]}>
       <div className="flex flex-col gap-6">
         <PageHeader
-          title="Sales Channels (Pages)"
-          description="Facebook pages and digital channels. Each channel configures its pricing defaults, invoice branding, and designated Page Owners."
+          title="Companies & Shops"
+          description="Company stores and retail sales channels. Each company/shop configures its pricing defaults, invoice branding, and designated team members."
           actions={
             can("pages.manage") && user?.scope.all_pages ? (
               <Link href="/settings/pages/view/" className={linkButton}>
                 <PlusIcon size={16} />
-                <span>New page</span>
+                <span>New company / shop</span>
               </Link>
             ) : undefined
           }

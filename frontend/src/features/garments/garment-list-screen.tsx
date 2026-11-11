@@ -4,17 +4,54 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { TextField } from "@/components/ui/field";
-import { Badge, Checkbox, FormError, PageHeader, Section, SelectField, TextAreaField } from "@/components/ui/form-controls";
-import { DownloadIcon, PlusIcon, SearchIcon, ScissorsIcon } from "@/components/ui/icons";
+import {
+  Badge,
+  Checkbox,
+  FormError,
+  PageHeader,
+  Section,
+  SelectField,
+  TextAreaField,
+} from "@/components/ui/form-controls";
+import {
+  AlertTriangleIcon,
+  BoxesIcon,
+  CheckCircleIcon,
+  CheckIcon,
+  ChevronRightIcon,
+  DownloadIcon,
+  ExternalLinkIcon,
+  FileTextIcon,
+  PencilIcon,
+  PlusIcon,
+  ScissorsIcon,
+  SearchIcon,
+  ShirtIcon,
+  SparklesIcon,
+  TagIcon,
+  XIcon,
+} from "@/components/ui/icons";
 import { Modal } from "@/components/ui/modal";
 import { WithIdParam } from "@/components/ui/record-page";
 import { EmptyState, ErrorState, LoadingState } from "@/components/ui/states";
 import { useToast } from "@/components/ui/toast";
 import { ApiError } from "@/lib/api-client";
 import { formatDateTime, formatMoney } from "@/lib/format";
-import { exportUrl, type GarmentField, type GarmentList, type GarmentRow, parseBulkRows, type RowInput, useGarmentList, useGarmentMutations } from "./api";
+import {
+  exportUrl,
+  type GarmentField,
+  type GarmentList,
+  type GarmentRow,
+  parseBulkRows,
+  type RowInput,
+  useGarmentList,
+  useGarmentMutations,
+} from "./api";
 
-const errorOf = (e: unknown) => (e instanceof ApiError ? [e.message, ...Object.values(e.fieldErrors).flat()].slice(0, 6).join(" ") : null);
+const errorOf = (e: unknown) =>
+  e instanceof ApiError
+    ? [e.message, ...Object.values(e.fieldErrors).flat()].slice(0, 6).join(" ")
+    : null;
 
 function valueOf(row: GarmentRow, f: GarmentField): string {
   if (f.key === "player_name") return row.player_name ?? "";
@@ -29,44 +66,155 @@ function display(row: GarmentRow, f: GarmentField): string {
   return v;
 }
 
-function RowEditor({ list, row, onSave, onCancel, pending, error }: { list: GarmentList; row: Partial<GarmentRow> | null; onSave: (r: RowInput) => void; onCancel: () => void; pending: boolean; error: unknown }) {
+function RowEditor({
+  list,
+  row,
+  onSave,
+  onCancel,
+  pending,
+  error,
+}: {
+  list: GarmentList;
+  row: Partial<GarmentRow> | null;
+  onSave: (r: RowInput) => void;
+  onCancel: () => void;
+  pending: boolean;
+  error: unknown;
+}) {
   const fields = list.schema.fields;
   const [v, setV] = useState<Record<string, string>>(() => {
-    const base: Record<string, string> = { size_id: String(row?.size_id ?? ""), quantity: String(row?.quantity ?? 1), notes: row?.notes ?? "" };
-    fields.forEach((f) => (base[f.key] = row ? valueOf(row as GarmentRow, f) : ""));
+    const base: Record<string, string> = {
+      size_id: String(row?.size_id ?? ""),
+      quantity: String(row?.quantity ?? 1),
+      notes: row?.notes ?? "",
+      player_name: row?.player_name ?? "",
+      number: row?.number ?? "",
+    };
+    fields.forEach((f) => {
+      if (f.key !== "player_name" && f.key !== "number") {
+        base[f.key] = row ? valueOf(row as GarmentRow, f) : "";
+      }
+    });
     return base;
   });
+
   const set = (k: string, val: string) => setV((p) => ({ ...p, [k]: val }));
+
   const save = () => {
     const values: Record<string, string> = {};
-    fields.filter((f) => f.key !== "player_name" && f.key !== "number" && v[f.key] !== "").forEach((f) => (values[f.key] = v[f.key]));
-    onSave({ size_id: v.size_id ? Number(v.size_id) : null, quantity: Number(v.quantity) || 1, player_name: v.player_name || null, number: v.number || null, notes: v.notes || null, values });
+    fields
+      .filter((f) => f.key !== "player_name" && f.key !== "number" && v[f.key] !== "")
+      .forEach((f) => (values[f.key] = v[f.key]));
+    onSave({
+      size_id: v.size_id ? Number(v.size_id) : null,
+      quantity: Number(v.quantity) || 1,
+      player_name: v.player_name ? v.player_name.trim() : null,
+      number: v.number ? v.number.trim() : null,
+      notes: v.notes ? v.notes.trim() : null,
+      values,
+    });
   };
+
+  const hasNameOrNum = fields.some((f) => f.key === "player_name" || f.key === "number");
+  const otherFields = fields.filter((f) => f.key !== "player_name" && f.key !== "number");
 
   return (
     <div className="flex flex-col gap-4">
       <FormError message={errorOf(error)} />
+
       <div className="grid gap-3 sm:grid-cols-2">
-        <SelectField label="Size *" options={[{ value: "", label: "Select size" }, ...list.schema.sizes.map((s) => ({ value: String(s.id), label: s.label }))]} value={v.size_id} onChange={(e) => set("size_id", e.target.value)} />
-        <TextField label="Quantity" inputMode="numeric" value={v.quantity} onChange={(e) => set("quantity", e.target.value)} />
-        {fields.map((f) =>
-          f.input_type === "select" || f.input_type === "boolean" ? (
-            <SelectField
-              key={f.key}
-              label={`${f.label}${f.is_required ? " *" : ""}`}
-              options={[{ value: "", label: "—" }, ...(f.input_type === "boolean" ? [{ value: "yes", label: "Yes" }, { value: "no", label: "No" }] : f.options.map((o) => ({ value: o.code, label: o.label })))]}
-              value={v[f.key]}
-              onChange={(e) => set(f.key, e.target.value)}
-            />
-          ) : (
-            <TextField key={f.key} label={`${f.label}${f.is_required ? " *" : ""}`} inputMode={f.input_type === "number" ? "numeric" : undefined} maxLength={f.max_length ?? 120} value={v[f.key]} onChange={(e) => set(f.key, e.target.value)} />
-          ),
-        )}
+        <SelectField
+          label="Garment Size *"
+          options={[
+            { value: "", label: "Select size…" },
+            ...list.schema.sizes.map((s) => ({ value: String(s.id), label: s.label })),
+          ]}
+          value={v.size_id}
+          onChange={(e) => set("size_id", e.target.value)}
+        />
+
+        <TextField
+          label="Quantity *"
+          inputMode="numeric"
+          value={v.quantity}
+          onChange={(e) => set("quantity", e.target.value)}
+        />
       </div>
-      <TextField label="Notes" maxLength={255} value={v.notes} onChange={(e) => set("notes", e.target.value)} />
-      <div className="flex justify-end gap-2.5 pt-2">
-        <Button variant="secondary" onClick={onCancel}>Cancel</Button>
-        <Button loading={pending} onClick={save}>Save row</Button>
+
+      {/* Name and Number fields */}
+      {hasNameOrNum && (
+        <div className="grid gap-3 sm:grid-cols-2 rounded-xl border border-line bg-subtle/30 p-3">
+          {fields.some((f) => f.key === "player_name") && (
+            <TextField
+              label="Player / Individual Name"
+              placeholder="e.g. D. SILVA"
+              maxLength={40}
+              value={v.player_name}
+              onChange={(e) => set("player_name", e.target.value.toUpperCase())}
+            />
+          )}
+
+          {fields.some((f) => f.key === "number") && (
+            <TextField
+              label="Player Number"
+              placeholder="e.g. 07"
+              maxLength={4}
+              value={v.number}
+              onChange={(e) => set("number", e.target.value)}
+            />
+          )}
+        </div>
+      )}
+
+      {/* Custom Fields */}
+      {otherFields.length > 0 && (
+        <div className="grid gap-3 sm:grid-cols-2">
+          {otherFields.map((f) =>
+            f.input_type === "select" || f.input_type === "boolean" ? (
+              <SelectField
+                key={f.key}
+                label={`${f.label}${f.is_required ? " *" : ""}`}
+                options={[
+                  { value: "", label: "—" },
+                  ...(f.input_type === "boolean"
+                    ? [
+                        { value: "yes", label: "Yes" },
+                        { value: "no", label: "No" },
+                      ]
+                    : f.options.map((o) => ({ value: o.code, label: o.label }))),
+                ]}
+                value={v[f.key]}
+                onChange={(e) => set(f.key, e.target.value)}
+              />
+            ) : (
+              <TextField
+                key={f.key}
+                label={`${f.label}${f.is_required ? " *" : ""}`}
+                inputMode={f.input_type === "number" ? "numeric" : undefined}
+                maxLength={f.max_length ?? 120}
+                value={v[f.key]}
+                onChange={(e) => set(f.key, e.target.value)}
+              />
+            ),
+          )}
+        </div>
+      )}
+
+      <TextField
+        label="Item Notes / Custom Instructions"
+        placeholder="e.g. Long sleeves, captain armband patch"
+        maxLength={255}
+        value={v.notes}
+        onChange={(e) => set("notes", e.target.value)}
+      />
+
+      <div className="flex justify-end gap-2.5 pt-3 border-t border-line">
+        <Button variant="secondary" onClick={onCancel}>
+          Cancel
+        </Button>
+        <Button loading={pending} disabled={!v.size_id} onClick={save}>
+          Save item
+        </Button>
       </div>
     </div>
   );
@@ -76,7 +224,9 @@ function ListEditor({ orderId }: { orderId: number }) {
   const query = useGarmentList(orderId);
   const m = useGarmentMutations(orderId);
   const { notify } = useToast();
+
   const [search, setSearch] = useState("");
+  const [sizeFilter, setSizeFilter] = useState<string>("all");
   const [editing, setEditing] = useState<GarmentRow | "new" | null>(null);
   const [bulkOpen, setBulkOpen] = useState(false);
   const [bulkText, setBulkText] = useState("");
@@ -86,200 +236,599 @@ function ListEditor({ orderId }: { orderId: number }) {
   const [reason, setReason] = useState("");
 
   const list = query.data;
+
   const rows = useMemo(() => {
     if (!list) return [];
     const term = search.trim().toLowerCase();
-    if (!term) return list.items;
-    return list.items.filter((r) => [r.player_name, r.number, r.size, ...list.schema.fields.map((f) => display(r, f))].some((x) => (x ?? "").toLowerCase().includes(term)));
-  }, [list, search]);
+    return list.items.filter((r) => {
+      const matchesSearch =
+        !term ||
+        [r.player_name, r.number, r.size, r.notes, ...list.schema.fields.map((f) => display(r, f))].some(
+          (x) => (x ?? "").toLowerCase().includes(term),
+        );
+      const matchesSize = sizeFilter === "all" || r.size === sizeFilter;
+      return matchesSearch && matchesSize;
+    });
+  }, [list, search, sizeFilter]);
 
-  if (query.isPending) return <LoadingState />;
-  if (query.error || !list) return <ErrorState error={query.error} onRetry={() => query.refetch()} />;
+  if (query.isPending) return <LoadingState label="Loading garment roster & sizing list…" />;
+  if (query.error || !list) {
+    return <ErrorState error={query.error} onRetry={() => query.refetch()} />;
+  }
 
   const locked = list.current_version.status !== "draft";
   const review = list.review;
   const bulk = parseBulkRows(bulkText, list.schema.sizes, list.schema.fields);
 
+  const allocationPercent =
+    review.expected_quantity > 0
+      ? Math.min(100, Math.round((review.total_quantity / review.expected_quantity) * 100))
+      : 100;
+  const isAllocationExact = review.total_quantity === review.expected_quantity;
+  const isOverallocated = review.total_quantity > review.expected_quantity;
+
+  const sampleColumns = ["Size", "Quantity", ...list.schema.fields.map((f) => f.label)].join("\t");
+
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader
-        title={`Name / number list — ${list.order.order_no}`}
-        breadcrumb={
-          <div className="flex items-center gap-1.5 text-xs text-muted">
-            <Link href="/orders/" className="hover:text-ink">Orders</Link>
+      {/* Executive Command Header */}
+      <div className="flex flex-col gap-4 rounded-2xl border border-line bg-surface p-6 shadow-xs">
+        {/* Breadcrumb + Metadata */}
+        <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-muted">
+          <div className="flex items-center gap-2">
+            <Link href="/orders/" className="hover:text-ink font-medium">
+              Orders
+            </Link>
             <span>/</span>
-            <Link href={`/orders/view/?id=${list.order.id}`} className="hover:text-ink">Job {list.order.order_no}</Link>
+            <Link
+              href={`/orders/view/?id=${list.order.id}`}
+              className="text-brand font-semibold hover:underline inline-flex items-center gap-1 font-mono"
+            >
+              Job {list.order.order_no}
+            </Link>
             <span>/</span>
             <span className="font-semibold text-ink">Garment List</span>
           </div>
-        }
-        description={`${list.schema.product_type.name} · Version ${list.current_version.version_no}${list.current_version.change_reason ? ` (correction: ${list.current_version.change_reason})` : ""}`}
-        actions={
-          <div className="flex flex-wrap items-center gap-2.5">
-            <Badge tone={locked ? "success" : "neutral"} dot>
-              {locked ? `Confirmed by ${list.current_version.locked_by}` : "Draft (Editable)"}
-            </Badge>
-            <a href={exportUrl(list.id)} className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-line bg-surface px-3 text-xs font-semibold text-ink shadow-xs hover:bg-subtle transition">
+
+          <div className="flex items-center gap-2">
+            <span className="rounded-md bg-subtle px-2 py-0.5 text-xs font-semibold text-ink">
+              Model: {list.schema.product_type.name}
+            </span>
+            <span className="rounded-md bg-subtle px-2 py-0.5 text-xs font-semibold text-ink">
+              Version {list.current_version.version_no}
+            </span>
+          </div>
+        </div>
+
+        {/* Main Title Row & Actions */}
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-line pb-5">
+          <div className="flex flex-col gap-1.5">
+            <div className="flex flex-wrap items-center gap-3">
+              <h1 className="text-2xl font-extrabold tracking-tight text-ink">
+                Garment Roster & Size Allocation
+              </h1>
+
+              <Badge tone={locked ? "success" : "brand"} dot>
+                {locked ? "Locked & Invoiced" : "Draft (Editable)"}
+              </Badge>
+
+              {isAllocationExact ? (
+                <Badge tone="success" dot>
+                  100% Allocated
+                </Badge>
+              ) : isOverallocated ? (
+                <Badge tone="danger" dot>
+                  Overallocated
+                </Badge>
+              ) : (
+                <Badge tone="warning" dot>
+                  Partial Allocation
+                </Badge>
+              )}
+            </div>
+
+            <p className="text-xs text-muted">
+              Configure player roster names, sleeve numbers, and size distribution. Confirming locks the roster and issues the official sales invoice.
+            </p>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex flex-wrap items-center gap-2">
+            <a
+              href={exportUrl(list.id)}
+              className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-line bg-surface px-3.5 text-xs font-semibold text-ink shadow-xs hover:bg-subtle transition"
+            >
               <DownloadIcon size={14} />
               <span>Export CSV</span>
             </a>
+
             {list.abilities.correct && (
-              <Button variant="secondary" size="sm" onClick={() => setCorrectOpen(true)}>
+              <Button
+                variant="secondary"
+                size="sm"
+                icon={<PencilIcon size={13} />}
+                onClick={() => setCorrectOpen(true)}
+              >
                 Administrative correction
               </Button>
             )}
-          </div>
-        }
-      />
 
+            {list.abilities.confirm && (
+              <Button
+                size="sm"
+                disabled={!review.can_confirm}
+                onClick={() => setConfirmOpen(true)}
+                className="shadow-xs"
+              >
+                Review & Confirm List
+              </Button>
+            )}
+          </div>
+        </div>
+
+        {/* Allocation Hero Progress Card */}
+        <div className="flex flex-col gap-3 rounded-xl border border-line bg-subtle/30 p-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-ink">Volume Allocation:</span>
+              <span className="text-xs font-semibold text-muted">
+                {review.total_quantity} of {review.expected_quantity} pieces allocated across {review.rows} line items
+              </span>
+            </div>
+
+            <span
+              className={`text-xs font-bold ${
+                isAllocationExact
+                  ? "text-emerald-500"
+                  : isOverallocated
+                    ? "text-danger"
+                    : "text-amber-500"
+              }`}
+            >
+              {isAllocationExact
+                ? "✓ Exact Order Allocation (Ready)"
+                : isOverallocated
+                  ? `Overallocated by ${review.total_quantity - review.expected_quantity} pcs`
+                  : `${review.expected_quantity - review.total_quantity} pieces remaining to allocate`}
+            </span>
+          </div>
+
+          {/* Progress Bar */}
+          <div className="h-2 w-full overflow-hidden rounded-full bg-subtle">
+            <div
+              className={`h-full transition-all duration-300 rounded-full ${
+                isAllocationExact
+                  ? "bg-emerald-500"
+                  : isOverallocated
+                    ? "bg-danger"
+                    : "bg-amber-500"
+              }`}
+              style={{ width: `${allocationPercent}%` }}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Locked Notice if confirmed */}
       {locked && (
-        <div className="rounded-xl border border-line bg-subtle/60 p-4 text-xs leading-relaxed text-muted">
-          <strong className="text-ink">List Confirmed:</strong> This garment specification list is locked and tied to the active invoice. Modifications require an administrative correction, which will open an auditable new version.
+        <div className="flex items-start gap-3 rounded-2xl border border-line bg-subtle/60 p-4 text-xs leading-relaxed text-muted shadow-xs">
+          <CheckCircleIcon size={18} className="text-emerald-500 shrink-0 mt-0.5" />
+          <div>
+            <strong className="text-ink font-bold block mb-0.5">
+              List Confirmed by {list.current_version.locked_by ?? "Administrator"} on{" "}
+              {formatDateTime(list.current_version.locked_at)}
+            </strong>
+            <p>
+              This garment specification list is locked and tied to the active sales invoice. Any subsequent adjustments require an Administrative Correction, which records an auditable revision.
+            </p>
+          </div>
         </div>
       )}
 
-      {/* Summary Cards */}
-      <Section title="List Summary & Pricing Analysis" description={`${review.total_quantity} of ${review.expected_quantity} garments allocated across ${review.rows} rows.`}>
-        <div className="grid gap-4 md:grid-cols-3">
-          <div className="rounded-xl border border-line bg-subtle/40 p-4">
-            <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-muted">Breakdown by Size</p>
+      {/* Validation Errors & Warnings Callouts */}
+      {review.errors.length > 0 && (
+        <div className="rounded-2xl border border-danger/30 bg-danger-soft/20 p-4 text-xs text-danger shadow-xs">
+          <div className="flex items-center gap-2 font-bold text-sm mb-2">
+            <AlertTriangleIcon size={16} className="shrink-0" />
+            <span>Validation Errors to Resolve Before Confirmation:</span>
+          </div>
+          <ul className="list-disc pl-5 space-y-1">
+            {review.errors.map((e, i) => (
+              <li key={i}>
+                {e.line_no ? <strong className="font-semibold">Row {e.line_no}: </strong> : ""}
+                {e.message}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {review.warnings.length > 0 && (
+        <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-xs text-amber-900 shadow-xs">
+          <div className="flex items-center gap-2 font-bold text-sm text-amber-950 mb-2">
+            <AlertTriangleIcon size={16} className="text-amber-600 shrink-0" />
+            <span>Warnings to Review and Acknowledge:</span>
+          </div>
+          <ul className="list-disc pl-5 space-y-1 text-ink">
+            {review.warnings.map((w, i) => (
+              <li key={i}>{w.message}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* 3 Analytics Summary Cards */}
+      <div className="grid gap-4 md:grid-cols-3">
+        {/* Card 1: Sizing Distribution Matrix */}
+        <div className="rounded-2xl border border-line bg-surface p-5 shadow-xs flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between border-b border-line pb-3 mb-3">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-muted">
+                Size Breakdown ({review.by_size.length} Sizes)
+              </span>
+              <span className="text-xs text-muted">Click to filter</span>
+            </div>
+
             <div className="flex flex-wrap gap-1.5">
-              {review.by_size.map((s) => (
-                <span key={s.size_id} className="rounded-md border border-line bg-surface px-2 py-1 text-xs font-semibold text-ink">
-                  {s.size}: <span className="text-brand">{s.quantity}</span>
-                </span>
-              ))}
+              {review.by_size.map((s) => {
+                const isSelected = sizeFilter === s.size;
+                return (
+                  <button
+                    key={s.size_id}
+                    type="button"
+                    onClick={() => setSizeFilter(isSelected ? "all" : s.size)}
+                    className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-semibold transition cursor-pointer ${
+                      isSelected
+                        ? "border-brand bg-brand text-white shadow-xs"
+                        : "border-line bg-subtle/50 text-ink hover:border-brand/40 hover:bg-subtle"
+                    }`}
+                  >
+                    <span>{s.size}:</span>
+                    <span className={isSelected ? "text-white font-bold" : "text-brand font-bold"}>
+                      {s.quantity}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           </div>
-          <div className="rounded-xl border border-line bg-subtle/40 p-4">
-            <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-muted">Price Groups</p>
-            <ul className="text-xs space-y-1">
+
+          {sizeFilter !== "all" && (
+            <div className="mt-3 pt-2 border-t border-line/60 flex items-center justify-between text-xs">
+              <span className="text-brand font-semibold">Filtered by size: {sizeFilter}</span>
+              <button
+                type="button"
+                onClick={() => setSizeFilter("all")}
+                className="text-muted hover:text-ink underline text-[11px]"
+              >
+                Reset size filter
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Card 2: Price Groups */}
+        <div className="rounded-2xl border border-line bg-surface p-5 shadow-xs flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between border-b border-line pb-3 mb-3">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-muted">
+                Price Groups & Classifications
+              </span>
+              <span className="text-xs text-muted">{review.price_groups.length} groups</span>
+            </div>
+
+            <ul className="text-xs space-y-2">
               {review.price_groups.map((g) => (
-                <li key={g.label} className="flex justify-between">
-                  <span className="text-muted">{g.label}:</span>
-                  <span className="font-semibold text-ink">{g.quantity} pcs</span>
+                <li key={g.label} className="flex items-center justify-between">
+                  <span className="text-muted truncate max-w-[180px]">{g.label}</span>
+                  <span className="font-bold text-ink rounded bg-subtle px-2 py-0.5">
+                    {g.quantity} pcs
+                  </span>
                 </li>
               ))}
             </ul>
           </div>
-          <div className="rounded-xl border border-line bg-subtle/40 p-4">
-            <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-muted">
-              Pricing Preview {list.pricing_preview.price_list ? `(${list.pricing_preview.price_list})` : ""}
-            </p>
-            {list.pricing_preview.error ? (
-              <p className="text-xs font-semibold text-danger">{list.pricing_preview.error} {(list.pricing_preview.details ?? []).join(" ")}</p>
-            ) : (
-              <div className="flex flex-col justify-between h-full gap-2 text-xs">
-                <ul className="space-y-1">
-                  {list.pricing_preview.lines.map((l) => (
-                    <li key={l.description} className="flex justify-between">
-                      <span className="text-muted truncate max-w-[140px]">{l.description}</span>
-                      <span className="font-semibold text-ink">{l.quantity} × {formatMoney(l.unit_price_minor, list.order.currency)}</span>
-                    </li>
-                  ))}
-                </ul>
-                <div className="border-t border-line/60 pt-2 flex justify-between font-bold text-sm text-ink">
-                  <span>Subtotal</span>
-                  <span>{formatMoney(list.pricing_preview.subtotal_minor, list.order.currency)}</span>
-                </div>
-              </div>
-            )}
-          </div>
+
+          <p className="mt-3 text-[11px] text-muted border-t border-line/60 pt-2">
+            Attributes affecting pricing matrix rules are calculated automatically.
+          </p>
         </div>
 
-        {review.errors.length > 0 && (
-          <div className="mt-4 rounded-xl border border-danger/30 bg-danger-soft p-3">
-            <p className="text-xs font-bold text-danger mb-1">Validation Errors Before Confirmation:</p>
-            <ul className="list-disc pl-5 text-xs text-danger space-y-0.5">
-              {review.errors.map((e, i) => (
-                <li key={i}>{e.line_no ? `Row ${e.line_no}: ` : ""}{e.message}</li>
-              ))}
-            </ul>
-          </div>
-        )}
+        {/* Card 3: Commercial Pricing Preview */}
+        <div className="rounded-2xl border border-line bg-surface p-5 shadow-xs flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between border-b border-line pb-3 mb-3">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-muted">
+                Commercial Pricing Preview
+              </span>
+              {list.pricing_preview.price_list && (
+                <Badge tone="brand">{list.pricing_preview.price_list}</Badge>
+              )}
+            </div>
 
-        {review.warnings.length > 0 && (
-          <div className="mt-3 rounded-xl border border-warning/30 bg-warning-soft p-3">
-            <p className="text-xs font-bold text-warning mb-1">Warnings to Acknowledge:</p>
-            <ul className="list-disc pl-5 text-xs text-ink space-y-0.5">
-              {review.warnings.map((w, i) => (
-                <li key={i}>{w.message}</li>
-              ))}
-            </ul>
+            {list.pricing_preview.error ? (
+              <p className="text-xs font-semibold text-danger">
+                {list.pricing_preview.error} {(list.pricing_preview.details ?? []).join(" ")}
+              </p>
+            ) : (
+              <ul className="text-xs space-y-1.5">
+                {list.pricing_preview.lines.map((l) => (
+                  <li key={l.description} className="flex items-center justify-between">
+                    <span className="text-muted truncate max-w-[150px]">{l.description}</span>
+                    <span className="font-medium text-ink font-mono text-[11px]">
+                      {l.quantity} × {formatMoney(l.unit_price_minor, list.order.currency)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
-        )}
 
-        {list.abilities.confirm && (
-          <div className="mt-4">
-            <Button disabled={!review.can_confirm} onClick={() => setConfirmOpen(true)}>
-              Review and confirm list
-            </Button>
+          <div className="mt-3 border-t border-line/60 pt-2 flex items-center justify-between font-extrabold text-sm text-ink">
+            <span>Subtotal</span>
+            <span>{formatMoney(list.pricing_preview.subtotal_minor, list.order.currency)}</span>
           </div>
-        )}
-      </Section>
+        </div>
+      </div>
 
-      {/* Rows Table */}
-      <Section
-        title="Garment Specifications & Player Names"
-        actions={
-          list.abilities.edit && !locked ? (
+      {/* Main Roster Workspace Table */}
+      <div className="rounded-2xl border border-line bg-surface p-5 shadow-xs flex flex-col gap-4">
+        {/* Workspace Toolbar */}
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 border-b border-line pb-4">
+          <div className="flex items-center gap-3">
+            <h3 className="text-sm font-bold text-ink">Player Roster & Sizing Entries</h3>
+            <span className="rounded-full bg-subtle px-2 py-0.5 text-xs font-bold text-muted">
+              {rows.length} of {list.items.length} rows
+            </span>
+          </div>
+
+          {/* Quick actions for adding rows */}
+          {list.abilities.edit && !locked && (
             <div className="flex flex-wrap items-center gap-2">
-              <Button size="sm" icon={<PlusIcon size={14} />} onClick={() => setEditing("new")}>
-                Add row
+              <Button
+                size="sm"
+                icon={<PlusIcon size={14} />}
+                onClick={() => setEditing("new")}
+                className="shadow-xs"
+              >
+                Add player / row
               </Button>
-              <Button size="sm" variant="secondary" onClick={() => setBulkOpen(true)}>
-                Bulk entry
+
+              <Button
+                size="sm"
+                variant="secondary"
+                icon={<FileTextIcon size={13} />}
+                onClick={() => setBulkOpen(true)}
+              >
+                Bulk paste
               </Button>
-              <label className="inline-flex h-8 cursor-pointer items-center rounded-lg border border-line bg-surface px-3 text-xs font-semibold text-ink shadow-xs hover:bg-subtle transition">
-                Import CSV
+
+              <label className="inline-flex h-8 cursor-pointer items-center gap-1 rounded-xl border border-line bg-surface px-3 text-xs font-semibold text-ink shadow-2xs hover:bg-subtle transition">
+                <DownloadIcon size={12} className="rotate-180" />
+                <span>Import CSV</span>
                 <input
                   type="file"
                   accept=".csv,text/csv"
                   className="sr-only"
                   onChange={(e) => {
                     const file = e.target.files?.[0];
-                    if (file) m.importCsv.mutate({ list, file, mode: list.items.length ? "append" : "replace" }, { onSuccess: () => notify("Rows imported", "success"), onError: (err) => notify(errorOf(err) ?? "Import failed", "error") });
+                    if (file) {
+                      m.importCsv.mutate(
+                        { list, file, mode: list.items.length ? "append" : "replace" },
+                        {
+                          onSuccess: () => notify("Roster imported successfully", "success"),
+                          onError: (err) =>
+                            notify(errorOf(err) ?? "Import failed", "error"),
+                        },
+                      );
+                    }
                     e.target.value = "";
                   }}
                 />
               </label>
             </div>
-          ) : undefined
-        }
-      >
-        <div className="mb-4 sm:max-w-xs">
-          <TextField label="Search list" placeholder="Filter by player name, number, or size…" icon={<SearchIcon size={14} />} value={search} onChange={(e) => setSearch(e.target.value)} />
+          )}
         </div>
+
+        {/* Search & Filter bar */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="w-full sm:max-w-md">
+            <div className="relative">
+              <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-muted">
+                <SearchIcon size={15} />
+              </span>
+              <input
+                type="text"
+                placeholder="Filter by player name, number, size, or notes…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                maxLength={80}
+                className="w-full rounded-xl border border-line bg-surface py-2 pl-9 pr-8 text-xs text-ink placeholder:text-muted focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand shadow-xs"
+              />
+              {search && (
+                <button
+                  type="button"
+                  onClick={() => setSearch("")}
+                  className="absolute inset-y-0 right-0 flex items-center pr-2.5 text-muted hover:text-ink cursor-pointer"
+                >
+                  <XIcon size={14} />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Size Pill filter */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
+            <span className="text-xs font-medium text-muted mr-1">Size:</span>
+            <button
+              type="button"
+              onClick={() => setSizeFilter("all")}
+              className={`rounded-lg px-2.5 py-1 text-xs font-medium transition cursor-pointer ${
+                sizeFilter === "all"
+                  ? "bg-brand text-white font-semibold shadow-xs"
+                  : "bg-subtle text-muted hover:text-ink"
+              }`}
+            >
+              All
+            </button>
+            {list.schema.sizes.map((s) => (
+              <button
+                key={s.id}
+                type="button"
+                onClick={() => setSizeFilter(s.code)}
+                className={`rounded-lg px-2.5 py-1 text-xs font-medium transition cursor-pointer ${
+                  sizeFilter === s.code
+                    ? "bg-brand text-white font-semibold shadow-xs"
+                    : "bg-subtle text-muted hover:text-ink"
+                }`}
+              >
+                {s.code}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Table View */}
         {rows.length === 0 ? (
-          <EmptyState title={list.items.length ? "No matching rows" : "No garment items added yet"} description="Add individual items or use bulk paste/CSV import." />
+          <div className="rounded-xl border border-dashed border-line bg-subtle/20 p-10 text-center">
+            <div className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-subtle text-muted mb-3">
+              <ShirtIcon size={24} />
+            </div>
+            <h4 className="text-sm font-bold text-ink">
+              {search || sizeFilter !== "all" ? "No matching garment items" : "No roster rows added yet"}
+            </h4>
+            <p className="text-xs text-muted max-w-sm mx-auto mt-1">
+              {search || sizeFilter !== "all"
+                ? "Try adjusting your search query or resetting the size filter."
+                : "Add individual players, paste rows directly from Excel/Sheets, or import a CSV file."}
+            </p>
+            <div className="mt-4 flex justify-center gap-2">
+              {search || sizeFilter !== "all" ? (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => {
+                    setSearch("");
+                    setSizeFilter("all");
+                  }}
+                >
+                  Reset filters
+                </Button>
+              ) : (
+                list.abilities.edit &&
+                !locked && (
+                  <>
+                    <Button size="sm" icon={<PlusIcon size={14} />} onClick={() => setEditing("new")}>
+                      Add player
+                    </Button>
+                    <Button size="sm" variant="secondary" onClick={() => setBulkOpen(true)}>
+                      Bulk paste
+                    </Button>
+                  </>
+                )
+              )}
+            </div>
+          </div>
         ) : (
           <div className="overflow-x-auto rounded-xl border border-line bg-surface shadow-xs">
-            <table className="w-full min-w-[36rem] text-left text-sm">
-              <thead className="border-b border-line bg-subtle/60 text-xs font-semibold uppercase tracking-wider text-muted">
+            <table className="w-full min-w-[36rem] text-left text-xs">
+              <thead className="border-b border-line bg-subtle/50 text-[11px] font-bold uppercase tracking-wider text-muted">
                 <tr>
-                  <th className="px-3 py-3">#</th>
-                  <th className="px-3 py-3">Size</th>
-                  <th className="px-3 py-3">Qty</th>
-                  {list.schema.fields.map((f) => (
-                    <th key={f.key} className="px-3 py-3">{f.label}</th>
-                  ))}
-                  {list.abilities.edit && !locked && <th className="px-3 py-3 text-right">Actions</th>}
+                  <th className="px-3.5 py-3">#</th>
+                  <th className="px-3.5 py-3">Size</th>
+                  <th className="px-3.5 py-3">Qty</th>
+                  {list.schema.fields.some((f) => f.key === "player_name") && (
+                    <th className="px-3.5 py-3">Player Name</th>
+                  )}
+                  {list.schema.fields.some((f) => f.key === "number") && (
+                    <th className="px-3.5 py-3">Number</th>
+                  )}
+                  {list.schema.fields
+                    .filter((f) => f.key !== "player_name" && f.key !== "number")
+                    .map((f) => (
+                      <th key={f.key} className="px-3.5 py-3">
+                        {f.label}
+                      </th>
+                    ))}
+                  <th className="px-3.5 py-3">Notes</th>
+                  {list.abilities.edit && !locked && (
+                    <th className="px-3.5 py-3 text-right">Actions</th>
+                  )}
                 </tr>
               </thead>
               <tbody className="divide-y divide-line/70">
                 {rows.map((r) => (
-                  <tr key={r.id} className="hover:bg-subtle/50 transition">
-                    <td className="px-3 py-2.5 font-mono text-xs text-muted">{r.line_no}</td>
-                    <td className="px-3 py-2.5 font-bold text-ink">{r.size}</td>
-                    <td className="px-3 py-2.5 font-semibold">{r.quantity}</td>
-                    {list.schema.fields.map((f) => (
-                      <td key={f.key} className="px-3 py-2.5 text-ink">{display(r, f)}</td>
-                    ))}
+                  <tr key={r.id} className="hover:bg-subtle/40 transition">
+                    <td className="px-3.5 py-2.5 font-mono text-muted text-xs font-semibold">
+                      {r.line_no}
+                    </td>
+
+                    <td className="px-3.5 py-2.5">
+                      <span className="rounded-md bg-brand/10 border border-brand/20 px-2 py-0.5 text-xs font-bold text-brand">
+                        {r.size}
+                      </span>
+                    </td>
+
+                    <td className="px-3.5 py-2.5 font-bold text-ink">{r.quantity}</td>
+
+                    {list.schema.fields.some((f) => f.key === "player_name") && (
+                      <td className="px-3.5 py-2.5 font-bold text-sm text-ink tracking-wide">
+                        {r.player_name || <span className="text-muted font-normal italic">—</span>}
+                      </td>
+                    )}
+
+                    {list.schema.fields.some((f) => f.key === "number") && (
+                      <td className="px-3.5 py-2.5">
+                        {r.number ? (
+                          <span className="font-mono text-xs font-extrabold text-ink bg-subtle px-2 py-0.5 rounded border border-line">
+                            {r.number}
+                          </span>
+                        ) : (
+                          <span className="text-muted italic">—</span>
+                        )}
+                      </td>
+                    )}
+
+                    {list.schema.fields
+                      .filter((f) => f.key !== "player_name" && f.key !== "number")
+                      .map((f) => (
+                        <td key={f.key} className="px-3.5 py-2.5 text-ink">
+                          {display(r, f) || <span className="text-muted">—</span>}
+                        </td>
+                      ))}
+
+                    <td className="px-3.5 py-2.5 text-muted text-xs max-w-xs truncate">
+                      {r.notes ?? "—"}
+                    </td>
+
                     {list.abilities.edit && !locked && (
-                      <td className="px-3 py-2.5 text-right">
+                      <td className="px-3.5 py-2.5 text-right">
                         <div className="inline-flex items-center gap-1">
-                          <Button variant="ghost" size="sm" onClick={() => setEditing(r)}>Edit</Button>
-                          <Button variant="ghost" size="sm" className="text-danger hover:bg-danger-soft" onClick={() => m.deleteRow.mutate({ list, id: r.id }, { onError: (err) => notify(errorOf(err) ?? "Delete failed", "error") })}>Delete</Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            icon={<PencilIcon size={12} />}
+                            onClick={() => setEditing(r)}
+                            className="text-xs text-muted hover:text-ink"
+                          >
+                            Edit
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() =>
+                              m.deleteRow.mutate(
+                                { list, id: r.id },
+                                {
+                                  onError: (err) =>
+                                    notify(errorOf(err) ?? "Delete failed", "error"),
+                                },
+                              )
+                            }
+                            className="text-xs text-danger hover:bg-danger-soft/20"
+                          >
+                            Delete
+                          </Button>
                         </div>
                       </td>
                     )}
@@ -289,29 +838,54 @@ function ListEditor({ orderId }: { orderId: number }) {
             </table>
           </div>
         )}
-      </Section>
+      </div>
 
-      {/* Version History */}
-      <Section title="Version Audit History" description="All revisions of this list are saved immutably.">
+      {/* Version Audit History */}
+      <div className="rounded-2xl border border-line bg-surface p-5 shadow-xs flex flex-col gap-3">
+        <div className="flex items-center justify-between border-b border-line pb-3">
+          <div>
+            <h3 className="text-sm font-bold text-ink">Version Revision History</h3>
+            <p className="text-xs text-muted">
+              All revisions and administrative corrections of this garment list are permanently archived.
+            </p>
+          </div>
+          <Badge tone="neutral">{list.history.length} versions</Badge>
+        </div>
+
         <ul className="divide-y divide-line/60 rounded-xl border border-line bg-surface text-xs">
           {list.history.map((h) => (
-            <li key={h.version_no} className="flex flex-wrap items-center justify-between gap-2 p-3">
-              <div className="flex items-center gap-2">
-                <span className="font-bold text-ink">v{h.version_no}</span>
-                <Badge tone={h.status === "confirmed" ? "success" : "neutral"} className="text-[10px]">{h.status}</Badge>
-                <span className="text-muted">· {h.total_quantity} garments</span>
+            <li
+              key={h.version_no}
+              className="flex flex-wrap items-center justify-between gap-3 p-3 hover:bg-subtle/20 transition"
+            >
+              <div className="flex items-center gap-2.5">
+                <span className="font-bold text-ink font-mono text-sm">v{h.version_no}</span>
+                <Badge
+                  tone={h.status === "confirmed" ? "success" : "neutral"}
+                  className="text-[10px]"
+                >
+                  {h.status}
+                </Badge>
+                <span className="text-muted font-medium">· {h.total_quantity} garments</span>
               </div>
-              <div className="text-muted">
-                {h.locked_by ? `Confirmed by ${h.locked_by} on ${formatDateTime(h.locked_at)}` : "Draft version"}
-                {h.change_reason ? ` (Reason: ${h.change_reason})` : ""}
+
+              <div className="text-muted text-xs">
+                {h.locked_by
+                  ? `Confirmed by ${h.locked_by} on ${formatDateTime(h.locked_at)}`
+                  : "Draft version"}
+                {h.change_reason ? ` (Reason: "${h.change_reason}")` : ""}
               </div>
             </li>
           ))}
         </ul>
-      </Section>
+      </div>
 
-      {/* Modals */}
-      <Modal open={editing !== null} title={editing === "new" ? "Add Garment Item" : "Edit Garment Item"} onClose={() => setEditing(null)}>
+      {/* Modal: Row Editor */}
+      <Modal
+        open={editing !== null}
+        title={editing === "new" ? "Add Garment Item" : `Edit Row #${editing?.line_no}`}
+        onClose={() => setEditing(null)}
+      >
         {editing !== null && (
           <RowEditor
             list={list}
@@ -321,60 +895,186 @@ function ListEditor({ orderId }: { orderId: number }) {
             onCancel={() => setEditing(null)}
             onSave={(row) =>
               editing === "new"
-                ? m.addRows.mutate({ list, rows: [row] }, { onSuccess: () => setEditing(null) })
-                : m.updateRow.mutate({ list, id: editing.id, row }, { onSuccess: () => setEditing(null) })
+                ? m.addRows.mutate(
+                    { list, rows: [row] },
+                    {
+                      onSuccess: () => {
+                        notify("Row added", "success");
+                        setEditing(null);
+                      },
+                    },
+                  )
+                : m.updateRow.mutate(
+                    { list, id: editing.id, row },
+                    {
+                      onSuccess: () => {
+                        notify("Row updated", "success");
+                        setEditing(null);
+                      },
+                    },
+                  )
             }
           />
         )}
       </Modal>
 
-      <Modal open={bulkOpen} title="Bulk Paste Entry" onClose={() => setBulkOpen(false)}>
-        <div className="flex flex-col gap-3">
-          <p className="text-xs text-muted leading-relaxed">
-            Paste one row per line from your spreadsheet (columns: Size, Quantity, {list.schema.fields.map((f) => f.label).join(", ")}):
-          </p>
-          <TextAreaField label="Spreadsheet data" rows={10} value={bulkText} onChange={(e) => setBulkText(e.target.value)} />
-          {bulk.errors.length > 0 && <FormError message={bulk.errors.slice(0, 5).join(" ")} />}
+      {/* Modal: Bulk Paste Entry */}
+      <Modal open={bulkOpen} title="Bulk Paste Entry from Spreadsheet" onClose={() => setBulkOpen(false)}>
+        <div className="flex flex-col gap-4">
+          <div className="rounded-xl border border-line bg-subtle/30 p-3 text-xs text-muted leading-relaxed">
+            <p className="font-bold text-ink mb-1">Expected Column Sequence:</p>
+            <p className="font-mono text-[11px] text-brand bg-surface p-2 rounded-lg border border-line/60 overflow-x-auto">
+              {sampleColumns}
+            </p>
+            <p className="mt-1 text-[11px]">
+              Copy rows directly from Excel or Google Sheets and paste below. Tab-separated or comma-separated rows are both supported.
+            </p>
+          </div>
+
+          <TextAreaField
+            label="Spreadsheet Rows *"
+            rows={8}
+            placeholder={`e.g.\nM\t2\tD. SILVA\t07\nL\t1\tK. PERERA\t10`}
+            value={bulkText}
+            onChange={(e) => setBulkText(e.target.value)}
+          />
+
+          {bulk.rows.length > 0 && (
+            <div className="flex items-center gap-2 text-xs text-emerald-500 font-semibold">
+              <CheckCircleIcon size={14} />
+              <span>{bulk.rows.length} valid row(s) recognized ready for import.</span>
+            </div>
+          )}
+
+          {bulk.errors.length > 0 && (
+            <div className="rounded-xl border border-danger/30 bg-danger-soft/20 p-3 text-xs text-danger">
+              <p className="font-bold mb-1">Parsing Errors Detected:</p>
+              <ul className="list-disc pl-4 space-y-0.5">
+                {bulk.errors.slice(0, 5).map((err, i) => (
+                  <li key={i}>{err}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
           <FormError message={errorOf(m.addRows.error)} />
-          <div className="flex justify-end gap-2 pt-2">
-            <Button variant="secondary" onClick={() => setBulkOpen(false)}>Cancel</Button>
-            <Button disabled={bulk.rows.length === 0 || bulk.errors.length > 0} loading={m.addRows.isPending} onClick={() => m.addRows.mutate({ list, rows: bulk.rows }, { onSuccess: () => (notify(`${bulk.rows.length} rows added`, "success"), setBulkOpen(false), setBulkText("")) })}>
+
+          <div className="flex justify-end gap-2 pt-2 border-t border-line">
+            <Button variant="secondary" onClick={() => setBulkOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              disabled={bulk.rows.length === 0 || bulk.errors.length > 0}
+              loading={m.addRows.isPending}
+              onClick={() =>
+                m.addRows.mutate(
+                  { list, rows: bulk.rows },
+                  {
+                    onSuccess: () => {
+                      notify(`${bulk.rows.length} rows added successfully`, "success");
+                      setBulkOpen(false);
+                      setBulkText("");
+                    },
+                  },
+                )
+              }
+            >
               Add {bulk.rows.length} rows
             </Button>
           </div>
         </div>
       </Modal>
 
-      <Modal open={confirmOpen} title="Confirm and Lock the List" onClose={() => setConfirmOpen(false)}>
-        <div className="flex flex-col gap-3 text-xs leading-relaxed">
-          <p className="text-ink">
-            You are locking <strong>{review.total_quantity} garments</strong> in <strong>{review.rows} rows</strong>. Confirming locks this version and generates an immutable official invoice.
-          </p>
+      {/* Modal: Confirm and Lock List */}
+      <Modal open={confirmOpen} title="Confirm and Lock Garment List" onClose={() => setConfirmOpen(false)}>
+        <div className="flex flex-col gap-4 text-xs leading-relaxed">
+          <div className="rounded-xl border border-line bg-subtle/30 p-4">
+            <p className="font-bold text-ink text-sm mb-1">Confirmation Summary:</p>
+            <p className="text-muted">
+              You are locking <strong className="text-ink">{review.total_quantity} garments</strong> allocated across{" "}
+              <strong className="text-ink">{review.rows} rows</strong>.
+            </p>
+            <p className="text-muted mt-1">
+              Confirming permanently locks this version and generates the official commercial sales invoice for billing and production release.
+            </p>
+          </div>
+
           {review.warnings.length > 0 && (
-            <div className="rounded-xl border border-warning/30 bg-warning-soft p-3">
-              <Checkbox label={`I acknowledge and have reviewed all ${review.warnings.length} warning(s)`} checked={ack} onChange={(e) => setAck(e.target.checked)} />
+            <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3">
+              <Checkbox
+                label={`I acknowledge and have verified all ${review.warnings.length} warning(s)`}
+                checked={ack}
+                onChange={(e) => setAck(e.target.checked)}
+              />
             </div>
           )}
+
           <FormError message={errorOf(m.confirm.error)} />
-          <div className="flex justify-end gap-2 pt-2">
-            <Button variant="secondary" onClick={() => setConfirmOpen(false)}>Cancel</Button>
-            <Button disabled={review.warnings.length > 0 && !ack} loading={m.confirm.isPending} onClick={() => m.confirm.mutate({ list, acknowledge: ack }, { onSuccess: (r) => (notify(`List confirmed. Invoice ${r.invoice_no} issued.`, "success"), setConfirmOpen(false)) })}>
-              Confirm and lock
+
+          <div className="flex justify-end gap-2 pt-2 border-t border-line">
+            <Button variant="secondary" onClick={() => setConfirmOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              disabled={review.warnings.length > 0 && !ack}
+              loading={m.confirm.isPending}
+              onClick={() =>
+                m.confirm.mutate(
+                  { list, acknowledge: ack },
+                  {
+                    onSuccess: (r) => {
+                      notify(`List confirmed. Invoice ${r.invoice_no} issued.`, "success");
+                      setConfirmOpen(false);
+                    },
+                  },
+                )
+              }
+            >
+              Confirm and lock list
             </Button>
           </div>
         </div>
       </Modal>
 
-      <Modal open={correctOpen} title="Administrative Correction" onClose={() => setCorrectOpen(false)}>
-        <div className="flex flex-col gap-3 text-xs leading-relaxed">
+      {/* Modal: Administrative Correction */}
+      <Modal open={correctOpen} title="Open Administrative Correction Version" onClose={() => setCorrectOpen(false)}>
+        <div className="flex flex-col gap-4 text-xs leading-relaxed">
           <p className="text-muted">
-            This opens an auditable draft copy of the confirmed list for adjustments. The existing invoice remains valid until the revised list is confirmed.
+            This opens an auditable draft revision (v{list.current_version.version_no + 1}) of the confirmed list for required adjustments. The active invoice remains valid until the revised version is confirmed.
           </p>
-          <TextAreaField label="Reason for correction *" placeholder="e.g. Customer changed player surname from Smith to Smyth" maxLength={500} value={reason} onChange={(e) => setReason(e.target.value)} />
+
+          <TextAreaField
+            label="Reason for correction *"
+            placeholder="e.g. Customer requested spelling change for player #07 from SILVA to DA SILVA"
+            maxLength={500}
+            rows={3}
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+          />
+
           <FormError message={errorOf(m.correct.error)} />
-          <div className="flex justify-end gap-2 pt-2">
-            <Button variant="secondary" onClick={() => setCorrectOpen(false)}>Cancel</Button>
-            <Button variant="danger" disabled={reason.trim().length < 5} loading={m.correct.isPending} onClick={() => m.correct.mutate({ list, reason }, { onSuccess: () => (notify("Correction version opened", "success"), setCorrectOpen(false), setReason("")) })}>
+
+          <div className="flex justify-end gap-2 pt-2 border-t border-line">
+            <Button variant="secondary" onClick={() => setCorrectOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="danger"
+              disabled={reason.trim().length < 5}
+              loading={m.correct.isPending}
+              onClick={() =>
+                m.correct.mutate(
+                  { list, reason },
+                  {
+                    onSuccess: () => {
+                      notify("Correction version opened", "success");
+                      setCorrectOpen(false);
+                      setReason("");
+                    },
+                  },
+                )
+              }
+            >
               Open correction version
             </Button>
           </div>
@@ -385,5 +1085,9 @@ function ListEditor({ orderId }: { orderId: number }) {
 }
 
 export function GarmentListScreen() {
-  return <WithIdParam>{(id) => (id === null ? <EmptyState title="Order not found" /> : <ListEditor orderId={id} />)}</WithIdParam>;
+  return (
+    <WithIdParam>
+      {(id) => (id === null ? <EmptyState title="Order not found" /> : <ListEditor orderId={id} />)}
+    </WithIdParam>
+  );
 }

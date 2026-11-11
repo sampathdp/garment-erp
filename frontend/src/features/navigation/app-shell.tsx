@@ -65,6 +65,12 @@ function navIcon(href: string) {
       return <ScissorsIcon size={17} />;
     case "/issues/":
       return <AlertTriangleIcon size={17} />;
+    case "/sewing/":
+      return <LayersIcon size={17} />;
+    case "/deliveries/":
+      return <BoxesIcon size={17} />;
+    case "/reports/":
+      return <LayoutDashboardIcon size={17} />;
     case "/settings/bulk-setup/":
     case "/settings/cutting-setup/":
       return <SlidersIcon size={17} />;
@@ -117,6 +123,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   }, [pathname]);
 
   const items = useMemo(() => visibleNavItems(NAV_ITEMS, user?.permissions ?? []), [user]);
+  const allHrefs = useMemo(() => items.map((i) => i.href), [items]);
 
   if (status === "loading" || status === "unauthenticated") return <LoadingState label="Checking your session…" />;
   if (status === "error" || !user) return <ErrorState error={null} onRetry={() => window.location.reload()} />;
@@ -133,7 +140,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     : user.scope.branches[0]?.name ?? "Branch Access";
 
   const renderNavList = () => (
-    <nav aria-label="Main" className="flex flex-col gap-6 px-3 py-4">
+    <nav aria-label="Main" className="flex flex-col gap-6 px-3 pt-4 pb-8">
       {NAV_SECTIONS.map((section) => {
         const sectionItems = items.filter((i) => i.section === section.key);
         if (sectionItems.length === 0) return null;
@@ -146,7 +153,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             )}
             <div className="flex flex-col gap-0.5">
               {sectionItems.map((item) => {
-                const active = isActivePath(pathname, item.href);
+                const active = isActivePath(pathname, item.href, allHrefs);
                 const isUrgent = item.href === "/orders/urgent/";
                 return (
                   <Link
@@ -182,9 +189,9 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-h-screen bg-canvas text-ink antialiased">
       {/* Desktop Sidebar */}
-      <aside className="hidden w-64 shrink-0 flex-col border-r border-line bg-surface md:flex">
+      <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col border-r border-line bg-surface md:flex z-30">
         {/* Brand Header */}
-        <div className="flex h-16 items-center justify-between border-b border-line px-5">
+        <div className="flex h-16 shrink-0 items-center justify-between border-b border-line px-5">
           <Link href="/dashboard/" className="flex items-center gap-2.5 group">
             <div className="flex size-9 items-center justify-center rounded-xl bg-gradient-to-tr from-brand to-brand-strong text-white shadow-xs group-hover:scale-105 transition">
               <ShirtIcon size={18} />
@@ -200,10 +207,10 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
 
         {/* Navigation list */}
-        <div className="flex-1 overflow-y-auto">{renderNavList()}</div>
+        <div className="flex-1 overflow-y-auto min-h-0">{renderNavList()}</div>
 
         {/* User profile footer */}
-        <div className="border-t border-line bg-subtle/30 p-3">
+        <div className="border-t border-line bg-surface p-3 shrink-0">
           <div className="flex items-center justify-between gap-2 rounded-xl p-2 transition hover:bg-subtle">
             <Link href="/account/" className="flex items-center gap-2.5 min-w-0 flex-1">
               <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-brand/10 text-xs font-bold text-brand">
@@ -211,7 +218,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               </div>
               <div className="min-w-0 flex-1">
                 <div className="truncate text-xs font-semibold text-ink">{user.name}</div>
-                <div className="truncate text-[10px] text-muted">{primaryScope}</div>
+                <div className="truncate text-[10px] text-muted">{user.email}</div>
               </div>
             </Link>
             <button
@@ -240,7 +247,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           mobileMenuOpen ? "translate-x-0" : "-translate-x-full",
         )}
       >
-        <div className="flex h-16 items-center justify-between border-b border-line px-5">
+        <div className="flex h-16 shrink-0 items-center justify-between border-b border-line px-5">
           <div className="flex items-center gap-2.5">
             <div className="flex size-8 items-center justify-center rounded-xl bg-brand text-white">
               <ShirtIcon size={18} />
@@ -256,8 +263,8 @@ export function AppShell({ children }: { children: ReactNode }) {
             <XIcon size={18} />
           </button>
         </div>
-        <div className="flex-1 overflow-y-auto">{renderNavList()}</div>
-        <div className="border-t border-line p-3">
+        <div className="flex-1 overflow-y-auto min-h-0">{renderNavList()}</div>
+        <div className="border-t border-line bg-surface p-3 shrink-0">
           <div className="flex items-center justify-between gap-2 p-2">
             <Link href="/account/" className="flex items-center gap-2.5 min-w-0 flex-1">
               <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-brand/10 text-xs font-bold text-brand">
