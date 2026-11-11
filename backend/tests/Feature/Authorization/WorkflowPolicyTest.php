@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Modules\BulkProduction\Enums\WorkStatus;
 use App\Modules\BulkProduction\Models\BulkAssignment;
+use App\Modules\Cutting\Enums\CuttingJobStatus;
 use App\Modules\Cutting\Models\CuttingJob;
 use App\Modules\Design\Enums\DesignTaskStatus;
 use App\Modules\Design\Models\DesignTask;
@@ -200,11 +201,13 @@ describe('assigned-only roles', function () {
     it('lets cutting staff update checklists and report issues only on assigned cutting jobs', function () {
         $staff = $this->userWithRole(Roles::CUTTING_STAFF);
         $other = $this->userWithRole(Roles::CUTTING_STAFF);
-        $job = record(CuttingJob::class, ['order_id' => $this->orderA->id, 'branch_id' => $this->branch->id, 'status' => WorkStatus::Pending, 'supervisor_id' => $staff->id]);
+        $job = record(CuttingJob::class, ['order_id' => $this->orderA->id, 'branch_id' => $this->branch->id, 'status' => CuttingJobStatus::Assigned, 'supervisor_id' => $staff->id]);
 
         expect(decision($staff, 'updateChecklist', $job))->toBe(200)
+            ->and(decision($staff, 'recordQualityCheck', $job))->toBe(200)
             ->and(decision($staff, 'reportIssue', $job))->toBe(200)
             ->and(decision($staff, 'manage', $job))->toBe(403)
+            ->and(decision($staff, 'complete', $job))->toBe(403)
             ->and(decision($other, 'updateChecklist', $job))->toBe(404);
     });
 

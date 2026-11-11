@@ -13,7 +13,7 @@ const PUBLIC_API_ROUTES = ['health', 'auth.login', 'auth.forgot-password', 'auth
 /** Authenticated routes that act only on the caller's own data (no record-level policy). */
 const AUTHORIZATION_EXEMPT_ROUTES = [
     'auth.logout', 'auth.me', 'auth.profile', 'auth.password',
-    'notifications.index', 'notifications.unread-count', 'notifications.mark-all-read',
+    'notifications.index', 'notifications.unread-count', 'notifications.mark-all-read', 'notifications.poll', 'notifications.read', 'notifications.unread',
 ];
 
 function apiRoutes(): array

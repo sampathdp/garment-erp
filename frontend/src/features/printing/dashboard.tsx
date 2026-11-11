@@ -5,7 +5,7 @@ import { useState } from "react";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { TextField } from "@/components/ui/field";
 import { Badge, Checkbox, PageHeader, SelectField } from "@/components/ui/form-controls";
-import { ExternalLinkIcon, SearchIcon } from "@/components/ui/icons";
+import { ChevronRightIcon, ExternalLinkIcon, SearchIcon } from "@/components/ui/icons";
 import { RequirePermission } from "@/components/ui/record-page";
 import { formatBusinessDate } from "@/lib/format";
 import { useDebounced } from "@/lib/use-debounced";
@@ -86,6 +86,22 @@ export function PrintingDashboard() {
       ),
     },
     { key: "status", header: "Status", cell: (j) => <Badge tone={printStatusTone(j.status.value)} dot>{j.status.label}</Badge> },
+    {
+      key: "actions",
+      header: "Actions",
+      className: "text-right",
+      cell: (j) => (
+        <div className="flex items-center justify-end gap-1.5">
+          <Link
+            href={`/printing/view/?id=${j.id}`}
+            className="inline-flex items-center gap-1 rounded-lg border border-line bg-surface px-2.5 py-1.5 text-xs font-semibold text-ink shadow-xs hover:border-brand/40 hover:bg-subtle hover:text-brand transition shrink-0"
+          >
+            <span>View</span>
+            <ChevronRightIcon size={13} />
+          </Link>
+        </div>
+      ),
+    },
   ];
 
   return (

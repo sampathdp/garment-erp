@@ -28,6 +28,7 @@ enum DocumentCategory: string
     case BulkPreview = 'bulk_preview'; // bulk layout preview image (validated with DesignFile::PREVIEW)
     case BulkFile = 'bulk_file';       // bulk layout PDF / CDR (validated with DesignFile::SOURCE)
     case GatePass = 'gate_pass';       // scanned gate pass recorded after physical printing
+    case IssuePhoto = 'issue_photo';   // image attached to a production issue (images only)
 
     private const IMAGES = ['image/jpeg', 'image/png', 'image/webp'];
 
@@ -36,7 +37,7 @@ enum DocumentCategory: string
     {
         return match ($this) {
             self::PaymentSlip, self::SamplePhoto, self::ProofOfDelivery, self::Evidence, self::DesignPreview, self::BulkPreview, self::ProductionFile, self::DesignInstruction, self::GatePass => [...self::IMAGES, 'application/pdf'],
-            self::Logo => self::IMAGES,
+            self::Logo, self::IssuePhoto => self::IMAGES,
             self::InvoicePdf => ['application/pdf'],
             self::ImportFile => ['text/csv', 'text/plain', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'],
             self::DesignSource, self::BulkFile => [
@@ -52,7 +53,7 @@ enum DocumentCategory: string
         $mb = match ($this) {
             self::Logo => 2,
             self::ImportFile => 5,
-            self::PaymentSlip, self::SamplePhoto, self::ProofOfDelivery, self::Evidence, self::InvoicePdf, self::ProductionFile, self::GatePass => 10,
+            self::PaymentSlip, self::SamplePhoto, self::ProofOfDelivery, self::Evidence, self::InvoicePdf, self::ProductionFile, self::GatePass, self::IssuePhoto => 10,
             self::DesignInstruction => 25,
             self::DesignPreview, self::BulkPreview => 25,
             self::DesignSource, self::BulkFile => (int) config('documents.design_source_max_mb', 200),

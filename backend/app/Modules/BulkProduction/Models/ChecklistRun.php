@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\BulkProduction\Models;
 
 use App\Modules\BulkProduction\Enums\ChecklistStage;
+use App\Modules\Cutting\Models\CuttingJob;
 use App\Modules\Design\Enums\ApprovalChannel;
 use App\Modules\Identity\Models\User;
 use App\Modules\Orders\Models\Order;
@@ -26,7 +27,7 @@ use Illuminate\Support\Carbon;
 class ChecklistRun extends Model
 {
     /** @var list<string> */
-    protected $fillable = ['checklist_template_id', 'order_id', 'bulk_job_id', 'stage'];
+    protected $fillable = ['checklist_template_id', 'order_id', 'bulk_job_id', 'cutting_job_id', 'stage'];
 
     protected function casts(): array
     {
@@ -37,6 +38,7 @@ class ChecklistRun extends Model
             'client_confirmed_at' => 'datetime',
             'client_channel' => ApprovalChannel::class,
             'bulk_job_id' => 'integer',
+            'cutting_job_id' => 'integer',
         ];
     }
 
@@ -61,6 +63,12 @@ class ChecklistRun extends Model
     public function bulkJob(): BelongsTo
     {
         return $this->belongsTo(BulkJob::class);
+    }
+
+    /** @return BelongsTo<CuttingJob, $this> */
+    public function cuttingJob(): BelongsTo
+    {
+        return $this->belongsTo(CuttingJob::class);
     }
 
     /** @return HasMany<ChecklistRunItem, $this> */

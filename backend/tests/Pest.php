@@ -13,3 +13,5 @@ require_once __DIR__.'/Support/intake.php';
 require_once __DIR__.'/Support/design.php';
 require_once __DIR__.'/Support/bulk.php';
 require_once __DIR__.'/Support/printing.php';
+require_once __DIR__.'/Support/cutting.php';
+require_once __DIR__.'/Support/delivery.php';

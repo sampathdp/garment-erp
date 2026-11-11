@@ -42,10 +42,20 @@ class DatabaseSeeder extends Seeder
         $colombo = Branch::query()->firstOrCreate(['code' => 'CMB'], ['organization_id' => $org->id, 'name' => 'Colombo', 'is_active' => true]);
         Branch::query()->firstOrCreate(['code' => 'KDY'], ['organization_id' => $org->id, 'name' => 'Kandy', 'is_active' => true]);
 
-        Page::query()->firstOrCreate(['code' => 'JRSY'], [
-            'organization_id' => $org->id, 'name' => 'Demo Jerseys', 'platform' => 'facebook',
-            'invoice_prefix' => 'JRSY', 'invoice_header_name' => 'Demo Jerseys', 'is_active' => true,
-        ]);
+        $pages = [
+            ['name' => 'Apex Apparel - Main Store', 'code' => 'APEX', 'invoice_prefix' => 'APEX', 'invoice_header_name' => 'Apex Apparel - Main Store', 'platform' => 'website'],
+            ['name' => 'Jersey.lk', 'code' => 'JLK', 'invoice_prefix' => 'JLK', 'invoice_header_name' => 'Jersey.lk', 'platform' => 'website'],
+            ['name' => 'Jersey Company', 'code' => 'JCO', 'invoice_prefix' => 'JCO', 'invoice_header_name' => 'Jersey Company', 'platform' => 'website'],
+            ['name' => 'Neat Clothing', 'code' => 'NEAT', 'invoice_prefix' => 'NEAT', 'invoice_header_name' => 'Neat Clothing', 'platform' => 'website'],
+            ['name' => 'T Shirts', 'code' => 'TSHIRT', 'invoice_prefix' => 'TS', 'invoice_header_name' => 'T Shirts', 'platform' => 'website'],
+            ['name' => 'Ceylon Tshirts', 'code' => 'CTS', 'invoice_prefix' => 'CTS', 'invoice_header_name' => 'Ceylon Tshirts', 'platform' => 'website'],
+        ];
+        foreach ($pages as $p) {
+            Page::query()->firstOrCreate(['code' => $p['code']], [
+                'organization_id' => $org->id, 'name' => $p['name'], 'platform' => $p['platform'],
+                'invoice_prefix' => $p['invoice_prefix'], 'invoice_header_name' => $p['invoice_header_name'], 'is_active' => true,
+            ]);
+        }
 
         // Development samples only (real sizes and fabrics are configured by the client).
         $chart = SizeChart::query()->firstOrCreate(['name' => SizeChart::STANDARD]);

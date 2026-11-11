@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Printing\Actions;
 
 use App\Modules\Audit\AuditLogger;
+use App\Modules\Cutting\Actions\OpenCuttingJob;
 use App\Modules\Documents\Actions\StoreDocument;
 use App\Modules\Documents\Enums\DocumentCategory;
 use App\Modules\Identity\Models\User;
@@ -21,10 +22,18 @@ use Throwable;
 /**
  * Records gate pass details after physical printing: number, date, optional scanned document,
  * recorder. Append-only; a gate pass number is recorded once per printing job (409 otherwise).
+ *
+ * The first gate pass makes the job available to cutting (Phase 07): OpenCuttingJob runs in the
+ * same transaction and is idempotent, so later gate passes never duplicate the cutting task.
  */
 final class RecordPrintGatePass
 {
-    public function __construct(private readonly StoreDocument $documents, private readonly PrintingWorkflow $workflow, private readonly AuditLogger $audit) {}
+    public function __construct(
+        private readonly StoreDocument $documents,
+        private readonly PrintingWorkflow $workflow,
+        private readonly AuditLogger $audit,
+        private readonly OpenCuttingJob $cutting,
+    ) {}
 
     public function handle(User $actor, PrintJob $job, string $number, Carbon $date, ?UploadedFile $document, ?string $notes): PrintJobGatePass
     {
@@ -47,6 +56,8 @@ final class RecordPrintGatePass
                     'gate_pass_id' => $pass->id, 'gate_pass_no' => $number, 'gate_pass_date' => $date->toDateString(), 'document_id' => $documentId,
                 ]], actor: $actor, branchId: $order->branch_id);
                 $this->workflow->save($job);
+                // Printing completed + gate pass recorded: the job becomes available to cutting (once).
+                $this->cutting->handle($job, $order, $actor);
 
                 return $pass;
             });

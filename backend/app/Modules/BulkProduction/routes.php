@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Modules\BulkProduction\Http\Controllers\BulkJobController;
 use App\Modules\BulkProduction\Http\Controllers\BulkSetupController;
 use App\Modules\BulkProduction\Http\Controllers\BulkWorkController;
+use App\Modules\BulkProduction\Http\Controllers\ProductionIssueController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('authenticated')->group(function (): void {
@@ -35,4 +36,12 @@ Route::middleware('authenticated')->group(function (): void {
     Route::patch('bulk-setup/checklist-templates/{template}', [BulkSetupController::class, 'updateTemplate'])->whereNumber('template')->name('bulk-setup.templates.update');
     Route::post('bulk-setup/suppliers', [BulkSetupController::class, 'storeSupplier'])->name('bulk-setup.suppliers.store');
     Route::patch('bulk-setup/suppliers/{supplier}', [BulkSetupController::class, 'updateSupplier'])->whereNumber('supplier')->name('bulk-setup.suppliers.update');
+
+    Route::get('production-issues', [ProductionIssueController::class, 'index'])->name('production-issues.index');
+    Route::post('production-issues', [ProductionIssueController::class, 'store'])->middleware('throttle:uploads')->name('production-issues.store');
+    Route::get('production-issues/{issue}', [ProductionIssueController::class, 'show'])->whereNumber('issue')->name('production-issues.show');
+    Route::patch('production-issues/{issue}', [ProductionIssueController::class, 'update'])->whereNumber('issue')->name('production-issues.update');
+    Route::post('production-issues/{issue}/transitions', [ProductionIssueController::class, 'transition'])->whereNumber('issue')->name('production-issues.transitions.store');
+    Route::get('production-issues/{issue}/assignees', [ProductionIssueController::class, 'assignees'])->whereNumber('issue')->name('production-issues.assignees');
+    Route::get('production-issues/{issue}/image', [ProductionIssueController::class, 'image'])->whereNumber('issue')->middleware('signed')->name('production-issues.image');
 });

@@ -16,5 +16,9 @@ Schedule::command('queue:work database --queue=default,notifications,documents,i
     ->withoutOverlapping(5)
     ->runInBackground();
 
+// Transactional outbox sweep: delivers notifications whose fast-path job failed or was lost.
+Schedule::command('notifications:dispatch-outbox')->everyMinute()->withoutOverlapping(5)->runInBackground();
+
+// Reporting summaries are cached (ReportCache); nothing to precompute on a schedule yet.
 Schedule::command('queue:prune-failed --hours=720')->daily();
 Schedule::command('sanctum:prune-expired --hours=24')->daily();

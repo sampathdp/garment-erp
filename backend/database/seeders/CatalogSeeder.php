@@ -25,6 +25,7 @@ use Illuminate\Database\Seeder;
  * Deliberately NOT seeded (unknown until the client confirms): sizes, fabric types (materials),
  * bottom categories and prices. They are entered in the setup screens.
  * Seeded for bulk (Phase 05): bulk meter / patch meter fields and editable starter checklists.
+ * Seeded for cutting (Phase 07): a starter cutting checklist and starter quality checks.
  */
 class CatalogSeeder extends Seeder
 {
@@ -110,6 +111,19 @@ class CatalogSeeder extends Seeder
                 'Names, numbers and sizes checked on the returned bulk',
                 'Quantity checked against the order',
                 'Bulk meter and patch meter recorded',
+            ]],
+            // Phase 07 starter templates (client to confirm the final items).
+            [ChecklistStage::Cutting, 'Cutting checklist', [
+                'Printed panels counted against the confirmed list',
+                'Pieces cut for every size in the list',
+                'Sleeves, collars and other parts cut and matched',
+                'Cut pieces bundled and labelled by size and name/number',
+            ]],
+            [ChecklistStage::QualityControl, 'Cutting quality checks', [
+                'Cut edges clean, no fraying',
+                'Print alignment correct on the cut panels',
+                'Panel sizes match the size chart',
+                'Names and numbers correct on the cut panels',
             ]],
         ];
         foreach ($templates as [$stage, $name, $items]) {

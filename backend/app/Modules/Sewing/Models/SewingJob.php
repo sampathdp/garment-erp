@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Modules\Sewing\Models;
 
 use App\Modules\BulkProduction\Enums\ProductionMode;
-use App\Modules\BulkProduction\Enums\WorkStatus;
 use App\Modules\BulkProduction\Models\ProductionUnit;
 use App\Modules\BulkProduction\Models\Supplier;
 use App\Modules\Cutting\Models\CuttingJob;
@@ -14,10 +13,24 @@ use App\Modules\Identity\Models\User;
 use App\Modules\Orders\Models\Order;
 use App\Modules\Orders\Models\OrderItem;
 use App\Modules\Organizations\Models\Branch;
+use App\Modules\Sewing\Enums\SewingJobStatus;
 use App\Support\Authorization\BranchScoped;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 
+/**
+ * The sewing job of an order (Phase 08, minimal step), opened once (UNIQUE cutting_job_id) when
+ * cutting completes. Written only by RunSewing under the order + job locks with `version`.
+ *
+ * @property SewingJobStatus $status
+ * @property ProductionMode|null $mode
+ * @property int $version
+ * @property int $received_quantity
+ * @property int $sewn_quantity
+ * @property Carbon|null $started_at
+ * @property Carbon|null $completed_at
+ */
 class SewingJob extends Model
 {
     use BranchScoped;
@@ -31,12 +44,25 @@ class SewingJob extends Model
     {
         return [
             'mode' => ProductionMode::class,
-            'status' => WorkStatus::class,
+            'status' => SewingJobStatus::class,
             'received_quantity' => 'integer',
             'sewn_quantity' => 'integer',
+            'version' => 'integer',
             'started_at' => 'datetime',
             'completed_at' => 'datetime',
         ];
+    }
+
+    /** @return BelongsTo<User, $this> */
+    public function starter(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'started_by');
+    }
+
+    /** @return BelongsTo<User, $this> */
+    public function completer(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'completed_by');
     }
 
     /** @return BelongsTo<Order, $this> */

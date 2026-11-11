@@ -3,6 +3,8 @@
 declare(strict_types=1);
 use App\Modules\BulkProduction\BulkProductionServiceProvider;
 use App\Modules\Customers\CustomersServiceProvider;
+use App\Modules\Cutting\CuttingServiceProvider;
+use App\Modules\Delivery\DeliveryServiceProvider;
 use App\Modules\Design\DesignServiceProvider;
 use App\Modules\Garments\GarmentsServiceProvider;
 use App\Modules\Identity\IdentityServiceProvider;
@@ -13,6 +15,8 @@ use App\Modules\Organizations\OrganizationsServiceProvider;
 use App\Modules\Payments\PaymentsServiceProvider;
 use App\Modules\Pricing\PricingServiceProvider;
 use App\Modules\Printing\PrintingServiceProvider;
+use App\Modules\Reporting\ReportingServiceProvider;
+use App\Modules\Sewing\SewingServiceProvider;
 use App\Providers\AppServiceProvider;
 
 return [
@@ -28,5 +32,9 @@ return [
     InvoicesServiceProvider::class,
     BulkProductionServiceProvider::class,
     PrintingServiceProvider::class,
+    CuttingServiceProvider::class,
+    SewingServiceProvider::class,
+    DeliveryServiceProvider::class,
+    ReportingServiceProvider::class,
     NotificationsServiceProvider::class,
 ];

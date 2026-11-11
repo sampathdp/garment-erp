@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { TextField } from "@/components/ui/field";
 import { Badge, Checkbox, FormError, PageHeader, Section, SelectField, TextAreaField } from "@/components/ui/form-controls";
-import { DownloadIcon, ExternalLinkIcon, PaletteIcon, PlusIcon, SearchIcon, UserIcon } from "@/components/ui/icons";
+import { ChevronRightIcon, DownloadIcon, ExternalLinkIcon, PaletteIcon, PlusIcon, SearchIcon, UserIcon } from "@/components/ui/icons";
 import { Modal } from "@/components/ui/modal";
 import { RequirePermission, WithIdParam } from "@/components/ui/record-page";
 import { EmptyState, ErrorState, LoadingState } from "@/components/ui/states";
@@ -33,7 +33,7 @@ export function DesignDashboard() {
         </Link>
       ),
     },
-    { key: "where", header: "Branch / Channel", cell: (t) => <span className="text-xs text-muted">{t.order.branch.code} / {t.order.page.code}</span> },
+    { key: "where", header: "Company / Shop", cell: (t) => <span className="text-xs text-muted">{t.order.page.code}</span> },
     { key: "customer", header: "Customer", cell: (t) => <span className="font-medium text-ink">{t.order.customer}</span> },
     { key: "category", header: "Category", cell: (t) => t.order.product_category },
     { key: "qty", header: "Qty", cell: (t) => <span className="font-semibold text-ink">{t.order.quantity}</span> },
@@ -61,6 +61,22 @@ export function DesignDashboard() {
         ) : (
           <span className="text-xs font-semibold text-danger">Unassigned</span>
         ),
+    },
+    {
+      key: "actions",
+      header: "Actions",
+      className: "text-right",
+      cell: (t) => (
+        <div className="flex items-center justify-end gap-1.5">
+          <Link
+            href={`/designs/view/?id=${t.id}`}
+            className="inline-flex items-center gap-1 rounded-lg border border-line bg-surface px-2.5 py-1.5 text-xs font-semibold text-ink shadow-xs hover:border-brand/40 hover:bg-subtle hover:text-brand transition shrink-0"
+          >
+            <span>View</span>
+            <ChevronRightIcon size={13} />
+          </Link>
+        </div>
+      ),
     },
   ];
 

@@ -65,6 +65,7 @@ final class Roles
                     P::BULK_VIEW, P::BULK_APPROVE,
                     P::PRODUCTION_VIEW, P::ISSUES_REPORT,
                     P::PRINTING_VIEW, P::PRINTING_APPROVE_SAMPLE,
+                    P::CUTTING_VIEW, P::CUTTING_CONFIRM_CLIENT,
                     P::QC_VIEW, P::DELIVERY_VIEW, P::REPORTS_VIEW,
                 ],
             ],
@@ -100,8 +101,9 @@ final class Roles
                     P::PRODUCTION_VIEW, P::BULK_VIEW, P::BULK_ASSIGN, P::BULK_MANAGE_EXTERNAL, P::BULK_CONFIGURE,
                     P::PRINTING_VIEW, P::PRINTING_MANAGE, P::PRINTING_UPLOAD_SAMPLE, P::PRINTING_PRINT_DOCUMENTS, P::PRINTING_RECORD_GATE_PASS,
                     P::ISSUES_REPORT, P::ISSUES_MANAGE,
-                    P::CUTTING_VIEW, P::CUTTING_MANAGE, P::SEWING_MANAGE,
-                    P::QC_VIEW, P::GATE_PASSES_VIEW, P::GATE_PASSES_REQUEST, P::DELIVERY_VIEW,
+                    P::CUTTING_VIEW, P::CUTTING_MANAGE, P::CUTTING_COMPLETE, P::CUTTING_CONFIGURE, P::SEWING_MANAGE,
+                    P::QC_VIEW, P::QC_INSPECT, P::GATE_PASSES_VIEW, P::GATE_PASSES_REQUEST, P::DELIVERY_VIEW,
+                    P::ORDERS_COMPLETE, P::REPORTS_VIEW,
                 ],
             ],
             self::EXTERNAL_BULK_DESIGNER => [
@@ -111,15 +113,15 @@ final class Roles
             ],
             self::CUTTING_STAFF => [
                 'label' => 'Cutting Staff',
-                'description' => 'Works on assigned cutting jobs: checklists and issue reports.',
-                'permissions' => [...$assignedTaskScope, P::CUTTING_VIEW_ASSIGNED, P::CUTTING_UPDATE_CHECKLIST, P::ISSUES_REPORT],
+                'description' => 'Works on assigned cutting jobs: quantities, checklists, quality checks and issue reports.',
+                'permissions' => [...$assignedTaskScope, P::CUTTING_VIEW_ASSIGNED, P::CUTTING_UPDATE_CHECKLIST, P::QC_INSPECT, P::ISSUES_REPORT],
             ],
             self::DELIVERY_STAFF => [
                 'label' => 'Delivery Staff',
                 'description' => 'Dispatches and confirms deliveries of assigned branches and records cash on delivery.',
                 'permissions' => [
                     P::SCOPE_ALL_PAGES, P::BRANCHES_VIEW,
-                    P::ORDERS_VIEW, P::DELIVERY_VIEW, P::DELIVERY_DISPATCH, P::DELIVERY_CONFIRM,
+                    P::ORDERS_VIEW, P::DELIVERY_VIEW, P::DELIVERY_DISPATCH, P::DELIVERY_CONFIRM, P::ORDERS_COMPLETE,
                     P::PAYMENTS_RECORD, P::GATE_PASSES_VIEW,
                 ],
             ],

@@ -5,7 +5,7 @@ import { useState } from "react";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { TextField } from "@/components/ui/field";
 import { Badge, SelectField, StatusBadge } from "@/components/ui/form-controls";
-import { SearchIcon, UserIcon } from "@/components/ui/icons";
+import { ChevronRightIcon, SearchIcon, UserIcon } from "@/components/ui/icons";
 import { useRoles } from "@/features/roles/api";
 import { useAuth } from "@/features/auth/auth-provider";
 import { formatDateTime } from "@/lib/format";
@@ -70,6 +70,22 @@ const columns: Column<UserRow>[] = [
   },
   { key: "status", header: "Status", cell: (u) => <StatusBadge active={u.is_active} /> },
   { key: "last_login", header: "Last Active", sortKey: "last_login_at", cell: (u) => <span className="text-xs text-muted">{formatDateTime(u.last_login_at)}</span> },
+  {
+    key: "actions",
+    header: "Actions",
+    className: "text-right",
+    cell: (u) => (
+      <div className="flex items-center justify-end gap-1.5">
+        <Link
+          href={`/settings/users/view/?id=${u.id}`}
+          className="inline-flex items-center gap-1 rounded-lg border border-line bg-surface px-2.5 py-1.5 text-xs font-semibold text-ink shadow-xs hover:border-brand/40 hover:bg-subtle hover:text-brand transition shrink-0"
+        >
+          <span>View</span>
+          <ChevronRightIcon size={13} />
+        </Link>
+      </div>
+    ),
+  },
 ];
 
 export function UsersTable() {

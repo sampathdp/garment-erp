@@ -139,24 +139,15 @@ export function AccountSettings() {
         </Section>
       </div>
 
-      <Section title="Data Access Boundaries & Scope" description="Your branch and page permissions configured by system administrators.">
+      <Section title="Data Access Boundaries & Scope" description="Your company and shop permissions configured by system administrators.">
         <div className="grid gap-4 sm:grid-cols-2 text-xs">
-          <div className="flex flex-col gap-2 rounded-xl border border-line bg-subtle/40 p-4">
-            <div className="flex items-center gap-2 font-bold text-ink text-sm">
-              <BuildingIcon size={16} className="text-brand" />
-              <span>Assigned Branches</span>
-            </div>
-            <p className="text-muted leading-relaxed">
-              {user.scope.all_branches ? "Full operational access across all company branch locations." : user.scope.branches.map((b) => b.name).join(", ") || "No specific branch assigned."}
-            </p>
-          </div>
-          <div className="flex flex-col gap-2 rounded-xl border border-line bg-subtle/40 p-4">
+          <div className="flex flex-col gap-2 rounded-xl border border-line bg-subtle/40 p-4 sm:col-span-2">
             <div className="flex items-center gap-2 font-bold text-ink text-sm">
               <GlobeIcon size={16} className="text-brand" />
-              <span>Sales Channels (Pages)</span>
+              <span>Companies & Shops</span>
             </div>
             <p className="text-muted leading-relaxed">
-              {user.scope.all_pages ? "Full authorization across all Facebook sales pages." : user.scope.pages.map((p) => (p.is_owner ? `${p.name} (Designated Owner)` : p.name)).join(", ") || "No pages assigned."}
+              {user.scope.all_pages ? "Full authorization across all company stores and sales channels." : user.scope.pages.map((p) => (p.is_owner ? `${p.name} (Designated Owner)` : p.name)).join(", ") || "No companies or shops assigned."}
             </p>
           </div>
           <div className="flex justify-between items-center rounded-xl border border-line bg-surface p-4">

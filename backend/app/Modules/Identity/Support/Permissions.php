@@ -168,6 +168,12 @@ final class Permissions
 
     public const CUTTING_MANAGE = 'cutting.manage';
 
+    public const CUTTING_COMPLETE = 'cutting.complete';
+
+    public const CUTTING_CONFIRM_CLIENT = 'cutting.confirm_client';
+
+    public const CUTTING_CONFIGURE = 'cutting.configure';
+
     public const CUTTING_UPDATE_CHECKLIST = 'cutting.update_checklist';
 
     public const SEWING_MANAGE = 'sewing.manage';
@@ -278,7 +284,7 @@ final class Permissions
             'operations' => ['label' => 'Operations', 'permissions' => [
                 self::PRODUCTION_VIEW => 'View operational jobs',
                 self::ISSUES_REPORT => 'Report production issues',
-                self::ISSUES_MANAGE => 'Manage production issues',
+                self::ISSUES_MANAGE => 'Manage production issues (assign, investigate, resolve, close)',
                 self::PRINTING_VIEW => 'View printing',
                 self::PRINTING_MANAGE => 'Manage printing',
                 self::PRINTING_UPLOAD_SAMPLE => 'Upload printing samples',
@@ -287,11 +293,14 @@ final class Permissions
                 self::PRINTING_RECORD_GATE_PASS => 'Record gate pass details after physical printing',
                 self::CUTTING_VIEW => 'View all cutting jobs in scope',
                 self::CUTTING_VIEW_ASSIGNED => 'View cutting jobs assigned to me',
-                self::CUTTING_MANAGE => 'Manage cutting jobs',
-                self::CUTTING_UPDATE_CHECKLIST => 'Update cutting checklists (assigned jobs)',
+                self::CUTTING_MANAGE => 'Manage cutting jobs (assign cutters, record work on any job)',
+                self::CUTTING_UPDATE_CHECKLIST => 'Record cutting quantities and checklists (assigned jobs)',
+                self::CUTTING_COMPLETE => 'Mark cutting jobs completed',
+                self::CUTTING_CONFIRM_CLIENT => 'Record the client confirmation of the cutting checklist (page owners of the page)',
+                self::CUTTING_CONFIGURE => 'Configure cutting checklists and quality checks',
                 self::SEWING_MANAGE => 'Manage sewing',
                 self::QC_VIEW => 'View quality control',
-                self::QC_INSPECT => 'Record inspections',
+                self::QC_INSPECT => 'Record quality checks and inspections',
                 self::GATE_PASSES_VIEW => 'View gate passes',
                 self::GATE_PASSES_REQUEST => 'Request gate passes',
                 self::GATE_PASSES_APPROVE => 'Approve gate passes',

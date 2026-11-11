@@ -591,7 +591,79 @@ paths:
   /print-jobs/{job}/physical-printing/complete:
     post: { operationId: print-jobs.printing.complete, tags: [Printing], description: "printing.manage. { version, printed_quantity, notes? } → Printing Completed.", responses: { "200": { description: Printing job } } }
   /print-jobs/{job}/gate-passes:
-    post: { operationId: print-jobs.gate-passes.store, tags: [Printing], description: "printing.record_gate_pass, after Printing Completed. multipart { gate_pass_no, gate_pass_date (≤ today), document? (image/PDF ≤ 10 MB), notes? }. 409 duplicate_gate_pass.", responses: { "200": { description: Printing job } } }
+    post: { operationId: print-jobs.gate-passes.store, tags: [Printing], description: "printing.record_gate_pass, after Printing Completed. multipart { gate_pass_no, gate_pass_date (≤ today), document? (image/PDF ≤ 10 MB), notes? }. 409 duplicate_gate_pass. The first gate pass opens the cutting job (once) and moves the order to cutting.", responses: { "200": { description: Printing job } } }
+  /cutting-jobs:
+    get: { operationId: cutting-jobs.index, tags: [Cutting], description: "cutting.view (all in scope) or cutting.view_assigned (own). filter[status] (comma list), filter[open], filter[mine], filter[search]; sort=due_date|-due_date|expected_completion_date|-expected_completion_date|created_at|-created_at. Rows: branch/page, design image, material, category, quantity, totals (expected/cut/missing/defective/good), list, printing info, cutter, expected completion, status, open_issue_count.", responses: { "200": { description: Paginated cutting jobs } } }
+  /cutting-jobs/{job}:
+    get: { operationId: cutting-jobs.show, tags: [Cutting], description: "Detail: quantities per size, assignment history, checklist, quality_checks, issues, completion.blockers, history, abilities { assign, record_work, record_quality_check, confirm_checklist, complete, report_issue }.", responses: { "200": { description: Cutting job } } }
+  /cutting-jobs/{job}/job-card:
+    get: { operationId: cutting-jobs.job-card, tags: [Cutting], description: "Job Card read model (design image via the cutting signed route).", responses: { "200": { description: Job Card } } }
+  /cutting-jobs/{job}/name-list:
+    get: { operationId: cutting-jobs.name-list, tags: [Cutting], description: "Confirmed name/number list (read-only).", responses: { "200": { description: List } } }
+  /cutting-jobs/{job}/cutters:
+    get: { operationId: cutting-jobs.cutters, tags: [Cutting], description: "Active users who can be assigned as cutter / responsible user.", responses: { "200": { description: Users } } }
+  /cutting-jobs/{job}/files/{document}:
+    get: { operationId: cutting-jobs.files.download, tags: [Cutting], description: "Signed 5-minute URL + cutting policy; only the approved design files and the checklist evidence of the job.", responses: { "200": { description: File } } }
+  /cutting-jobs/{job}/assignment:
+    post: { operationId: cutting-jobs.assign, tags: [Cutting], description: "cutting.manage. { version, cutter_id, expected_completion_date (≥ today), notes?, reason? (required to reassign) }.", responses: { "200": { description: Cutting job } } }
+  /cutting-jobs/{job}/quantities:
+    put: { operationId: cutting-jobs.quantities.update, tags: [Cutting], description: "Assigned cutter or cutting.manage. { version, quantities: [{ id, cut }] }; 0 ≤ cut ≤ expected (422); 422 invalid_totals when the total cut is below the reported defective pieces.", responses: { "200": { description: Cutting job } } }
+  /cutting-jobs/{job}/checklist/items/{item}:
+    patch: { operationId: cutting-jobs.checklist.items.update, tags: [Cutting], description: "{ is_completed?, notes?, responsible_user_id? }. 409 checklist_confirmed after the client confirmation.", responses: { "200": { description: Cutting job } } }
+  /cutting-jobs/{job}/quality-checks/{item}:
+    patch: { operationId: cutting-jobs.quality-checks.update, tags: [Cutting], description: "qc.inspect. { result: pass|fail|na, notes? (required for fail/na) }.", responses: { "200": { description: Cutting job } } }
+  /cutting-jobs/{job}/checklist/client-confirmation:
+    post: { operationId: cutting-jobs.checklist.confirm, tags: [Cutting], description: "cutting.confirm_client + Page Owner of the page. multipart { channel, comment?, evidence? }. 409 checklist_incomplete.", responses: { "200": { description: Cutting job } } }
+  /cutting-jobs/{job}/complete:
+    post: { operationId: cutting-jobs.complete, tags: [Cutting], description: "cutting.complete. { version, notes? }. 409 cutting_incomplete with errors { quantities?, checklist?, quality_checks?, issues? }. Order → sewing.", responses: { "200": { description: Cutting job } } }
+  /cutting-jobs/{job}/issues:
+    post: { operationId: cutting-jobs.issues.store, tags: [Issues], description: "production.issues.report on a visible open cutting job. multipart { category, description, quantity_affected?, part? (required for missing_parts), size?, is_blocking? (managers only), image? (JPG/PNG/WebP ≤ 10 MB) }.", responses: { "201": { description: Production issue } } }
+  /cutting-setup:
+    get: { operationId: cutting-setup.index, tags: [Cutting], description: "cutting.configure: cutting checklist and quality check templates. POST checklist-templates (new version), PATCH checklist-templates/{id} { is_active }.", responses: { "200": { description: Setup } } }
+  /production-issues:
+    get: { operationId: production-issues.index, tags: [Issues], description: "Issues the user may see. filter[status], filter[category] (comma lists), filter[order_id], filter[cutting_job_id], filter[unresolved], filter[blocking], filter[mine], filter[search]; sort=created_at|-created_at|status|-status.", responses: { "200": { description: Paginated issues } } }
+    post: { operationId: production-issues.store, tags: [Issues], description: "Order-level report (OrderPolicy::reportIssue). multipart { order_id, ...same fields as /cutting-jobs/{job}/issues }.", responses: { "201": { description: Production issue } } }
+  /production-issues/{issue}:
+    get: { operationId: production-issues.show, tags: [Issues], description: "Detail with image_url (signed), next_statuses, history, abilities { manage, transition }.", responses: { "200": { description: Production issue } } }
+    patch: { operationId: production-issues.update, tags: [Issues], description: "production.issues.manage. { version, assigned_to?, is_blocking? }.", responses: { "200": { description: Production issue } } }
+  /production-issues/{issue}/transitions:
+    post: { operationId: production-issues.transitions.store, tags: [Issues], description: "Managers or the assignee. { version, to, note?, resolution? }. resolution required for resolved; closing/reopening managers only (403); 409 invalid_transition / version_conflict.", responses: { "200": { description: Production issue } } }
+  /production-issues/{issue}/assignees:
+    get: { operationId: production-issues.assignees, tags: [Issues], description: "production.issues.manage: users who can be assigned.", responses: { "200": { description: Users } } }
+  /sewing-jobs:
+    get: { operationId: sewing-jobs.index, tags: [Sewing], description: "production.view or sewing.manage. filter[status], filter[open]. One sewing job per completed cutting job.", responses: { "200": { description: Paginated sewing jobs } } }
+  /sewing-jobs/{job}:
+    get: { operationId: sewing-jobs.show, tags: [Sewing], description: "Sewing job with abilities { start, complete }.", responses: { "200": { description: Sewing job } } }
+  /sewing-jobs/{job}/start:
+    post: { operationId: sewing-jobs.start, tags: [Sewing], description: "sewing.manage. { version }.", responses: { "200": { description: Sewing job } } }
+  /sewing-jobs/{job}/complete:
+    post: { operationId: sewing-jobs.complete, tags: [Sewing], description: "sewing.manage. { version, sewn_quantity (= received), notes? }. Order → ready_for_delivery; opens the delivery.", responses: { "200": { description: Sewing job } } }
+  /deliveries:
+    get: { operationId: deliveries.index, tags: [Delivery], description: "delivery.view (branch-scoped). filter[status] (ready,dispatched,delivered), filter[open], filter[missing_documents], filter[search]; sort=due_date|created_at|delivered_at (±).", responses: { "200": { description: Paginated deliveries } } }
+  /deliveries/{delivery}:
+    get: { operationId: deliveries.show, tags: [Delivery], description: "Detail: dispatch, delivery, documents (signed URLs), completion.blockers, abilities { dispatch, deliver, upload_document, complete_job }.", responses: { "200": { description: Delivery } } }
+  /deliveries/{delivery}/dispatch:
+    post: { operationId: deliveries.dispatch, tags: [Delivery], description: "delivery.dispatch. { version, method: courier|own_vehicle, courier_name (courier), tracking_no?, scheduled_date?, notes? }. COD = outstanding verified balance.", responses: { "200": { description: Delivery } } }
+  /deliveries/{delivery}/deliver:
+    post: { operationId: deliveries.deliver, tags: [Delivery], description: "delivery.confirm. { version, method? (pickup when not dispatched), received_by, cod_collected_minor? (≤ balance; recorded as a cod payment pending verification), notes? }.", responses: { "200": { description: Delivery } } }
+  /deliveries/{delivery}/documents:
+    post: { operationId: deliveries.documents.store, tags: [Delivery], description: "delivery.dispatch or delivery.confirm. multipart { type: delivery_sheet|waybill|delivery_photo|customer_photo, file (image/PDF ≤ 10 MB), notes? }.", responses: { "200": { description: Delivery } } }
+  /deliveries/{delivery}/documents/{document}:
+    get: { operationId: deliveries.documents.download, tags: [Delivery], description: "Signed 5-minute URL + delivery policy.", responses: { "200": { description: File } } }
+  /deliveries/{delivery}/complete:
+    post: { operationId: deliveries.complete, tags: [Delivery], description: "orders.complete. { version, notes? }. 409 job_incomplete with errors { production?, checks?, issues?, delivery?, documents?, balance? }.", responses: { "200": { description: Delivery } } }
+  /dashboard:
+    get: { operationId: dashboard.show, tags: [Reporting], description: "Signed-in users. { sections: [{ key, title, metrics: [{ key, label, value, link }], items?, jobs_by_status?, branches? }] } chosen by permission and limited to the user's scope; cached 60 s.", responses: { "200": { description: Dashboard } } }
+  /reports:
+    get: { operationId: reports.index, tags: [Reporting], description: "reports.view. Report catalogue.", responses: { "200": { description: Reports } } }
+  /reports/{report}:
+    get: { operationId: reports.show, tags: [Reporting], description: "reports.view. filter[from], filter[to] (Y-m-d, default last 90 days), filter[branch_id], filter[page_id], filter[days] (upcoming-due). Aggregates cached 10 min; overdue-jobs, upcoming-due and outstanding-balance are paginated.", responses: { "200": { description: Report } } }
+  /notifications/poll:
+    get: { operationId: notifications.poll, tags: [Notifications], description: "Own notifications. ?since=<server_time> → { unread, new (max 20), server_time }.", responses: { "200": { description: Poll result } } }
+  /notifications/{notification}/read:
+    post: { operationId: notifications.read, tags: [Notifications], description: "Mark one own notification read (POST …/unread to mark it unread). 404 for other users' notifications.", responses: { "200": { description: Notification } } }
+  /production-issues/{issue}/image:
+    get: { operationId: production-issues.image, tags: [Issues], description: "Signed 5-minute URL + issue policy.", responses: { "200": { description: Image } } }
   /bulk-setup:
     get: { operationId: bulk-setup.index, tags: [Bulk], description: "bulk.configure: measurement fields, checklist templates, suppliers. POST/PATCH measurement-fields, checklist-templates (new version), suppliers.", responses: { "200": { description: Setup } } }
 
