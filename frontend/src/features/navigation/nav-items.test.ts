@@ -19,7 +19,7 @@ describe("visibleNavItems", () => {
 
   it("hides administration from staff without administration permissions", () => {
     const cuttingStaff = ["cutting.view_assigned", "cutting.update_checklist", "production.issues.report"];
-    expect(visibleNavItems(NAV_ITEMS, cuttingStaff).map((i) => i.label)).toEqual(["Dashboard", "Notifications", "My account"]);
+    expect(visibleNavItems(NAV_ITEMS, cuttingStaff).map((i) => i.label)).toEqual(["Dashboard", "Cutting", "Production issues", "Notifications", "My account"]);
 
     const admin = ["users.view", "roles.view", "branches.view", "pages.view"];
     expect(visibleNavItems(NAV_ITEMS, admin).map((i) => i.label)).toEqual(["Dashboard", "Users", "Roles", "Branches", "Pages", "Notifications", "My account"]);

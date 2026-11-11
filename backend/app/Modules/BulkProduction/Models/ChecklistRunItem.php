@@ -32,7 +32,14 @@ class ChecklistRunItem extends Model
             'sort_order' => 'integer',
             'completed_at' => 'datetime',
             'checklist_run_id' => 'integer',
+            'responsible_user_id' => 'integer',
         ];
+    }
+
+    /** @return BelongsTo<User, $this> */
+    public function responsible(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'responsible_user_id');
     }
 
     /** @return BelongsTo<ChecklistRun, $this> */

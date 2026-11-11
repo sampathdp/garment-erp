@@ -22,11 +22,15 @@ use App\Modules\BulkProduction\Models\ChecklistTemplate;
 use App\Modules\BulkProduction\Models\ChecklistTemplateItem;
 use App\Modules\BulkProduction\Models\MeasurementPoint;
 use App\Modules\BulkProduction\Models\ProductionIssue;
+use App\Modules\BulkProduction\Models\ProductionIssueEvent;
 use App\Modules\BulkProduction\Models\ProductionUnit;
 use App\Modules\BulkProduction\Models\SizeSpec;
 use App\Modules\BulkProduction\Models\Supplier;
 use App\Modules\Customers\Models\Customer;
 use App\Modules\Cutting\Models\CuttingJob;
+use App\Modules\Cutting\Models\CuttingJobAssignment;
+use App\Modules\Cutting\Models\CuttingJobEvent;
+use App\Modules\Cutting\Models\CuttingJobQuantity;
 use App\Modules\Delivery\Models\Delivery;
 use App\Modules\Design\Models\DesignCorrectionRequest;
 use App\Modules\Design\Models\DesignReview;
@@ -113,6 +117,9 @@ final class MorphMap
             'checklist_template_item' => ChecklistTemplateItem::class,
             'customer' => Customer::class,
             'cutting_job' => CuttingJob::class,
+            'cutting_job_assignment' => CuttingJobAssignment::class,
+            'cutting_job_event' => CuttingJobEvent::class,
+            'cutting_job_quantity' => CuttingJobQuantity::class,
             'defect_type' => DefectType::class,
             'delivery' => Delivery::class,
             'design_correction_request' => DesignCorrectionRequest::class,
@@ -156,6 +163,7 @@ final class MorphMap
             'product_option' => ProductOption::class,
             'product_type' => ProductType::class,
             'production_issue' => ProductionIssue::class,
+            'production_issue_event' => ProductionIssueEvent::class,
             'production_unit' => ProductionUnit::class,
             'qc_defect' => QcDefect::class,
             'qc_inspection' => QcInspection::class,

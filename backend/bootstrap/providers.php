@@ -3,6 +3,7 @@
 declare(strict_types=1);
 use App\Modules\BulkProduction\BulkProductionServiceProvider;
 use App\Modules\Customers\CustomersServiceProvider;
+use App\Modules\Cutting\CuttingServiceProvider;
 use App\Modules\Design\DesignServiceProvider;
 use App\Modules\Garments\GarmentsServiceProvider;
 use App\Modules\Identity\IdentityServiceProvider;
@@ -28,5 +29,6 @@ return [
     InvoicesServiceProvider::class,
     BulkProductionServiceProvider::class,
     PrintingServiceProvider::class,
+    CuttingServiceProvider::class,
     NotificationsServiceProvider::class,
 ];

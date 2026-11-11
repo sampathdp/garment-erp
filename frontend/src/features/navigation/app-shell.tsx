@@ -61,7 +61,12 @@ function navIcon(href: string) {
       return <BoxesIcon size={17} />;
     case "/printing/":
       return <ShirtIcon size={17} />;
+    case "/cutting/":
+      return <ScissorsIcon size={17} />;
+    case "/issues/":
+      return <AlertTriangleIcon size={17} />;
     case "/settings/bulk-setup/":
+    case "/settings/cutting-setup/":
       return <SlidersIcon size={17} />;
     case "/settings/pricing/":
       return <TagIcon size={17} />;

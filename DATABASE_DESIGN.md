@@ -36,6 +36,12 @@
 - `checklist_runs`: `bulk_job_id`, `superseded_at` (mode switched), client confirmation (`client_confirmed_at/by`, `client_channel`, `client_comment`, `client_evidence_document_id`). `checklist_run_items`: snapshot `label`, `is_required`, `sort_order`, `is_completed`, `completed_by/at`; `result` became nullable (bulk items use the completed flag).
 - New document categories `bulk_preview`, `bulk_file`. The Job Card is a read model (`JobCard` query), not a table.
 
+**Phase 07 changes** (`2026_11_15_000001_add_cutting_quality_issue_tables`):
+- `cutting_jobs`: CHECK `chk_cj_target` dropped and `mode` nullable (the cutter is a user, not a unit/supplier); `status` widened to 30; `version`, `assigned_by/at`, `expected_completion_date` (DATE, Colombo), `assignment_notes`, `completed_by`, `completion_notes`; UNIQUE `print_job_id`; indexes `(supervisor_id, status)`, `(status, expected_completion_date)`; CHECK `cut_quantity ≤ planned_quantity`.
+- New `cutting_job_assignments` (append-only), `cutting_job_quantities` (UNIQUE `(cutting_job_id, size_label)`, CHECK `cut ≤ expected`), `cutting_job_events` (append-only status history).
+- `checklist_runs.cutting_job_id` (index `(cutting_job_id, stage)`); `checklist_run_items.responsible_user_id`.
+- `production_issues`: see §6; indexes `(order_id, status)`, `(cutting_job_id, status)`, `(assigned_to, status)`, `(type, status)`. New `production_issue_events`. New document category `issue_photo` (JPG/PNG/WebP ≤ 10 MB).
+
 Target: **MySQL 8 (8.4 LTS preferred), InnoDB, utf8mb4.** The default collation is `utf8mb4_unicode_ci` because the shared host may run MariaDB; set `DB_COLLATION=utf8mb4_0900_ai_ci` on MySQL 8. Local development and the fast test suite use SQLite; CI also runs the full suite on MySQL 8.4.
 
 ## 1. Global standards
@@ -99,11 +105,11 @@ Target: **MySQL 8 (8.4 LTS preferred), InnoDB, utf8mb4.** The default collation 
 | Documents | `documents` |
 | Pricing | `size_charts`, `sizes`, `product_types`, `materials`, `product_options`, `price_lists`, `price_list_items`, `price_list_option_prices` |
 | Orders | `orders`, `order_items`, `order_item_options`, `order_status_histories`, `urgent_approvals` |
-| BulkProduction | `production_units`, `suppliers`, `measurement_points`, `size_specs`, `checklist_templates`, `checklist_template_items`, `bulk_assignments`, `bulk_assignment_documents`, `bulk_measurements`, `checklist_runs`, `checklist_run_items`, `production_issues` |
+| BulkProduction | `production_units`, `suppliers`, `measurement_points`, `size_specs`, `checklist_templates`, `checklist_template_items`, `bulk_assignments`, `bulk_assignment_documents`, `bulk_measurements`, `checklist_runs`, `checklist_run_items`, `production_issues`, `production_issue_events` (Phase 07) |
 | Design | `design_tasks`, `design_versions`, `design_version_files`, `design_reviews`, `design_correction_requests` |
 | Garments | `garment_lists`, `garment_list_versions`, `garment_list_items` |
 | Printing | `print_jobs`, `print_samples`, `print_sample_documents`, `print_job_events`, `print_job_gate_passes` (Phase 06) |
-| Cutting / Sewing | `cutting_jobs`, `sewing_jobs` |
+| Cutting / Sewing | `cutting_jobs`, `cutting_job_assignments`, `cutting_job_quantities`, `cutting_job_events` (Phase 07), `sewing_jobs` |
 | QualityControl | `defect_types`, `qc_inspections`, `qc_defects` |
 | GatePass | `gate_passes`, `gate_pass_lines` |
 | Delivery | `deliveries` |
@@ -122,7 +128,9 @@ Target: **MySQL 8 (8.4 LTS preferred), InnoDB, utf8mb4.** The default collation 
 | `invoices`, `invoice_items` | Same total formulas |
 | `payments` | `amount > 0`; **`verified_by <> recorded_by`** (separation of duties) |
 | `refunds` | `amount > 0` |
-| `bulk_assignments`, `cutting_jobs`, `sewing_jobs` | `internal` ⇒ unit set and supplier null; `external` ⇒ supplier set and unit null |
+| `bulk_assignments`, `sewing_jobs` | `internal` ⇒ unit set and supplier null; `external` ⇒ supplier set and unit null (dropped for `cutting_jobs` in Phase 07: the cutter is a user) |
+| `cutting_jobs`, `cutting_job_quantities` | `cut_quantity ≤ planned_quantity` / `cut_quantity ≤ expected_quantity` |
+| `production_issues` | `quantity_affected IS NULL OR quantity_affected ≥ 1` |
 | `sewing_jobs` | `sewn ≤ received` |
 | `gate_pass_lines` | `quantity_out ≥ 1`, `returned ≤ out` |
 | `qc_inspections` | `passed + failed = inspected` |
@@ -137,6 +145,7 @@ MySQL forbids `ON DELETE` actions on FK columns used in CHECK constraints, so th
 - Assignment quantities per order item equal the item quantity.
 - `print_jobs.design_version_id` equals the task's `approved_version_id`, and `garment_list_version_id` is `locked`.
 - Phase 06: `print_jobs.bulk_job_id` is UNIQUE (one printing job per completed bulk job) and `bulk_version_id` points at the final internal bulk version (null for external). `print_jobs.version` is the optimistic lock. `print_samples` rows are immutable versions (`sample_no` per job, uploader, notes, decision, `rejection_reason`, `recorded_by` / `decided_at` for the review); `print_jobs.approved_sample_id` points at the approved one. `print_job_events` is the append-only status history; `print_job_gate_passes` holds gate pass details recorded after physical printing (UNIQUE `print_job_id` + `gate_pass_no`).
+- Phase 07: `cutting_jobs.print_job_id` is UNIQUE (one cutting job per printing job, opened by the first gate pass); `supervisor_id` is the assigned cutter; `version` is the optimistic lock. `cutting_job_quantities` holds expected (from the locked list, per size) and cut quantity; the total cut never falls below the unresolved defective pieces reported (`production_issues` of the piece-defect categories). `checklist_runs.cutting_job_id` + `stage` (`cutting` | `quality_control`) are the job's checklist and quality-check instances; `checklist_run_items.responsible_user_id` names the person responsible for a task (null = the cutter). `production_issues` gained `cutting_job_id`, `quantity_affected`, `part`, `size_label`, `image_document_id`, `is_blocking`, `assigned_to/at`, `closed_by/at`, `version`; statuses `open | under_investigation | correction_required | resolved | closed`. `production_issue_events` is the append-only issue history.
 - Issued invoices and submitted design versions are never updated (except invoice status → `void`).
 - `orders.verified_paid_minor` = Σ verified payments − Σ refunds, recalculated in the same transaction and checked nightly.
 - Pricing rules with `material_id = NULL` cannot be made unique by MySQL (NULLs are distinct), so duplicates are rejected in the pricing Action.
