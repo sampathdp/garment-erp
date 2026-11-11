@@ -11,9 +11,9 @@ use App\Modules\BulkProduction\Http\Resources\BulkJobResource;
 use App\Modules\BulkProduction\Models\BulkJob;
 use App\Modules\BulkProduction\Models\Supplier;
 use App\Modules\BulkProduction\Queries\BulkDocuments;
+use App\Modules\BulkProduction\Queries\ConfirmedGarmentList;
 use App\Modules\BulkProduction\Queries\JobCard;
 use App\Modules\Customers\Models\Customer;
-use App\Modules\Garments\Models\GarmentListItem;
 use App\Modules\Garments\Models\GarmentListVersion;
 use App\Modules\Garments\Support\GarmentCsv;
 use App\Modules\Garments\Support\GarmentSchema;
@@ -107,23 +107,11 @@ final class BulkJobController
     }
 
     /** The confirmed (locked) name/number list version the bulk job refers to, read-only. */
-    public function garmentList(BulkJob $job): JsonResponse
+    public function garmentList(BulkJob $job, ConfirmedGarmentList $list): JsonResponse
     {
         Gate::authorize('view', $job);
-        $version = GarmentListVersion::query()->with('locker:id,name')->findOrFail($job->getAttribute('garment_list_version_id'));
-        $item = $this->orderItem($job);
-        $schema = GarmentSchema::forProductType($item->product_type_id);
-        $items = GarmentListItem::query()->where('garment_list_version_id', $version->id)->with('values')->orderBy('line_no')->get();
 
-        return ApiResponse::data([
-            'version' => ['id' => $version->id, 'version_no' => $version->version_no, 'status' => $version->status->value,
-                'locked_by' => $version->locker?->name, 'locked_at' => $version->locked_at?->toIso8601ZuluString(), 'total_quantity' => $version->total_quantity],
-            'schema' => $schema->toArray(),
-            'items' => $items->map(fn (GarmentListItem $i): array => [
-                'line_no' => $i->line_no, 'size' => $schema->sizes->get($i->size_id)?->label, 'quantity' => $i->quantity,
-                'player_name' => $i->player_name, 'number' => $i->number, 'notes' => $i->notes, 'values' => $i->valueMap(),
-            ])->all(),
-        ]);
+        return ApiResponse::data($list->for($job));
     }
 
     public function exportGarmentList(BulkJob $job, GarmentCsv $csv): StreamedResponse

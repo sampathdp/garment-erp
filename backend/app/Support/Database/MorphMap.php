@@ -73,7 +73,10 @@ use App\Modules\Pricing\Models\ProductType;
 use App\Modules\Pricing\Models\Size;
 use App\Modules\Pricing\Models\SizeChart;
 use App\Modules\Printing\Models\PrintJob;
+use App\Modules\Printing\Models\PrintJobEvent;
+use App\Modules\Printing\Models\PrintJobGatePass;
 use App\Modules\Printing\Models\PrintSample;
+use App\Modules\Printing\Models\PrintSampleDocument;
 use App\Modules\QualityControl\Models\DefectType;
 use App\Modules\QualityControl\Models\QcDefect;
 use App\Modules\QualityControl\Models\QcInspection;
@@ -146,7 +149,10 @@ final class MorphMap
             'price_list_item_condition' => PriceListItemCondition::class,
             'price_list_option_price' => PriceListOptionPrice::class,
             'print_job' => PrintJob::class,
+            'print_job_event' => PrintJobEvent::class,
+            'print_job_gate_pass' => PrintJobGatePass::class,
             'print_sample' => PrintSample::class,
+            'print_sample_document' => PrintSampleDocument::class,
             'product_option' => ProductOption::class,
             'product_type' => ProductType::class,
             'production_issue' => ProductionIssue::class,

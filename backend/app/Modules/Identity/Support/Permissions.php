@@ -158,6 +158,10 @@ final class Permissions
 
     public const PRINTING_APPROVE_SAMPLE = 'printing.approve_sample';
 
+    public const PRINTING_PRINT_DOCUMENTS = 'printing.print_documents';
+
+    public const PRINTING_RECORD_GATE_PASS = 'printing.record_gate_pass';
+
     public const CUTTING_VIEW = 'cutting.view';
 
     public const CUTTING_VIEW_ASSIGNED = 'cutting.view_assigned';
@@ -278,7 +282,9 @@ final class Permissions
                 self::PRINTING_VIEW => 'View printing',
                 self::PRINTING_MANAGE => 'Manage printing',
                 self::PRINTING_UPLOAD_SAMPLE => 'Upload printing samples',
-                self::PRINTING_APPROVE_SAMPLE => 'Approve printing samples',
+                self::PRINTING_APPROVE_SAMPLE => 'Approve or reject printing samples (page owners of the page)',
+                self::PRINTING_PRINT_DOCUMENTS => 'Print the Job Card and name/number list (only after the printing sample is approved)',
+                self::PRINTING_RECORD_GATE_PASS => 'Record gate pass details after physical printing',
                 self::CUTTING_VIEW => 'View all cutting jobs in scope',
                 self::CUTTING_VIEW_ASSIGNED => 'View cutting jobs assigned to me',
                 self::CUTTING_MANAGE => 'Manage cutting jobs',

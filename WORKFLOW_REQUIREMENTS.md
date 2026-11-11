@@ -197,6 +197,17 @@ A bulk job (`bulk_jobs`, one per order, UNIQUE `order_id`) is created automatica
 - Out-of-tolerance measurements are flagged and need a reason to accept.
 - Checklists are versioned templates per stage. Required items must pass, and `na` needs a note.
 
+### 3.9a Printing management and sample approval (Phase 06 implementation)
+- **Availability**: a printing job (`print_jobs`, UNIQUE `bulk_job_id`) is opened by `OpenPrintJob` inside the bulk completion transaction (internal final submission or external completion), status **Ready for Printing**, referencing the approved design version, the locked list version and the final bulk version. Operation Admins (`printing.manage`) are notified. An incomplete bulk job is refused (409 `bulk_not_completed`) and the dashboard joins on a completed bulk job, so it is never shown as printing-ready.
+- **Dashboard** (`GET /print-jobs`, `printing.view`): job no., design preview, material, bulk meter, patch meter, collar meter where recorded, quantity, bulk files, WeTransfer link, internal/external, Job Card, confirmed list; earliest due date first, urgent first on the same day.
+- **Statuses** (`PrintJobStatus`, changed only by `PrintingWorkflow::transition()` with an event row, an audit entry and the matching order transition): Ready for Printing → Sent for Printing → Sample Pending Approval ⇄ Sample Rejected; Sample Pending Approval → Sample Approved → Physical Printing In Progress → Printing Completed. Order stages: ready / sent / rejected = `print_preparation`, pending = `print_sample_review`, approved and later = `printing` (moving on to cutting is a later phase). Every change bumps `print_jobs.version` (409 `version_conflict`).
+- **Send for printing** (`printing.manage`): records sender, date, printing company (active supplier, optional) and/or recipient name, notes; Page Owners notified.
+- **Sample upload** (`printing.upload_sample`, after sending or after a rejection): sample image (JPG/PNG/WebP ≤ 10 MB, checked by finfo AND decoded with getimagesize as the same type with sane dimensions), optional related documents (image/PDF, up to 5), notes. Private disk, UUID paths, 5-minute signed URLs that re-check the printing policy and serve only files of that job. Each upload is a new immutable sample version; earlier samples are never overwritten. Page Owners notified.
+- **Sample review** (`printing.approve_sample` AND Page Owner of the order's page): approve (reviewer, time, optional channel/comment; Operation Admins and the uploader notified; physical printing may proceed) or reject (reason REQUIRED, 422 otherwise; notified likewise; a corrected sample can then be uploaded).
+- **Physical printing** (`printing.manage`): start only from Sample Approved (the approved sample row is re-checked under the lock); completion records the printed quantity and notes.
+- **Document restrictions**: holders of `printing.view` can VIEW the Job Card and the name/number list. PRINTING them is a separate server-side ability (`printDocuments`, permission `printing.print_documents`) that returns 409 `document_printing_locked` until the sample is approved **[ASSUMPTION: the "explicitly approved production stage" is the Page Owner's sample approval, Q29]**. The print endpoint renders escaped HTML on the server and audits every print (`printing.document_printed`). The bulk Job Card screen no longer offers a client-side print.
+- **Gate pass** (`printing.record_gate_pass`, after Printing Completed): gate pass number (unique per job), date (not in the future), optional document (image/PDF ≤ 10 MB), notes, recorded by / at. Append-only. The full gate pass workflow (approval, check-out, returns) is still the later gate pass phase.
+
 ### 3.9 Printing
 - Print preparation references the approved design version **and** the locked garment list version.
 - Sample approval is recorded the same way as design approval (channel, evidence, recorder).
@@ -242,6 +253,9 @@ A bulk job (`bulk_jobs`, one per order, UNIQUE `order_id`) is created automatica
 | Bulk submitted for review (Phase 05) | Page Owners of the page |
 | Bulk correction requested / approved (Phase 05) | The assigned Bulk Designer |
 | Bulk completed (Phase 05) | Operation Admins (`bulk.assign`) in scope, Page Owners |
+| Job ready for printing (Phase 06) | Operation Admins (`printing.manage`) in scope |
+| Sent for printing / printing sample uploaded (Phase 06) | Page Owners of the page |
+| Printing sample approved / rejected (Phase 06) | Operation Admins (`printing.manage`) in scope, the sample uploader |
 | Order confirmed | Design lead |
 | Design version submitted | Sales owner of the order |
 | Design changes requested / approved | Assigned designer / production manager |
@@ -292,6 +306,7 @@ Still open: rest of Q1 (page ↔ branch, page-limited staff), rest of Q2 (except
 | Q26 | Is a Page Owner limited to their pages across **all** branches (current default), or also to certain branches? Is Second Admin page-scoped (current default) or company-wide? |
 | Q27 | Do External Bulk Designers belong to a supplier (so they could be limited to that supplier's jobs), or are they individual freelancers? |
 | Q28 | Pricing configuration per page: besides currency, default advance % and default delivery fee, what else differs per page (tax, discounts)? |
+| Q29 | Printing the Job Card and the name/number list: from which approved stage may they be printed (current default: once the Page Owner approves the printing sample)? Must the printed quantity equal the ordered quantity? |
 
 ### 6.3 Original question list
 | Q1 | What exactly is a **"Page"**? (A Facebook/Instagram page, a brand, a shop?) Can a page sell for several branches? Should sales staff be limited to certain pages? |

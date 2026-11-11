@@ -128,6 +128,23 @@ export async function apiRequest<T>(path: string, options: ApiRequestOptions = {
   return (await response.json()) as T;
 }
 
+/**
+ * Fetches a server-generated document (for example a printable HTML page) as a Blob, with the
+ * same credentials and error envelope handling as apiRequest. The server decides whether the
+ * document may be generated; errors surface as ApiError.
+ */
+export async function apiBlob(path: string, accept = "text/html", signal?: AbortSignal): Promise<Blob> {
+  let response: Response;
+  try {
+    response = await fetch(buildUrl(path), { headers: { Accept: `${accept}, application/json`, "X-Requested-With": "XMLHttpRequest" }, credentials: "include", signal });
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") throw error;
+    throw new ApiError(0, "network_error", "Cannot reach the server. Check your connection.");
+  }
+  if (!response.ok) throw await toApiError(response);
+  return response.blob();
+}
+
 export const api = {
   get: <T>(path: string, query?: ApiRequestOptions["query"], signal?: AbortSignal) => apiRequest<T>(path, { query, signal }),
   post: <T>(path: string, body?: unknown) => apiRequest<T>(path, { method: "POST", body }),

@@ -120,6 +120,10 @@ export function useUserMutations(id: number) {
       mutationFn: (signOut: boolean) => api.post<void>(`users/${id}/password-reset`, { sign_out: signOut }),
       onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["users", "activity", id] }),
     }),
+    setPassword: useMutation({
+      mutationFn: (input: { password: string; password_confirmation: string; sign_out: boolean }) => api.put<void>(`users/${id}/password`, input),
+      onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["users", "activity", id] }),
+    }),
   };
 }
 

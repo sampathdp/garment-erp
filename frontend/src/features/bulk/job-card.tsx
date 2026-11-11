@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
 import { Badge, PageHeader } from "@/components/ui/form-controls";
 import { ExternalLinkIcon } from "@/components/ui/icons";
 import { ErrorState, LoadingState } from "@/components/ui/states";
@@ -44,11 +43,12 @@ export function JobCardView({ id }: { id: number }) {
         actions={
           <div className="flex items-center gap-2 print:hidden">
             <Badge tone={bulkStatusTone(c.bulk.status.value)} dot>{c.bulk.status.label}</Badge>
-            <Button size="sm" variant="secondary" onClick={() => window.print()}>Print</Button>
           </div>
         }
       />
-      <div className="grid gap-6 rounded-xl border border-line bg-surface p-5 shadow-xs md:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
+      {/* Printing the Job Card is server-gated in the printing module (after sample approval). */}
+      <p className="hidden print:block">This screen is for review only. Print the Job Card from the printing job once printing is approved.</p>
+      <div className="grid gap-6 rounded-xl border border-line bg-surface p-5 shadow-xs md:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] print:hidden">
         <div className="flex flex-col gap-3">
           {c.design_image_url ? (
             // eslint-disable-next-line @next/next/no-img-element -- signed, short-lived private URL
@@ -76,7 +76,7 @@ export function JobCardView({ id }: { id: number }) {
         </dl>
       </div>
       {c.list && (
-        <div className="rounded-xl border border-line bg-surface p-5 shadow-xs">
+        <div className="rounded-xl border border-line bg-surface p-5 shadow-xs print:hidden">
           <div className="mb-3 flex flex-wrap items-center gap-2">
             <p className="text-sm font-semibold text-ink">Confirmed name/number list — version {c.list.version_no}</p>
             {c.list.is_approved_reference && <Badge tone="success">Approved reference</Badge>}

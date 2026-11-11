@@ -102,7 +102,7 @@ Target: **MySQL 8 (8.4 LTS preferred), InnoDB, utf8mb4.** The default collation 
 | BulkProduction | `production_units`, `suppliers`, `measurement_points`, `size_specs`, `checklist_templates`, `checklist_template_items`, `bulk_assignments`, `bulk_assignment_documents`, `bulk_measurements`, `checklist_runs`, `checklist_run_items`, `production_issues` |
 | Design | `design_tasks`, `design_versions`, `design_version_files`, `design_reviews`, `design_correction_requests` |
 | Garments | `garment_lists`, `garment_list_versions`, `garment_list_items` |
-| Printing | `print_jobs`, `print_samples` |
+| Printing | `print_jobs`, `print_samples`, `print_sample_documents`, `print_job_events`, `print_job_gate_passes` (Phase 06) |
 | Cutting / Sewing | `cutting_jobs`, `sewing_jobs` |
 | QualityControl | `defect_types`, `qc_inspections`, `qc_defects` |
 | GatePass | `gate_passes`, `gate_pass_lines` |
@@ -136,6 +136,7 @@ MySQL forbids `ON DELETE` actions on FK columns used in CHECK constraints, so th
 ## 6. Invariants enforced in code (not expressible as constraints)
 - Assignment quantities per order item equal the item quantity.
 - `print_jobs.design_version_id` equals the task's `approved_version_id`, and `garment_list_version_id` is `locked`.
+- Phase 06: `print_jobs.bulk_job_id` is UNIQUE (one printing job per completed bulk job) and `bulk_version_id` points at the final internal bulk version (null for external). `print_jobs.version` is the optimistic lock. `print_samples` rows are immutable versions (`sample_no` per job, uploader, notes, decision, `rejection_reason`, `recorded_by` / `decided_at` for the review); `print_jobs.approved_sample_id` points at the approved one. `print_job_events` is the append-only status history; `print_job_gate_passes` holds gate pass details recorded after physical printing (UNIQUE `print_job_id` + `gate_pass_no`).
 - Issued invoices and submitted design versions are never updated (except invoice status → `void`).
 - `orders.verified_paid_minor` = Σ verified payments − Σ refunds, recalculated in the same transaction and checked nightly.
 - Pricing rules with `material_id = NULL` cannot be made unique by MySQL (NULLs are distinct), so duplicates are rejected in the pricing Action.

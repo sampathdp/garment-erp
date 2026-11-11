@@ -59,6 +59,8 @@ function navIcon(href: string) {
     case "/bulk-jobs/":
     case "/bulk-jobs/mine/":
       return <BoxesIcon size={17} />;
+    case "/printing/":
+      return <ShirtIcon size={17} />;
     case "/settings/bulk-setup/":
       return <SlidersIcon size={17} />;
     case "/settings/pricing/":

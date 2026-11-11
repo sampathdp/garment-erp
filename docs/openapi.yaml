@@ -564,6 +564,34 @@ paths:
     post: { operationId: bulk-jobs.external.evidence, tags: [Bulk], description: "multipart { file (image/PDF), note? }. bulk.manage_external.", responses: { "200": { description: Bulk job } } }
   /bulk-jobs/{job}/external/complete:
     post: { operationId: bulk-jobs.external.complete, tags: [Bulk], description: "{ version, notes? }. No WeTransfer link; same mandatory data (409 bulk_incomplete).", responses: { "200": { description: Bulk job (completed) } } }
+  /print-jobs:
+    get: { operationId: print-jobs.index, tags: [Printing], description: "printing.view. Printing dashboard: only jobs whose bulk job is completed. filter[status] (comma list), filter[mode]=internal|external, filter[open], filter[search]; sort=due_date|-due_date|created_at|-created_at (default: due date, urgent first). Rows: design preview, material, bulk/patch/collar meter, quantity, bulk files, WeTransfer link, mode, list.", responses: { "200": { description: Paginated printing jobs } } }
+  /print-jobs/recipients:
+    get: { operationId: print-jobs.recipients, tags: [Printing], description: "Active suppliers that can be chosen as printing company.", responses: { "200": { description: Suppliers } } }
+  /print-jobs/{job}:
+    get: { operationId: print-jobs.show, tags: [Printing], description: "Detail with sending record, sample versions, printing record, gate passes, status history, documents { job_card, name_list: { viewable, printable, print_locked_reason } } and abilities.", responses: { "200": { description: Printing job }, "404": { $ref: "#/components/responses/NotFound" } } }
+  /print-jobs/{job}/job-card:
+    get: { operationId: print-jobs.job-card, tags: [Printing], description: "Job Card read model for on-screen review (printing.view).", responses: { "200": { description: Job Card } } }
+  /print-jobs/{job}/name-list:
+    get: { operationId: print-jobs.name-list, tags: [Printing], description: "Confirmed name/number list version for on-screen review (printing.view).", responses: { "200": { description: List } } }
+  /print-jobs/{job}/documents/{document}/print:
+    get: { operationId: print-jobs.documents.print, tags: [Printing], description: "document = job-card | name-list. printing.print_documents. Server-rendered printable HTML, audited. 409 document_printing_locked until the printing sample is approved.", responses: { "200": { description: text/html }, "403": { $ref: "#/components/responses/Forbidden" }, "409": { description: document_printing_locked } } }
+  /print-jobs/{job}/files/{document}:
+    get: { operationId: print-jobs.documents.download, tags: [Printing], description: "Signed 5-minute URL + printing policy; only sample, gate pass, final bulk and approved design files of the job.", responses: { "200": { description: File } } }
+  /print-jobs/{job}/send:
+    post: { operationId: print-jobs.send, tags: [Printing], description: "printing.manage. { version, supplier_id?, recipient_name?, notes? }. Ready for Printing → Sent for Printing; Page Owners notified.", responses: { "200": { description: Printing job } } }
+  /print-jobs/{job}/samples:
+    post: { operationId: print-jobs.samples.store, tags: [Printing], description: "printing.upload_sample. multipart { version, image (JPG/PNG/WebP ≤ 10 MB, content-checked), documents[]? (image/PDF, ≤ 5), notes? }. New immutable sample version → Sample Pending Approval; Page Owners notified.", responses: { "200": { description: Printing job }, "422": { description: Invalid file } } }
+  /print-jobs/{job}/samples/approve:
+    post: { operationId: print-jobs.samples.approve, tags: [Printing], description: "printing.approve_sample + Page Owner of the page. { version, channel?, comment? } → Sample Approved; Operation Admins notified.", responses: { "200": { description: Printing job } } }
+  /print-jobs/{job}/samples/reject:
+    post: { operationId: print-jobs.samples.reject, tags: [Printing], description: "printing.approve_sample + Page Owner of the page. { version, reason (required), channel? } → Sample Rejected; Operation Admins notified.", responses: { "200": { description: Printing job }, "422": { description: Reason missing } } }
+  /print-jobs/{job}/physical-printing/start:
+    post: { operationId: print-jobs.printing.start, tags: [Printing], description: "printing.manage. { version, notes? }. Only from Sample Approved (409 otherwise).", responses: { "200": { description: Printing job } } }
+  /print-jobs/{job}/physical-printing/complete:
+    post: { operationId: print-jobs.printing.complete, tags: [Printing], description: "printing.manage. { version, printed_quantity, notes? } → Printing Completed.", responses: { "200": { description: Printing job } } }
+  /print-jobs/{job}/gate-passes:
+    post: { operationId: print-jobs.gate-passes.store, tags: [Printing], description: "printing.record_gate_pass, after Printing Completed. multipart { gate_pass_no, gate_pass_date (≤ today), document? (image/PDF ≤ 10 MB), notes? }. 409 duplicate_gate_pass.", responses: { "200": { description: Printing job } } }
   /bulk-setup:
     get: { operationId: bulk-setup.index, tags: [Bulk], description: "bulk.configure: measurement fields, checklist templates, suppliers. POST/PATCH measurement-fields, checklist-templates (new version), suppliers.", responses: { "200": { description: Setup } } }
 

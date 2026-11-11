@@ -111,11 +111,11 @@ describe('page owner', function () {
         expect(decision($this->ownerA, 'approveBulk', $bulkOrder))->toBe(200)
             ->and(decision($this->ownerA, 'approveBulk', $this->orderA))->toBe(409);
 
-        $job = record(PrintJob::class, ['order_id' => $this->orderA->id, 'branch_id' => $this->branch->id, 'status' => PrintJobStatus::SampleReview]);
-        expect(decision($this->ownerA, 'approveSample', $job))->toBe(200)
+        $job = record(PrintJob::class, ['order_id' => $this->orderA->id, 'branch_id' => $this->branch->id, 'status' => PrintJobStatus::SamplePendingApproval]);
+        expect(decision($this->ownerA, 'reviewSample', $job))->toBe(200)
             ->and(decision($this->ownerA, 'uploadSample', $job))->toBe(403);
-        $job->forceFill(['status' => PrintJobStatus::Preparing]);
-        expect(decision($this->ownerA, 'approveSample', $job))->toBe(409);
+        $job->forceFill(['status' => PrintJobStatus::SentForPrinting]);
+        expect(decision($this->ownerA, 'reviewSample', $job))->toBe(409);
     });
 
     it('cannot verify payments or do operations work', function () {
@@ -223,13 +223,14 @@ describe('operation admin', function () {
     it('assigns bulk, manages printing and uploads samples, but approves nothing', function () {
         $ops = $this->userWithRole(Roles::OPERATION_ADMIN);
         $assignable = $this->makeOrder($this->branch, $this->pageB, OrderStatus::DesignApproved);
-        $job = record(PrintJob::class, ['order_id' => $this->orderA->id, 'branch_id' => $this->branch->id, 'status' => PrintJobStatus::Preparing]);
+        $job = record(PrintJob::class, ['order_id' => $this->orderA->id, 'branch_id' => $this->branch->id, 'status' => PrintJobStatus::ReadyForPrinting]);
 
         expect(decision($ops, 'assignBulk', $assignable))->toBe(200)
             ->and(decision($ops, 'assignBulk', $this->orderA))->toBe(409)
-            ->and(decision($ops, 'manage', $job))->toBe(200)
-            ->and(decision($ops, 'uploadSample', $job))->toBe(200)
-            ->and(decision($ops, 'approveSample', $job))->toBe(403)
+            ->and(decision($ops, 'send', $job))->toBe(200)
+            ->and(decision($ops, 'uploadSample', $job))->toBe(409)
+            ->and(decision($ops, 'reviewSample', $job))->toBe(403)
+            ->and(decision($ops, 'printDocuments', $job))->toBe(409)
             ->and(decision($ops, 'approveBulk', $assignable))->toBe(403);
     });
 });

@@ -16,6 +16,7 @@ use App\Modules\BulkProduction\Support\BulkUploads;
 use App\Modules\BulkProduction\Support\BulkWorkflow;
 use App\Modules\Identity\Models\User;
 use App\Modules\Orders\Models\Order;
+use App\Modules\Printing\Actions\OpenPrintJob;
 use App\Support\Exceptions\ApiException;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
@@ -30,7 +31,8 @@ use Throwable;
  *    completion and no WeTransfer link, but the same mandatory data (measurements, checklist,
  *    client confirmation, locked list, advance). Evidence is optional (addEvidence()).
  *
- * Both notify the Operation Admins and Page Owners and move the order to print preparation.
+ * Both notify the Operation Admins and Page Owners, move the order to print preparation and
+ * open the printing job (Printing OpenPrintJob).
  */
 final class CompleteBulkJob
 {
@@ -40,6 +42,7 @@ final class CompleteBulkJob
         private readonly BulkCompletion $completion,
         private readonly BulkNotifications $notify,
         private readonly AuditLogger $audit,
+        private readonly OpenPrintJob $printing,
     ) {}
 
     /** @param  list<UploadedFile>  $files */
@@ -111,5 +114,7 @@ final class CompleteBulkJob
         $this->workflow->finishOrderStage($order, $actor);
         $this->audit->record('bulk.completed', $job, ['after' => ['mode' => $job->mode?->value, 'notes' => $notes, ...$details]], actor: $actor, branchId: $order->branch_id);
         $this->notify->completed($job, $order, $actor);
+        // The printing job becomes available in the same transaction (Phase 06).
+        $this->printing->handle($job, $order, $actor);
     }
 }

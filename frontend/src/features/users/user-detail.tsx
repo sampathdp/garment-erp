@@ -12,6 +12,7 @@ import { Modal } from "@/components/ui/modal";
 import { EmptyState, ErrorState, LoadingState } from "@/components/ui/states";
 import { useToast } from "@/components/ui/toast";
 import { useAuth } from "@/features/auth/auth-provider";
+import { newPasswordWithConfirmation } from "@/features/auth/password-schema";
 import { ApiError } from "@/lib/api-client";
 import { formatDateTime } from "@/lib/format";
 import { applyServerErrors } from "@/lib/forms";
@@ -105,6 +106,46 @@ function AssignmentsEditor({ user, editable }: { user: UserRow; editable: boolea
   );
 }
 
+/** Administrator chooses a new password for another user (no email). The API enforces policy and scope. */
+export function SetPasswordForm({ user, onDone }: { user: UserRow; onDone: () => void }) {
+  const { setPassword } = useUserMutations(user.id);
+  const { notify } = useToast();
+  const [formError, setFormError] = useState<string | null>(null);
+  const [signOut, setSignOut] = useState(true);
+  const form = useForm<z.infer<typeof newPasswordWithConfirmation>>({ resolver: zodResolver(newPasswordWithConfirmation), defaultValues: { password: "", password_confirmation: "" } });
+
+  const onSubmit = form.handleSubmit(async (values) => {
+    setFormError(null);
+    try {
+      await setPassword.mutateAsync({ ...values, sign_out: signOut });
+      form.reset();
+      notify(signOut ? "Password set. The user was signed out on all devices." : "Password set", "success");
+      onDone();
+    } catch (error) {
+      setFormError(applyServerErrors(error, form.setError, ["password", "password_confirmation"]));
+    }
+  });
+
+  const { errors, isSubmitting } = form.formState;
+  return (
+    <form onSubmit={onSubmit} noValidate className="flex flex-col gap-4">
+      <p className="text-sm text-muted">Share the new password with {user.name} through a secure channel. Any outstanding reset link stops working.</p>
+      <FormError message={formError} />
+      <TextField label="New password" type="password" autoComplete="new-password" maxLength={200} hint="At least 10 characters with mixed letters and numbers." error={errors.password?.message} {...form.register("password")} />
+      <TextField label="Confirm new password" type="password" autoComplete="new-password" maxLength={200} error={errors.password_confirmation?.message} {...form.register("password_confirmation")} />
+      <Checkbox label="Sign the user out on all devices" checked={signOut} onChange={(e) => setSignOut(e.target.checked)} />
+      <div className="flex justify-end gap-2">
+        <Button type="button" variant="secondary" onClick={onDone}>
+          Cancel
+        </Button>
+        <Button type="submit" loading={isSubmitting}>
+          Set password
+        </Button>
+      </div>
+    </form>
+  );
+}
+
 function AccountActions({ user }: { user: UserRow }) {
   const { setStatus, sendPasswordReset } = useUserMutations(user.id);
   const { notify } = useToast();
@@ -112,6 +153,7 @@ function AccountActions({ user }: { user: UserRow }) {
   const [reason, setReason] = useState("");
   const [resetOpen, setResetOpen] = useState(false);
   const [signOut, setSignOut] = useState(true);
+  const [setPasswordOpen, setSetPasswordOpen] = useState(false);
   const neverSignedIn = user.last_login_at === null;
 
   return (
@@ -128,6 +170,13 @@ function AccountActions({ user }: { user: UserRow }) {
       <Button variant="secondary" onClick={() => setResetOpen(true)} disabled={!user.is_active}>
         {neverSignedIn ? "Resend setup link" : "Send password reset link"}
       </Button>
+      <Button variant="secondary" onClick={() => setSetPasswordOpen(true)} disabled={!user.is_active}>
+        Set password
+      </Button>
+
+      <Modal open={setPasswordOpen} title={`Set a new password for ${user.name}`} onClose={() => setSetPasswordOpen(false)}>
+        {setPasswordOpen && <SetPasswordForm user={user} onDone={() => setSetPasswordOpen(false)} />}
+      </Modal>
 
       <Modal open={deactivateOpen} title={`Deactivate ${user.name}?`} onClose={() => setDeactivateOpen(false)}>
         <div className="flex flex-col gap-4">

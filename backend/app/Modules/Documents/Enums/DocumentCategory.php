@@ -27,6 +27,7 @@ enum DocumentCategory: string
     case DesignInstruction = 'design_instruction';
     case BulkPreview = 'bulk_preview'; // bulk layout preview image (validated with DesignFile::PREVIEW)
     case BulkFile = 'bulk_file';       // bulk layout PDF / CDR (validated with DesignFile::SOURCE)
+    case GatePass = 'gate_pass';       // scanned gate pass recorded after physical printing
 
     private const IMAGES = ['image/jpeg', 'image/png', 'image/webp'];
 
@@ -34,7 +35,7 @@ enum DocumentCategory: string
     public function allowedMimeTypes(): array
     {
         return match ($this) {
-            self::PaymentSlip, self::SamplePhoto, self::ProofOfDelivery, self::Evidence, self::DesignPreview, self::BulkPreview, self::ProductionFile, self::DesignInstruction => [...self::IMAGES, 'application/pdf'],
+            self::PaymentSlip, self::SamplePhoto, self::ProofOfDelivery, self::Evidence, self::DesignPreview, self::BulkPreview, self::ProductionFile, self::DesignInstruction, self::GatePass => [...self::IMAGES, 'application/pdf'],
             self::Logo => self::IMAGES,
             self::InvoicePdf => ['application/pdf'],
             self::ImportFile => ['text/csv', 'text/plain', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'],
@@ -51,7 +52,7 @@ enum DocumentCategory: string
         $mb = match ($this) {
             self::Logo => 2,
             self::ImportFile => 5,
-            self::PaymentSlip, self::SamplePhoto, self::ProofOfDelivery, self::Evidence, self::InvoicePdf, self::ProductionFile => 10,
+            self::PaymentSlip, self::SamplePhoto, self::ProofOfDelivery, self::Evidence, self::InvoicePdf, self::ProductionFile, self::GatePass => 10,
             self::DesignInstruction => 25,
             self::DesignPreview, self::BulkPreview => 25,
             self::DesignSource, self::BulkFile => (int) config('documents.design_source_max_mb', 200),

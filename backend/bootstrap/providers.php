@@ -12,6 +12,7 @@ use App\Modules\Orders\OrdersServiceProvider;
 use App\Modules\Organizations\OrganizationsServiceProvider;
 use App\Modules\Payments\PaymentsServiceProvider;
 use App\Modules\Pricing\PricingServiceProvider;
+use App\Modules\Printing\PrintingServiceProvider;
 use App\Providers\AppServiceProvider;
 
 return [
@@ -26,5 +27,6 @@ return [
     GarmentsServiceProvider::class,
     InvoicesServiceProvider::class,
     BulkProductionServiceProvider::class,
+    PrintingServiceProvider::class,
     NotificationsServiceProvider::class,
 ];

@@ -12,3 +12,4 @@ pest()->extend(TestCase::class)
 require_once __DIR__.'/Support/intake.php';
 require_once __DIR__.'/Support/design.php';
 require_once __DIR__.'/Support/bulk.php';
+require_once __DIR__.'/Support/printing.php';

@@ -23,6 +23,7 @@ export const NAV_ITEMS: NavItem[] = [
   { label: "Design plan", href: "/designs/", permissions: ["designs.view", "designs.view_assigned"], section: "main" },
   { label: "Bulk management", href: "/bulk-jobs/", permissions: ["bulk.view"], section: "main" },
   { label: "My bulk jobs", href: "/bulk-jobs/mine/", permissions: ["bulk.view_assigned"], section: "main" },
+  { label: "Printing", href: "/printing/", permissions: ["printing.view"], section: "main" },
   { label: "Price lists", href: "/settings/pricing/", permissions: ["pricing.view"], section: "settings" },
   { label: "List fields & sizes", href: "/settings/garment-setup/", permissions: ["pricing.view", "pricing.manage"], section: "settings" },
   { label: "Workflow settings", href: "/settings/workflow/", permissions: ["settings.manage"], section: "settings" },
