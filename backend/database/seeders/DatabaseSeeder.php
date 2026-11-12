@@ -9,6 +9,8 @@ use App\Modules\Identity\Support\Roles;
 use App\Modules\Organizations\Models\Branch;
 use App\Modules\Organizations\Models\Organization;
 use App\Modules\Organizations\Models\Page;
+use App\Modules\Organizations\Models\AppSetting;
+use App\Modules\Organizations\Support\WorkflowSettings;
 use App\Modules\Organizations\Models\WorkingCalendarDay;
 use App\Modules\Pricing\Models\Material;
 use App\Modules\Pricing\Models\Size;
@@ -97,5 +99,8 @@ class DatabaseSeeder extends Seeder
             $admin->branches()->syncWithoutDetaching([$colombo->id]);
             $this->command->info("Admin created: {$email}".($generated ? " / password: {$password} (shown once, change it)" : ''));
         }
+
+        AppSetting::query()->updateOrCreate(['key' => WorkflowSettings::AUTO_ASSIGN_DESIGNER], ['value' => '1']);
+        AppSetting::query()->updateOrCreate(['key' => WorkflowSettings::AUTO_ASSIGN_BULK_DESIGNER], ['value' => '1']);
     }
 }

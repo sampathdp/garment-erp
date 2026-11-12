@@ -116,7 +116,9 @@ final class AssignBulkJob
     private function target(ProductionMode $mode, ?int $designerId, ?int $supplierId, Order $order): array
     {
         if ($mode === ProductionMode::Internal) {
-            $designer = $this->staff->eligible($designerId, Permissions::BULK_MEASURE);
+            $designer = ($designerId === null || $designerId === 0)
+                ? $this->staff->freeBulkDesignerFor($order)
+                : $this->staff->eligible($designerId, Permissions::BULK_MEASURE);
             if ($designer === null || ! $designer->canAccessBranch($order->branch_id) || ! $designer->canAccessPage($order->page_id)) {
                 throw new ApiException(422, 'validation_failed', 'Choose an active Bulk Designer who can work on this job.', ['bulk_designer_id' => ['Choose an active Bulk Designer who can work on this job.']]);
             }

@@ -40,7 +40,13 @@ final class CreateDesignTask
         }
 
         $item = OrderItem::query()->where('order_id', $order->id)->orderBy('sort_order')->firstOrFail();
-        $designer = $this->staff->eligible($this->settings->defaultDesignerId(), Permissions::DESIGNS_UPLOAD_VERSION);
+        $designer = $this->settings->autoAssignDesigner()
+            ? $this->staff->freeDesignerFor($order, $this->settings->defaultDesignerId())
+            : $this->staff->eligible($this->settings->defaultDesignerId(), Permissions::DESIGNS_UPLOAD_VERSION);
+
+        if ($designer === null && $this->settings->defaultDesignerId() !== null) {
+            $designer = $this->staff->eligible($this->settings->defaultDesignerId(), Permissions::DESIGNS_UPLOAD_VERSION);
+        }
 
         $task = new DesignTask(['order_id' => $order->id, 'order_item_id' => $item->id, 'title' => "Design for {$order->order_no}", 'designer_id' => $designer?->id]);
         $task->forceFill(['status' => DesignTaskStatus::Pending, 'version' => 1, 'correction_rounds' => 0])->save();

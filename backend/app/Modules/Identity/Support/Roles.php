@@ -34,6 +34,8 @@ final class Roles
 
     public const CUTTING_STAFF = 'cutting_staff';
 
+    public const DELIVERY_STAFF = 'delivery_staff';
+
     public const PRODUCTION_MANAGER = 'production_manager';
 
     /** Roles whose permissions can never be changed from the UI. */
@@ -51,6 +53,23 @@ final class Roles
                 'label' => 'Super Admin',
                 'description' => 'System configuration, users and roles. Every permission.',
                 'permissions' => P::all(),
+            ],
+            self::PAGE_OWNER => [
+                'label' => 'Page Owner',
+                'description' => 'Owns the orders of assigned pages: customers, design instructions, garment lists and approvals.',
+                'permissions' => [
+                    P::SCOPE_ALL_BRANCHES, P::BRANCHES_VIEW, P::PAGES_VIEW,
+                    P::CUSTOMERS_VIEW, P::CUSTOMERS_MANAGE, P::PRICING_VIEW,
+                    P::ORDERS_VIEW, P::ORDERS_CREATE, P::ORDERS_UPDATE, P::ORDERS_DISCOUNT, P::ORDERS_SUBMIT, P::ORDERS_HOLD, P::ORDERS_CANCEL,
+                    P::PAYMENTS_VIEW, P::PAYMENTS_RECORD, P::INVOICES_VIEW,
+                    P::DESIGNS_VIEW, P::DESIGNS_ASSIGN, P::DESIGNS_INSTRUCT, P::DESIGNS_RECORD_REVIEW, P::DESIGNS_APPROVE,
+                    P::GARMENT_LISTS_VIEW, P::GARMENT_LISTS_MANAGE, P::GARMENT_LISTS_CONFIRM,
+                    P::BULK_VIEW, P::BULK_APPROVE,
+                    P::PRODUCTION_VIEW, P::ISSUES_REPORT,
+                    P::PRINTING_VIEW, P::PRINTING_APPROVE_SAMPLE,
+                    P::CUTTING_VIEW, P::CUTTING_CONFIRM_CLIENT,
+                    P::QC_VIEW, P::DELIVERY_VIEW, P::REPORTS_VIEW,
+                ],
             ],
             self::SECOND_ADMIN => [
                 'label' => 'Second Admin',
@@ -107,6 +126,15 @@ final class Roles
                 'label' => 'Cutting Staff',
                 'description' => 'Works on assigned cutting jobs: quantities, checklists, quality checks and issue reports.',
                 'permissions' => [...$assignedTaskScope, P::CUTTING_VIEW_ASSIGNED, P::CUTTING_UPDATE_CHECKLIST, P::QC_INSPECT, P::ISSUES_REPORT],
+            ],
+            self::DELIVERY_STAFF => [
+                'label' => 'Delivery Staff',
+                'description' => 'Dispatches and confirms deliveries of assigned branches and records cash on delivery.',
+                'permissions' => [
+                    P::SCOPE_ALL_PAGES, P::BRANCHES_VIEW,
+                    P::ORDERS_VIEW, P::DELIVERY_VIEW, P::DELIVERY_DISPATCH, P::DELIVERY_CONFIRM, P::ORDERS_COMPLETE,
+                    P::PAYMENTS_RECORD, P::GATE_PASSES_VIEW,
+                ],
             ],
         ];
     }

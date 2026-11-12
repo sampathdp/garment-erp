@@ -21,17 +21,22 @@ final class AssignDesigner
 
     public function handle(User $actor, DesignTask $task, int $designerId): DesignTask
     {
-        $designer = $this->staff->eligible($designerId, Permissions::DESIGNS_UPLOAD_VERSION)
-            ?? throw new ApiException(422, 'validation_failed', 'Select an active designer.', ['designer_id' => ['Select an active user who can upload designs.']]);
+        $order = Order::query()->findOrFail($task->order_id);
+        $designer = $designerId === 0
+            ? $this->staff->freeDesignerFor($order)
+            : $this->staff->eligible($designerId, Permissions::DESIGNS_UPLOAD_VERSION);
 
-        return DB::transaction(function () use ($actor, $task, $designer): DesignTask {
+        if ($designer === null) {
+            throw new ApiException(422, 'validation_failed', 'Select an active designer.', ['designer_id' => ['Select an active user who can upload designs.']]);
+        }
+
+        return DB::transaction(function () use ($actor, $task, $designer, $order): DesignTask {
             $task = DesignTask::query()->lockForUpdate()->findOrFail($task->id);
             $before = $task->designer_id;
             if ($before === $designer->id) {
                 return $task;
             }
             $task->forceFill(['designer_id' => $designer->id, 'version' => $task->version + 1])->save();
-            $order = Order::query()->findOrFail($task->order_id);
             $this->audit->record('designs.assigned', $task, ['before' => ['designer_id' => $before], 'after' => ['designer_id' => $designer->id]], actor: $actor, branchId: $order->branch_id);
             $this->notify->assigned($task, $order, $designer, $actor);
 

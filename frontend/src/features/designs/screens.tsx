@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { TextField } from "@/components/ui/field";
 import { Badge, Checkbox, FormError, PageHeader, Section, SelectField, TextAreaField } from "@/components/ui/form-controls";
-import { ChevronRightIcon, DownloadIcon, ExternalLinkIcon, PaletteIcon, PlusIcon, SearchIcon, UserIcon } from "@/components/ui/icons";
+import { ChevronRightIcon, DownloadIcon, ExternalLinkIcon, PaletteIcon, PlusIcon, SearchIcon, SparklesIcon, UserIcon } from "@/components/ui/icons";
 import { Modal } from "@/components/ui/modal";
 import { RequirePermission, WithIdParam } from "@/components/ui/record-page";
 import { EmptyState, ErrorState, LoadingState } from "@/components/ui/states";
@@ -191,7 +191,7 @@ function DesignDetail({ id }: { id: number }) {
   const m = useDesignMutations(id);
   const { notify } = useToast();
   const [modal, setModal] = useState<"version" | "final" | "review" | "assign" | null>(null);
-  const designers = useDesigners(modal === "assign");
+  const designers = useDesigners(modal === "assign", id);
   const [designerId, setDesignerId] = useState("");
 
   if (query.isPending) return <LoadingState />;
@@ -214,7 +214,18 @@ function DesignDetail({ id }: { id: number }) {
         actions={
           <div className="flex flex-wrap items-center gap-2.5">
             <Badge tone={tone(t.status.value)} dot>{t.status.label}</Badge>
-            {a?.assign && <Button variant="secondary" size="sm" onClick={() => setModal("assign")}>Assign designer</Button>}
+            {a?.assign && (
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => {
+                  setDesignerId(String(t.designer?.id ?? ""));
+                  setModal("assign");
+                }}
+              >
+                Assign designer
+              </Button>
+            )}
             {a?.upload_version && <Button size="sm" onClick={() => setModal("version")}>Upload design</Button>}
             {a?.request_correction && <Button size="sm" onClick={() => setModal("review")}>Review design</Button>}
             {a?.submit_final && <Button size="sm" onClick={() => setModal("final")}>Submit final files</Button>}
@@ -384,7 +395,43 @@ function DesignDetail({ id }: { id: number }) {
       <Modal open={modal === "assign"} title="Assign Responsible Designer" onClose={() => setModal(null)}>
         <div className="flex flex-col gap-4">
           <FormError message={m.assign.error instanceof ApiError ? m.assign.error.message : null} />
-          <SelectField label="Select Designer" options={[{ value: "", label: "Choose a designer…" }, ...(designers.data ?? []).map((d) => ({ value: String(d.id), label: d.name }))]} value={designerId} onChange={(e) => setDesignerId(e.target.value)} />
+          {(() => {
+            const free = designers.data?.find((d) => d.is_free);
+            return (
+              <>
+                {free && (
+                  <div className="flex items-center justify-between rounded-lg border border-brand/30 bg-brand/5 p-3 text-xs text-ink">
+                    <div className="flex items-center gap-2">
+                      <SparklesIcon size={16} className="text-brand shrink-0" />
+                      <div>
+                        <span className="font-semibold text-brand">Auto-assign recommendation:</span>{" "}
+                        <span>{free.name} is currently free ({free.active_tasks ?? 0} active tasks).</span>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      className="ml-2 font-semibold text-brand hover:underline shrink-0"
+                      onClick={() => setDesignerId(String(free.id))}
+                    >
+                      Use free
+                    </button>
+                  </div>
+                )}
+                <SelectField
+                  label="Select Designer"
+                  options={[
+                    { value: "", label: "Choose a designer…" },
+                    ...(designers.data ?? []).map((d) => ({
+                      value: String(d.id),
+                      label: `${d.name}${d.active_tasks !== undefined ? ` (${d.active_tasks} active task${d.active_tasks === 1 ? "" : "s"})${d.is_free ? " · Free" : ""}` : ""}`,
+                    })),
+                  ]}
+                  value={designerId}
+                  onChange={(e) => setDesignerId(e.target.value)}
+                />
+              </>
+            );
+          })()}
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={() => setModal(null)}>Cancel</Button>
             <Button disabled={!designerId} loading={m.assign.isPending} onClick={() => m.assign.mutate(Number(designerId), { onSuccess: () => (notify("Designer assigned", "success"), setModal(null)) })}>Assign Designer</Button>

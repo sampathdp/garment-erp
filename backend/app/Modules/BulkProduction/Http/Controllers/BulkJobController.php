@@ -134,8 +134,14 @@ final class BulkJobController
         $user = $request->user();
         abort_unless($user->can(Permissions::BULK_ASSIGN), 403);
 
+        $order = null;
+        if ($request->filled('job_id')) {
+            $job = BulkJob::query()->find((int) $request->input('job_id'));
+            $order = $job ? Order::query()->find($job->order_id) : null;
+        }
+
         return ApiResponse::data([
-            'designers' => $staff->withPermission(Permissions::BULK_MEASURE)->map(fn (User $u) => ['id' => $u->id, 'name' => $u->name])->values()->all(),
+            'designers' => $staff->bulkDesignersWithWorkload($order),
             'suppliers' => Supplier::query()->where('is_active', true)->orderBy('name')->get(['id', 'name', 'service_type'])
                 ->map(fn (Supplier $s) => ['id' => $s->id, 'name' => $s->name, 'service_type' => $s->service_type->value])->all(),
         ]);
@@ -147,7 +153,7 @@ final class BulkJobController
         $data = $request->validate([
             'version' => ['required', 'integer'],
             'mode' => ['required', Rule::enum(ProductionMode::class)],
-            'bulk_designer_id' => ['required_if:mode,internal', 'nullable', 'integer'],
+            'bulk_designer_id' => ['sometimes', 'nullable', 'integer'],
             'supplier_id' => ['required_if:mode,external', 'nullable', 'integer'],
             'notes' => ['sometimes', 'nullable', 'string', 'max:1000'],
             'reason' => ['sometimes', 'nullable', 'string', 'max:500'],
@@ -156,8 +162,8 @@ final class BulkJobController
         $actor = $request->user();
         $mode = ProductionMode::from($data['mode']);
         $action->handle($actor, $job, (int) $data['version'], $mode,
-            $mode === ProductionMode::Internal ? (int) $data['bulk_designer_id'] : null,
-            $mode === ProductionMode::External ? (int) $data['supplier_id'] : null,
+            $mode === ProductionMode::Internal ? ($data['bulk_designer_id'] === null ? null : (int) $data['bulk_designer_id']) : null,
+            $mode === ProductionMode::External ? ($data['supplier_id'] === null ? null : (int) $data['supplier_id']) : null,
             $data['notes'] ?? null, $data['reason'] ?? null);
 
         return new BulkJobResource(self::loadDetail($job->refresh()));

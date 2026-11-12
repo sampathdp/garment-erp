@@ -90,10 +90,25 @@ export function useDesignTask(id: number | null) {
   });
 }
 
-export function useDesigners(enabled: boolean) {
+export interface DesignerItem {
+  id: number;
+  name: string;
+  active_tasks?: number;
+  is_free?: boolean;
+  has_access?: boolean;
+}
+
+export function useDesigners(enabled: boolean, taskId?: number) {
   return useQuery({
-    queryKey: designKeys.designers,
-    queryFn: ({ signal }) => api.get<{ data: { items: { id: number; name: string }[] } }>("design-tasks/designers", undefined, signal).then((r) => r.data.items),
+    queryKey: [...designKeys.designers, taskId],
+    queryFn: ({ signal }) =>
+      api
+        .get<{ data: { items: DesignerItem[] } }>(
+          taskId ? `design-tasks/designers?task_id=${taskId}` : "design-tasks/designers",
+          undefined,
+          signal,
+        )
+        .then((r) => r.data.items),
     enabled,
   });
 }

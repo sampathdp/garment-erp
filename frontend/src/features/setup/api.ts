@@ -6,9 +6,11 @@ import { api } from "@/lib/api-client";
 export interface WorkflowSettings {
   default_designer_id: number | null;
   default_bulk_designer_id: number | null;
+  auto_assign_designer: boolean;
+  auto_assign_bulk_designer: boolean;
   max_correction_rounds: number;
-  designers: { id: number; name: string }[];
-  bulk_designers: { id: number; name: string }[];
+  designers: { id: number; name: string; active_tasks?: number; is_free?: boolean; has_access?: boolean }[];
+  bulk_designers: { id: number; name: string; active_jobs?: number; is_free?: boolean; has_access?: boolean }[];
 }
 
 export function useWorkflowSettings() {
@@ -18,7 +20,13 @@ export function useWorkflowSettings() {
 export function useSaveWorkflowSettings() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (input: { default_designer_id: number | null; default_bulk_designer_id: number | null; max_correction_rounds: number }) =>
+    mutationFn: (input: {
+      default_designer_id: number | null;
+      default_bulk_designer_id: number | null;
+      auto_assign_designer?: boolean;
+      auto_assign_bulk_designer?: boolean;
+      max_correction_rounds: number;
+    }) =>
       api.put<{ data: WorkflowSettings }>("settings/workflow", input).then((r) => r.data),
     onSuccess: (data) => queryClient.setQueryData(["settings", "workflow"], data),
   });

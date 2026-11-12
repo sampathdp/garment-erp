@@ -79,7 +79,14 @@ final class CreateBulkJobIfEligible
                 return null;
             }
 
-            $designer = $this->staff->eligible($this->settings->defaultBulkDesignerId(), Permissions::BULK_MEASURE);
+            $designer = $this->settings->autoAssignBulkDesigner()
+                ? $this->staff->freeBulkDesignerFor($order, $this->settings->defaultBulkDesignerId())
+                : $this->staff->eligible($this->settings->defaultBulkDesignerId(), Permissions::BULK_MEASURE);
+
+            if ($designer === null && $this->settings->defaultBulkDesignerId() !== null) {
+                $designer = $this->staff->eligible($this->settings->defaultBulkDesignerId(), Permissions::BULK_MEASURE);
+            }
+
             $job = new BulkJob([
                 'order_id' => $order->id, 'branch_id' => $order->branch_id, 'design_task_id' => $parts['task']->id,
                 'garment_list_version_id' => $parts['list_version']->id, 'invoice_id' => $parts['invoice']->id, 'bulk_designer_id' => $designer?->id,

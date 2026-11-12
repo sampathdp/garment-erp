@@ -17,6 +17,7 @@ import {
   PrinterIcon,
   ScissorsIcon,
   ShirtIcon,
+  SparklesIcon,
   UserIcon,
 } from "@/components/ui/icons";
 import { Modal } from "@/components/ui/modal";
@@ -77,7 +78,7 @@ function Stat({
 
 function AssignForm({ job, onDone }: { job: BulkJob; onDone: () => void }) {
   const m = useBulkMutations(job.id);
-  const assignees = useBulkAssignees(true);
+  const assignees = useBulkAssignees(true, job.id);
   const { notify } = useToast();
   const [mode, setMode] = useState<BulkMode>(job.mode ?? "internal");
   const [designer, setDesigner] = useState(String(job.bulk_designer?.id ?? ""));
@@ -86,6 +87,8 @@ function AssignForm({ job, onDone }: { job: BulkJob; onDone: () => void }) {
   const [reason, setReason] = useState("");
   const reassign = job.mode !== null;
   const target = mode === "internal" ? designer : supplier;
+
+  const freeDesigner = assignees.data?.designers?.find((d) => d.is_free);
 
   return (
     <div className="flex flex-col gap-4">
@@ -100,7 +103,38 @@ function AssignForm({ job, onDone }: { job: BulkJob; onDone: () => void }) {
         onChange={(e) => setMode(e.target.value as BulkMode)}
       />
       {mode === "internal" ? (
-        <SelectField label="Bulk Designer" options={[{ value: "", label: "Choose a designer…" }, ...(assignees.data?.designers ?? []).map((d) => ({ value: String(d.id), label: d.name }))]} value={designer} onChange={(e) => setDesigner(e.target.value)} />
+        <>
+          {freeDesigner && (
+            <div className="flex items-center justify-between rounded-lg border border-brand/30 bg-brand/5 p-3 text-xs text-ink">
+              <div className="flex items-center gap-2">
+                <SparklesIcon size={16} className="text-brand shrink-0" />
+                <div>
+                  <span className="font-semibold text-brand">Auto-assign recommendation:</span>{" "}
+                  <span>{freeDesigner.name} is currently free ({freeDesigner.active_jobs ?? 0} active jobs).</span>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="ml-2 font-semibold text-brand hover:underline shrink-0"
+                onClick={() => setDesigner(String(freeDesigner.id))}
+              >
+                Use free
+              </button>
+            </div>
+          )}
+          <SelectField
+            label="Bulk Designer"
+            options={[
+              { value: "", label: "Choose a designer…" },
+              ...(assignees.data?.designers ?? []).map((d) => ({
+                value: String(d.id),
+                label: `${d.name}${d.active_jobs !== undefined ? ` (${d.active_jobs} active job${d.active_jobs === 1 ? "" : "s"})${d.is_free ? " · Free" : ""}` : ""}`,
+              })),
+            ]}
+            value={designer}
+            onChange={(e) => setDesigner(e.target.value)}
+          />
+        </>
       ) : (
         <SelectField
           label="External producer"

@@ -13,6 +13,8 @@ use App\Modules\Garments\Models\GarmentFieldDefinition;
 use App\Modules\Garments\Models\GarmentOption;
 use App\Modules\Garments\Models\GarmentOptionSet;
 use App\Modules\Orders\Models\OrderType;
+use App\Modules\Organizations\Models\AppSetting;
+use App\Modules\Organizations\Support\WorkflowSettings;
 use App\Modules\Pricing\Models\ProductType;
 use App\Modules\Pricing\Models\SizeChart;
 use Illuminate\Database\Seeder;

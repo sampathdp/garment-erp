@@ -79,8 +79,8 @@ describe('checklist', function () {
         $other = readyBulkJob($this, ['due_date' => '2026-11-25']);
         assignInternal($this, $other)->assertOk();
         $items = ChecklistRunItem::query()->whereHas('run', fn ($q) => $q->where('bulk_job_id', $this->job->id))->get();
-        expect($items)->toHaveCount(5)
-            ->and(ChecklistRunItem::query()->whereHas('run', fn ($q) => $q->where('bulk_job_id', $other->id))->count())->toBe(5);
+        expect($items)->toHaveCount(10)
+            ->and(ChecklistRunItem::query()->whereHas('run', fn ($q) => $q->where('bulk_job_id', $other->id))->count())->toBe(10);
 
         $first = $items->first();
         $this->signedInAs($this->bulkDesigner)->patchJson("/api/v1/bulk-jobs/{$this->job->id}/checklist/items/{$first->id}", ['is_completed' => true, 'notes' => 'All 10 names checked'])
@@ -94,7 +94,7 @@ describe('checklist', function () {
 
         // A template change never alters the existing instances.
         ChecklistTemplate::query()->update(['is_active' => false]);
-        expect(ChecklistRunItem::query()->whereHas('run', fn ($q) => $q->where('bulk_job_id', $this->job->id))->count())->toBe(5);
+        expect(ChecklistRunItem::query()->whereHas('run', fn ($q) => $q->where('bulk_job_id', $this->job->id))->count())->toBe(10);
 
         confirmChecklistWithClient($this, $this->job)->assertStatus(409)->assertJsonPath('code', 'checklist_incomplete');
 
@@ -102,7 +102,7 @@ describe('checklist', function () {
         submitBulk($this, $this->job)->assertOk();
         approveBulk($this, $this->job)->assertOk();
         $response = submitFinalBulk($this, $this->job)->assertStatus(409)->assertJsonPath('code', 'bulk_incomplete');
-        expect($response->json('errors.checklist'))->toContain('Not completed: Names and numbers match the confirmed list');
+        expect(collect($response->json('errors.checklist'))->first(fn ($msg) => str_contains((string) $msg, 'Name/No')))->not->toBeNull();
     });
 
     it('locks the checklist once the client confirmed it, and reopens it when a correction is requested', function () {

@@ -23,8 +23,8 @@ final class WorkflowSettingsController
 
         return ApiResponse::data([
             ...$settings->all(),
-            'designers' => $staff->withPermission(Permissions::DESIGNS_UPLOAD_VERSION)->map(fn (User $u) => ['id' => $u->id, 'name' => $u->name])->all(),
-            'bulk_designers' => $staff->withPermission(Permissions::BULK_MEASURE)->map(fn (User $u) => ['id' => $u->id, 'name' => $u->name])->all(),
+            'designers' => $staff->designersWithWorkload(),
+            'bulk_designers' => $staff->bulkDesignersWithWorkload(),
         ]);
     }
 
@@ -39,16 +39,26 @@ final class WorkflowSettingsController
         $data = $request->validate([
             'default_designer_id' => ['present', 'nullable', 'integer', $eligible(Permissions::DESIGNS_UPLOAD_VERSION)],
             'default_bulk_designer_id' => ['present', 'nullable', 'integer', $eligible(Permissions::BULK_MEASURE)],
+            'auto_assign_designer' => ['sometimes', 'boolean'],
+            'auto_assign_bulk_designer' => ['sometimes', 'boolean'],
             'max_correction_rounds' => ['required', 'integer', 'min:0', 'max:20'],
         ]);
 
         /** @var User $actor */
         $actor = $request->user();
-        $settings->update($actor, [
+        $payload = [
             WorkflowSettings::DEFAULT_DESIGNER => $data['default_designer_id'] === null ? null : (int) $data['default_designer_id'],
             WorkflowSettings::DEFAULT_BULK_DESIGNER => $data['default_bulk_designer_id'] === null ? null : (int) $data['default_bulk_designer_id'],
             WorkflowSettings::MAX_CORRECTION_ROUNDS => (int) $data['max_correction_rounds'],
-        ]);
+        ];
+        if (array_key_exists('auto_assign_designer', $data)) {
+            $payload[WorkflowSettings::AUTO_ASSIGN_DESIGNER] = (bool) $data['auto_assign_designer'];
+        }
+        if (array_key_exists('auto_assign_bulk_designer', $data)) {
+            $payload[WorkflowSettings::AUTO_ASSIGN_BULK_DESIGNER] = (bool) $data['auto_assign_bulk_designer'];
+        }
+
+        $settings->update($actor, $payload);
 
         return $this->show($settings, $staff);
     }

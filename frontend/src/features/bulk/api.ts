@@ -220,11 +220,25 @@ export function useBulkGarmentList(id: number, enabled: boolean) {
   });
 }
 
-export function useBulkAssignees(enabled: boolean) {
+export interface BulkDesignerAssignee {
+  id: number;
+  name: string;
+  active_jobs?: number;
+  is_free?: boolean;
+  has_access?: boolean;
+}
+
+export function useBulkAssignees(enabled: boolean, jobId?: number) {
   return useQuery({
-    queryKey: bulkKeys.assignees,
+    queryKey: [...bulkKeys.assignees, jobId],
     queryFn: ({ signal }) =>
-      api.get<{ data: { designers: { id: number; name: string }[]; suppliers: { id: number; name: string; service_type: string }[] } }>("bulk-jobs/assignees", undefined, signal).then((r) => r.data),
+      api
+        .get<{ data: { designers: BulkDesignerAssignee[]; suppliers: { id: number; name: string; service_type: string }[] } }>(
+          jobId ? `bulk-jobs/assignees?job_id=${jobId}` : "bulk-jobs/assignees",
+          undefined,
+          signal,
+        )
+        .then((r) => r.data),
     enabled,
   });
 }

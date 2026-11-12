@@ -25,12 +25,18 @@ export function WorkflowSettingsScreen() {
   const query = useWorkflowSettings();
   const save = useSaveWorkflowSettings();
   const { notify } = useToast();
-  const [v, setV] = useState<{ designer: string; bulk: string; rounds: string } | null>(null);
+  const [v, setV] = useState<{
+    designer: string;
+    bulk: string;
+    autoDesigner: boolean;
+    autoBulk: boolean;
+    rounds: string;
+  } | null>(null);
 
   return (
     <RequirePermission anyOf={["settings.manage"]}>
       <div className="flex flex-col gap-6">
-        <PageHeader title="Workflow settings" description="Who receives new design and bulk jobs, and how many design corrections are allowed." />
+        <PageHeader title="Workflow settings" description="Who receives new design and bulk jobs, automatic workload balancing, and revision guardrails." />
         {query.isPending ? (
           <LoadingState />
         ) : query.error ? (
@@ -38,21 +44,110 @@ export function WorkflowSettingsScreen() {
         ) : (
           (() => {
             const s = query.data;
-            const val = v ?? { designer: String(s.default_designer_id ?? ""), bulk: String(s.default_bulk_designer_id ?? ""), rounds: String(s.max_correction_rounds) };
+            const val = v ?? {
+              designer: String(s.default_designer_id ?? ""),
+              bulk: String(s.default_bulk_designer_id ?? ""),
+              autoDesigner: Boolean(s.auto_assign_designer),
+              autoBulk: Boolean(s.auto_assign_bulk_designer),
+              rounds: String(s.max_correction_rounds),
+            };
+
+            const designerOptions = [
+              { value: "", label: "None (assign manually)" },
+              ...s.designers.map((d) => ({
+                value: String(d.id),
+                label: `${d.name}${d.active_tasks !== undefined ? ` (${d.active_tasks} active task${d.active_tasks === 1 ? "" : "s"})${d.is_free ? " · Free" : ""}` : ""}`,
+              })),
+            ];
+
+            const bulkOptions = [
+              { value: "", label: "None (assign manually)" },
+              ...s.bulk_designers.map((d) => ({
+                value: String(d.id),
+                label: `${d.name}${d.active_jobs !== undefined ? ` (${d.active_jobs} active job${d.active_jobs === 1 ? "" : "s"})${d.is_free ? " · Free" : ""}` : ""}`,
+              })),
+            ];
+
             return (
-              <Section title="Design & Bulk Responsibilities" description="Configure automatic designer assignment rules and revision guardrails.">
+              <Section title="Design & Bulk Responsibilities" description="Configure automatic designer assignment rules, workload distribution, and revision guardrails.">
                 <FormError message={errorText(save.error)} />
-                <div className="grid gap-4 sm:grid-cols-3">
-                  <SelectField label="Responsible design designer" options={[{ value: "", label: "None (assign manually)" }, ...s.designers.map((d) => ({ value: String(d.id), label: d.name }))]} value={val.designer} onChange={(e) => setV({ ...val, designer: e.target.value })} />
-                  <SelectField label="Responsible bulk designer" options={[{ value: "", label: "None" }, ...s.bulk_designers.map((d) => ({ value: String(d.id), label: d.name }))]} value={val.bulk} onChange={(e) => setV({ ...val, bulk: e.target.value })} />
-                  <TextField label="Design correction rounds allowed" inputMode="numeric" value={val.rounds} onChange={(e) => setV({ ...val, rounds: e.target.value })} />
+                <div className="flex flex-col gap-6">
+                  {/* Design Team */}
+                  <div className="rounded-xl border border-line bg-surface/50 p-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+                      <div>
+                        <h3 className="text-sm font-semibold text-ink">Design Artwork Assignment</h3>
+                        <p className="text-xs text-muted mt-0.5">Automatically assigns new orders to the least-loaded designer to prevent bottlenecks.</p>
+                      </div>
+                      <label className="flex items-center gap-2 cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          className="h-4 w-4 rounded border-line text-brand focus:ring-brand/20"
+                          checked={val.autoDesigner}
+                          onChange={(e) => setV({ ...val, autoDesigner: e.target.checked })}
+                        />
+                        <span className="text-xs font-medium text-ink">Auto-assign free designer</span>
+                      </label>
+                    </div>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <SelectField
+                        label={val.autoDesigner ? "Default / Preferred designer (tie-breaker)" : "Responsible design designer"}
+                        hint={val.autoDesigner ? "Used when all eligible designers have equal workloads." : "Always assigned when a new order design task is created."}
+                        options={designerOptions}
+                        value={val.designer}
+                        onChange={(e) => setV({ ...val, designer: e.target.value })}
+                      />
+                      <TextField
+                        label="Design correction rounds allowed"
+                        hint="Maximum customer correction rounds before admin override is required."
+                        inputMode="numeric"
+                        value={val.rounds}
+                        onChange={(e) => setV({ ...val, rounds: e.target.value })}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Bulk Team */}
+                  <div className="rounded-xl border border-line bg-surface/50 p-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+                      <div>
+                        <h3 className="text-sm font-semibold text-ink">Bulk Production Assignment</h3>
+                        <p className="text-xs text-muted mt-0.5">Automatically balances bulk production measurement and checklist workload among Bulk Designers.</p>
+                      </div>
+                      <label className="flex items-center gap-2 cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          className="h-4 w-4 rounded border-line text-brand focus:ring-brand/20"
+                          checked={val.autoBulk}
+                          onChange={(e) => setV({ ...val, autoBulk: e.target.checked })}
+                        />
+                        <span className="text-xs font-medium text-ink">Auto-assign free bulk designer</span>
+                      </label>
+                    </div>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <SelectField
+                        label={val.autoBulk ? "Default / Preferred bulk designer (tie-breaker)" : "Responsible bulk designer"}
+                        hint={val.autoBulk ? "Used when all eligible bulk designers have equal workloads." : "Default assignee when bulk production job is opened."}
+                        options={bulkOptions}
+                        value={val.bulk}
+                        onChange={(e) => setV({ ...val, bulk: e.target.value })}
+                      />
+                    </div>
+                  </div>
                 </div>
+
                 <div className="mt-5 flex justify-end">
                   <Button
                     loading={save.isPending}
                     onClick={() =>
                       save.mutate(
-                        { default_designer_id: val.designer ? Number(val.designer) : null, default_bulk_designer_id: val.bulk ? Number(val.bulk) : null, max_correction_rounds: Number(val.rounds) },
+                        {
+                          default_designer_id: val.designer ? Number(val.designer) : null,
+                          default_bulk_designer_id: val.bulk ? Number(val.bulk) : null,
+                          auto_assign_designer: val.autoDesigner,
+                          auto_assign_bulk_designer: val.autoBulk,
+                          max_correction_rounds: Number(val.rounds),
+                        },
                         { onSuccess: () => (notify("Settings saved", "success"), setV(null)) },
                       )
                     }

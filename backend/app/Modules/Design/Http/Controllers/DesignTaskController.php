@@ -19,6 +19,7 @@ use App\Modules\Design\Rules\ExternalDesignLink;
 use App\Modules\Identity\Models\User;
 use App\Modules\Identity\Support\Permissions;
 use App\Modules\Identity\Support\StaffDirectory;
+use App\Modules\Orders\Models\Order;
 use App\Support\Exceptions\ApiException;
 use App\Support\Http\ApiResponse;
 use App\Support\Http\ListQuery;
@@ -181,7 +182,7 @@ final class DesignTaskController
         ], $inline ? 'inline' : 'attachment');
     }
 
-    /** Active users who can design (assignment dropdown). */
+    /** Active users who can design (assignment dropdown), with workload and free status. */
     public function designers(Request $request, StaffDirectory $staff): JsonResponse
     {
         /** @var User $user */
@@ -189,7 +190,15 @@ final class DesignTaskController
         Gate::authorize('viewAny', DesignTask::class);
         abort_unless($user->canAny([Permissions::DESIGNS_ASSIGN, Permissions::SETTINGS_MANAGE]), 403);
 
-        return ApiResponse::data(['items' => $staff->withPermission(Permissions::DESIGNS_UPLOAD_VERSION)->map(fn (User $u) => ['id' => $u->id, 'name' => $u->name])->all()]);
+        $order = null;
+        if ($request->filled('order_id')) {
+            $order = Order::query()->find((int) $request->input('order_id'));
+        } elseif ($request->filled('task_id')) {
+            $task = DesignTask::query()->find((int) $request->input('task_id'));
+            $order = $task ? Order::query()->find($task->order_id) : null;
+        }
+
+        return ApiResponse::data(['items' => $staff->designersWithWorkload($order)]);
     }
 
     /** @return array<int|string, mixed> */
