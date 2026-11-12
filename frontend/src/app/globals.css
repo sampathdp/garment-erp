@@ -91,3 +91,23 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: var(--c-muted);
 }
+
+/* Print Styles */
+@media print {
+  @page {
+    margin: 8mm 10mm;
+    size: auto;
+  }
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  header,
+  aside,
+  .print\:hidden {
+    display: none !important;
+  }
+}
+

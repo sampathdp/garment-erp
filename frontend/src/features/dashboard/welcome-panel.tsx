@@ -27,12 +27,8 @@ export function WelcomePanel() {
   const greeting =
     currentHour < 12 ? "Good morning" : currentHour < 17 ? "Good afternoon" : "Good evening";
 
-  const branches = user.scope.all_branches
-    ? ["All active branches"]
-    : user.scope.branches.map((b) => b.name);
-
   const pages = user.scope.all_pages
-    ? ["All Facebook sales pages"]
+    ? ["All authorized companies & shops"]
     : user.scope.pages.map((p) => p.name);
 
   return (

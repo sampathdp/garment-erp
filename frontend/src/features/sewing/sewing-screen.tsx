@@ -69,7 +69,7 @@ export function SewingScreen() {
         </div>
       ),
     },
-    { key: "page", header: "Branch / page", cell: (j) => <span className="text-xs">{j.branch} · {j.page}</span> },
+    { key: "page", header: "Company / Shop", cell: (j) => <span className="text-xs">{j.page}</span> },
     { key: "category", header: "Category", cell: (j) => <span className="text-xs">{j.product_category}</span> },
     { key: "qty", header: "Pieces", cell: (j) => <span className="text-xs">{j.sewn_quantity} / {j.received_quantity}</span> },
     {

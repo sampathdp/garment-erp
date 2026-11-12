@@ -5,7 +5,20 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { TextField } from "@/components/ui/field";
 import { Badge, Checkbox, FormError, PageHeader, Section, SelectField, TextAreaField } from "@/components/ui/form-controls";
-import { DownloadIcon, ExternalLinkIcon, FileTextIcon } from "@/components/ui/icons";
+import {
+  AlertTriangleIcon,
+  BoxesIcon,
+  CalendarIcon,
+  CheckCircleIcon,
+  ChevronLeftIcon,
+  DownloadIcon,
+  ExternalLinkIcon,
+  FileTextIcon,
+  PrinterIcon,
+  ScissorsIcon,
+  ShirtIcon,
+  UserIcon,
+} from "@/components/ui/icons";
 import { Modal } from "@/components/ui/modal";
 import { WithIdParam } from "@/components/ui/record-page";
 import { EmptyState, ErrorState, LoadingState } from "@/components/ui/states";
@@ -37,11 +50,27 @@ function errorMessage(error: unknown): string | null {
   return first ? `${error.message} ${first}` : error.message;
 }
 
-function Stat({ label, children }: { label: string; children: React.ReactNode }) {
+function Stat({
+  label,
+  value,
+  subvalue,
+  icon,
+}: {
+  label: string;
+  value: React.ReactNode;
+  subvalue?: string | null;
+  icon?: React.ReactNode;
+}) {
   return (
-    <div className="flex flex-col gap-1 rounded-xl border border-line bg-surface p-4 shadow-xs">
-      <span className="text-[11px] font-bold uppercase tracking-wider text-muted">{label}</span>
-      <span className="text-sm font-bold text-ink">{children}</span>
+    <div className="flex flex-col justify-between rounded-xl border border-line bg-surface p-4 shadow-xs transition hover:border-brand/30">
+      <div className="flex items-center justify-between gap-2 mb-2">
+        <span className="text-[11px] font-bold uppercase tracking-wider text-muted">{label}</span>
+        {icon && <span className="text-muted/70">{icon}</span>}
+      </div>
+      <div className="flex flex-col gap-0.5">
+        <span className="text-base font-bold text-ink truncate">{value}</span>
+        {subvalue && <span className="text-xs text-muted truncate">{subvalue}</span>}
+      </div>
     </div>
   );
 }
@@ -206,13 +235,43 @@ function MeasurementsSection({ job }: { job: BulkJob }) {
   const invalid = Object.values(errors).some((e) => e !== null);
   const mutation = correcting ? m.correctMeasurements : m.measurements;
 
+  const bulkVal = parseFloat(values.bulk_meter || "0") || 0;
+  const patchVal = parseFloat(values.patch_meter || "0") || 0;
+  const collarVal = parseFloat(values.collar_meter || "0") || 0;
+  const totalMeters = bulkVal + patchVal + collarVal;
+  const jobQty = job.order.quantity || 1;
+  const avgYield = totalMeters > 0 ? totalMeters / jobQty : 0;
+
   return (
-    <Section title="Bulk measurements" description="Bulk meter, patch meter and the configured measurement fields. Every entry and change is recorded with who and when.">
+    <Section title="Bulk production measurements" description="Yardage calculations (bulk meter, patch meter) and cutting parameters. Every entry is recorded with audit history.">
       <div className="flex flex-col gap-4">
         <FormError message={errorMessage(mutation.error)} />
+
+        {/* Live Yardage & Consumption KPI Bar (Matches Designer Manual Sheet) */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 rounded-2xl border border-brand/20 bg-brand-soft/20 p-4 shadow-xs">
+          <div className="flex flex-col gap-0.5">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-muted">Bulk Fabric Meter</span>
+            <span className="font-mono text-base font-extrabold text-ink">{bulkVal > 0 ? `${bulkVal.toFixed(2)} m` : "—"}</span>
+          </div>
+          <div className="flex flex-col gap-0.5">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-muted">Patch Meter</span>
+            <span className="font-mono text-base font-extrabold text-ink">{patchVal > 0 ? `${patchVal.toFixed(2)} m` : "—"}</span>
+          </div>
+          <div className="flex flex-col gap-0.5">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-brand">Total Fabric Meters</span>
+            <span className="font-mono text-base font-black text-brand">{totalMeters > 0 ? `${totalMeters.toFixed(2)} m` : "—"}</span>
+          </div>
+          <div className="flex flex-col gap-0.5">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600">Average Yield / Piece</span>
+            <span className="font-mono text-base font-extrabold text-emerald-600">
+              {avgYield > 0 ? `${avgYield.toFixed(3)} m/pc` : "—"}
+            </span>
+          </div>
+        </div>
+
         <div className="grid gap-3 sm:grid-cols-3">
           {rows.map((r) => (
-            <div key={r.key} className="flex flex-col gap-1">
+            <div key={r.key} className="flex flex-col gap-1.5 rounded-xl border border-line bg-surface p-3.5 shadow-xs">
               {editable || correcting ? (
                 <TextField
                   label={`${r.label} (${r.unit})${r.is_required ? " *" : ""}`}
@@ -223,13 +282,13 @@ function MeasurementsSection({ job }: { job: BulkJob }) {
                   onChange={(e) => setDraft({ ...values, [r.key]: e.target.value })}
                 />
               ) : (
-                <div className="flex flex-col gap-1 rounded-lg bg-subtle/50 p-3">
+                <div className="flex flex-col gap-1">
                   <span className="text-[11px] font-bold uppercase tracking-wider text-muted">{r.label}{r.is_required ? " *" : ""}</span>
-                  <span className="text-sm font-semibold text-ink">{r.value === null ? "—" : `${r.value} ${r.unit}`}</span>
+                  <span className="text-base font-bold text-ink">{r.value === null ? "—" : `${r.value} ${r.unit}`}</span>
                 </div>
               )}
               {r.entered_by && (
-                <span className="text-[11px] text-muted">
+                <span className="text-[10px] text-muted border-t border-line/60 pt-1.5 mt-1">
                   {r.updated_by ? `Changed by ${r.updated_by} ${formatDateTime(r.updated_at)}` : `Entered by ${r.entered_by} ${formatDateTime(r.entered_at)}`}
                 </span>
               )}
@@ -253,14 +312,16 @@ function MeasurementsSection({ job }: { job: BulkJob }) {
           </div>
         )}
         {(job.measurement_history ?? []).length > 0 && (
-          <details className="rounded-lg border border-line p-3 text-xs">
-            <summary className="cursor-pointer font-semibold text-ink">Measurement history ({job.measurement_history?.length})</summary>
-            <ul className="mt-2 flex flex-col gap-1 text-muted">
+          <details className="rounded-xl border border-line bg-subtle/20 p-3.5 text-xs">
+            <summary className="cursor-pointer font-bold text-ink">Measurement history ({job.measurement_history?.length} changes)</summary>
+            <ul className="mt-2.5 flex flex-col gap-1.5 text-muted">
               {job.measurement_history?.map((h, i) => (
-                <li key={i}>
-                  <strong className="text-ink">{h.field}</strong>: {h.old_value ?? "—"} → {h.new_value} by {h.changed_by} {formatDateTime(h.changed_at)}
-                  {h.is_correction && <Badge tone="warning" className="ml-2">Correction</Badge>}
-                  {h.reason ? ` · ${h.reason}` : ""}
+                <li key={i} className="flex items-center gap-2">
+                  <strong className="text-ink font-semibold">{h.field}:</strong>
+                  <span>{h.old_value ?? "—"} → {h.new_value}</span>
+                  <span className="text-muted">by {h.changed_by} ({formatDateTime(h.changed_at)})</span>
+                  {h.is_correction && <Badge tone="warning">Correction</Badge>}
+                  {h.reason && <span className="italic text-muted">"{h.reason}"</span>}
                 </li>
               ))}
             </ul>
@@ -279,29 +340,55 @@ function ChecklistSection({ job, onConfirm }: { job: BulkJob; onConfirm: () => v
 
   if (!checklist) {
     return (
-      <Section title="Bulk checklist">
+      <Section title="Bulk production checklist">
         <EmptyState title={job.mode === null ? "Assign the job to create its checklist" : "No checklist template is configured"} description="Checklist templates are managed in Bulk setup." />
       </Section>
     );
   }
 
+  const items = checklist.items;
+  const completedCount = items.filter((i) => i.is_completed).length;
+  const totalCount = items.length;
+  const percent = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+
   return (
-    <Section title="Bulk checklist" description={`${checklist.template} · mandatory items (*) must be completed, and the client must confirm the final checklist.`}>
-      <div className="flex flex-col gap-3">
+    <Section title="Bulk production checklist" description={`${checklist.template} · Mandatory tasks must be checked, and client confirmation recorded.`}>
+      <div className="flex flex-col gap-4">
         <FormError message={errorMessage(m.checklistItem.error)} />
-        <ul className="flex flex-col divide-y divide-line rounded-xl border border-line">
-          {checklist.items.map((item) => (
-            <li key={item.id} className="flex flex-col gap-2 p-3 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex flex-col gap-0.5">
+
+        {/* Readiness Progress Bar */}
+        <div className="flex flex-col gap-2 rounded-xl border border-line bg-subtle/40 p-4 shadow-xs">
+          <div className="flex items-center justify-between text-xs">
+            <span className="font-bold text-ink">Checklist Tasks Progress:</span>
+            <span className={`font-mono font-bold ${percent === 100 ? "text-emerald-500" : "text-brand"}`}>
+              {completedCount} of {totalCount} completed ({percent}%)
+            </span>
+          </div>
+          <div className="h-2.5 w-full overflow-hidden rounded-full bg-subtle">
+            <div
+              className={`h-full rounded-full transition-all duration-300 ${percent === 100 ? "bg-emerald-500" : "bg-brand"}`}
+              style={{ width: `${percent}%` }}
+            />
+          </div>
+        </div>
+
+        <ul className="flex flex-col divide-y divide-line rounded-xl border border-line bg-surface shadow-xs">
+          {items.map((item) => (
+            <li key={item.id} className="flex flex-col gap-2 p-3.5 sm:flex-row sm:items-center sm:justify-between hover:bg-subtle/20 transition">
+              <div className="flex flex-col gap-1">
                 <Checkbox
-                  label={`${item.label}${item.is_required ? " *" : ""}`}
+                  label={<span className="font-semibold text-ink">{item.label}{item.is_required ? " *" : ""}</span>}
                   checked={item.is_completed}
                   disabled={!editable || m.checklistItem.isPending}
                   onChange={(e) => m.checklistItem.mutate({ item: item.id, is_completed: e.target.checked })}
                 />
                 <span className="pl-6 text-[11px] text-muted">
-                  {item.is_completed ? `Completed by ${item.completed_by} ${formatDateTime(item.completed_at)}` : "Not completed"}
-                  {item.notes ? ` · ${item.notes}` : ""}
+                  {item.is_completed ? (
+                    <span className="text-emerald-500 font-semibold">✓ Completed by {item.completed_by} on {formatDateTime(item.completed_at)}</span>
+                  ) : (
+                    <span className="text-amber-500 font-medium">○ Pending verification</span>
+                  )}
+                  {item.notes ? ` · Note: "${item.notes}"` : ""}
                 </span>
               </div>
               {editable && (
@@ -315,14 +402,26 @@ function ChecklistSection({ job, onConfirm }: { job: BulkJob; onConfirm: () => v
             </li>
           ))}
         </ul>
+
         {checklist.client_confirmation ? (
-          <p className="rounded-lg border border-emerald-200 bg-emerald-50/50 p-3 text-xs text-emerald-800">
-            Client confirmed the checklist via <strong className="capitalize">{checklist.client_confirmation.channel}</strong> — recorded by {checklist.client_confirmation.recorded_by} {formatDateTime(checklist.client_confirmation.confirmed_at)}
-            {checklist.client_confirmation.comment ? ` · "${checklist.client_confirmation.comment}"` : ""}
-            {checklist.client_confirmation.evidence_url && (
-              <a className="ml-2 font-semibold underline" href={checklist.client_confirmation.evidence_url} target="_blank" rel="noopener noreferrer">Evidence</a>
-            )}
-          </p>
+          <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-xs text-emerald-950 flex items-start gap-3 shadow-xs">
+            <CheckCircleIcon size={20} className="text-emerald-600 shrink-0 mt-0.5" />
+            <div>
+              <strong className="font-bold text-ink block mb-0.5">
+                Client confirmed the checklist via <span className="capitalize">{checklist.client_confirmation.channel}</span>
+              </strong>
+              <p className="text-muted">
+                Recorded by {checklist.client_confirmation.recorded_by} on {formatDateTime(checklist.client_confirmation.confirmed_at)}
+                {checklist.client_confirmation.comment ? ` · "${checklist.client_confirmation.comment}"` : ""}
+              </p>
+              {checklist.client_confirmation.evidence_url && (
+                <a className="mt-1.5 inline-flex items-center gap-1 font-semibold text-brand underline" href={checklist.client_confirmation.evidence_url} target="_blank" rel="noopener noreferrer">
+                  <span>View client confirmation evidence</span>
+                  <ExternalLinkIcon size={12} />
+                </a>
+              )}
+            </div>
+          </div>
         ) : (
           job.abilities?.confirm_checklist && (
             <div className="flex justify-end">
@@ -368,16 +467,19 @@ function ExternalSection({ job, onComplete }: { job: BulkJob; onComplete: () => 
   const [note, setNote] = useState("");
 
   return (
-    <Section title="External production" description={`Producer: ${job.supplier?.name ?? "—"}. Record the completion here; no designer completion or WeTransfer link is needed.`}>
+    <Section title="External production" description={`Producer: ${job.supplier?.name ?? "—"}. Record completion here.`}>
       <div className="flex flex-col gap-4">
         {(job.evidence ?? []).filter((e) => e.kind === "evidence").length > 0 && (
-          <ul className="flex flex-col gap-1 text-xs">
+          <ul className="flex flex-col gap-1.5 text-xs">
             {job.evidence
               ?.filter((e) => e.kind === "evidence")
               .map((e, i) => (
-                <li key={i}>
-                  <a className="font-semibold text-brand hover:underline" href={e.url} target="_blank" rel="noopener noreferrer">{e.name}</a>
-                  <span className="text-muted"> · {e.uploaded_by} {formatDateTime(e.uploaded_at)}{e.note ? ` · ${e.note}` : ""}</span>
+                <li key={i} className="flex items-center gap-2">
+                  <a className="font-semibold text-brand hover:underline inline-flex items-center gap-1" href={e.url} target="_blank" rel="noopener noreferrer">
+                    <span>{e.name}</span>
+                    <ExternalLinkIcon size={12} />
+                  </a>
+                  <span className="text-muted">· {e.uploaded_by} on {formatDateTime(e.uploaded_at)}{e.note ? ` · ${e.note}` : ""}</span>
                 </li>
               ))}
           </ul>
@@ -411,41 +513,110 @@ function ListSection({ job }: { job: BulkJob }) {
   const fields = list.data?.schema.fields ?? [];
 
   return (
-    <Section title="Confirmed name/number list" description={job.list ? `Version ${job.list.version_no} · ${job.list.total_quantity} pcs (read-only)` : undefined}>
-      <div id="list" className="flex flex-col gap-3">
-        <div className="flex gap-2">
-          <Button size="sm" variant="secondary" onClick={() => setOpen((o) => !o)}>{open ? "Hide list" : "Show list"}</Button>
-        </div>
-        {open && (list.isPending ? <LoadingState /> : list.error ? <ErrorState error={list.error} onRetry={() => list.refetch()} /> : (
-          <div className="overflow-x-auto rounded-xl border border-line">
-            <table className="w-full text-xs">
-              <caption className="sr-only">Confirmed name/number list</caption>
-              <thead className="bg-subtle text-left text-muted">
-                <tr>
-                  <th className="px-3 py-2">#</th>
-                  <th className="px-3 py-2">Size</th>
-                  <th className="px-3 py-2">Qty</th>
-                  {fields.map((f) => <th key={f.key} className="px-3 py-2">{f.label}</th>)}
-                  <th className="px-3 py-2">Notes</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-line">
-                {list.data?.items.map((i) => (
-                  <tr key={i.line_no}>
-                    <td className="px-3 py-1.5 text-muted">{i.line_no}</td>
-                    <td className="px-3 py-1.5">{i.size}</td>
-                    <td className="px-3 py-1.5">{i.quantity}</td>
-                    {fields.map((f) => {
-                      const raw = f.key === "player_name" ? i.player_name : f.key === "number" ? i.number : i.values[f.key];
-                      return <td key={f.key} className="px-3 py-1.5">{f.options.find((o) => o.code === raw)?.label ?? raw ?? ""}</td>;
-                    })}
-                    <td className="px-3 py-1.5 text-muted">{i.notes}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+    <Section title="Confirmed garment roster & sizes" description={job.list ? `Version ${job.list.version_no} · ${job.list.total_quantity} garments allocated` : undefined}>
+      <div id="list" className="flex flex-col gap-4">
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-line bg-surface p-5 shadow-xs">
+          <div className="flex items-center gap-3">
+            <div className="flex size-10 items-center justify-center rounded-xl bg-brand/10 text-brand">
+              <ShirtIcon size={22} />
+            </div>
+            <div>
+              <span className="text-sm font-bold text-ink block">
+                {job.list?.total_quantity ?? job.order.quantity} Garments Allocated & Invoiced
+              </span>
+              <span className="text-xs text-muted">
+                Version {job.list?.version_no ?? 1} · Tied to Sales Invoice
+              </span>
+            </div>
           </div>
-        ))}
+
+          <div className="flex items-center gap-2">
+            <Link
+              href={`/bulk-jobs/job-card/?id=${job.id}`}
+              className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-brand/30 bg-brand/10 px-3.5 text-xs font-bold text-brand hover:bg-brand hover:text-white transition shadow-2xs"
+            >
+              <PrinterIcon size={14} />
+              <span>Open & Print Job Card</span>
+            </Link>
+
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => setOpen((o) => !o)}
+            >
+              {open ? "Hide roster table" : "Show roster table"}
+            </Button>
+          </div>
+        </div>
+
+        {open && (
+          list.isPending ? (
+            <LoadingState label="Loading player roster items…" />
+          ) : list.error ? (
+            <ErrorState error={list.error} onRetry={() => list.refetch()} />
+          ) : (
+            <div className="overflow-x-auto rounded-xl border border-line bg-surface shadow-xs">
+              <table className="w-full text-xs text-left">
+                <caption className="sr-only">Confirmed name/number list</caption>
+                <thead className="bg-subtle/60 border-b border-line text-[11px] font-bold uppercase tracking-wider text-muted">
+                  <tr>
+                    <th className="px-3.5 py-3">#</th>
+                    <th className="px-3.5 py-3">Size</th>
+                    <th className="px-3.5 py-3">Qty</th>
+                    <th className="px-3.5 py-3">Player Name</th>
+                    <th className="px-3.5 py-3">Number</th>
+                    {fields
+                      .filter((f) => f.key !== "player_name" && f.key !== "number")
+                      .map((f) => (
+                        <th key={f.key} className="px-3.5 py-3">{f.label}</th>
+                      ))}
+                    <th className="px-3.5 py-3">Notes</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-line/70">
+                  {list.data?.items.map((i) => (
+                    <tr key={i.line_no} className="hover:bg-subtle/30 transition">
+                      <td className="px-3.5 py-2.5 font-mono text-muted text-xs font-semibold">
+                        {i.line_no}
+                      </td>
+                      <td className="px-3.5 py-2.5">
+                        <span className="rounded-md bg-brand/10 border border-brand/20 px-2 py-0.5 text-xs font-bold text-brand">
+                          {i.size ?? "—"}
+                        </span>
+                      </td>
+                      <td className="px-3.5 py-2.5 font-bold text-ink">{i.quantity}</td>
+                      <td className="px-3.5 py-2.5 font-extrabold text-ink">
+                        {i.player_name || <span className="text-muted font-normal italic">—</span>}
+                      </td>
+                      <td className="px-3.5 py-2.5">
+                        {i.number ? (
+                          <span className="font-mono text-xs font-black text-ink bg-subtle px-2 py-0.5 rounded border border-line">
+                            #{i.number}
+                          </span>
+                        ) : (
+                          <span className="text-muted italic">—</span>
+                        )}
+                      </td>
+                      {fields
+                        .filter((f) => f.key !== "player_name" && f.key !== "number")
+                        .map((f) => {
+                          const raw = i.values[f.key];
+                          return (
+                            <td key={f.key} className="px-3.5 py-2.5 text-ink font-medium">
+                              {f.options.find((o) => o.code === raw)?.label ?? raw ?? "—"}
+                            </td>
+                          );
+                        })}
+                      <td className="px-3.5 py-2.5 text-muted text-xs">
+                        {i.notes || "—"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )
+        )}
       </div>
     </Section>
   );
@@ -458,7 +629,7 @@ function BulkJobDetail({ id }: { id: number }) {
   const [modal, setModal] = useState<"assign" | "review-submit" | "final" | "review" | "confirm" | "complete" | null>(null);
   const [completionNotes, setCompletionNotes] = useState("");
 
-  if (query.isPending) return <LoadingState />;
+  if (query.isPending) return <LoadingState label="Loading bulk job workspace…" />;
   if (query.error) return <ErrorState error={query.error} onRetry={() => query.refetch()} />;
   const job = query.data;
   const a = job.abilities;
@@ -466,62 +637,204 @@ function BulkJobDetail({ id }: { id: number }) {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader
-        title={`Bulk — ${job.job_no}`}
-        breadcrumb={
-          <div className="flex items-center gap-1.5 text-xs text-muted">
-            <Link href={a?.assign || job.mode === "external" || job.bulk_designer === null ? "/bulk-jobs/" : "/bulk-jobs/mine/"} className="hover:text-ink">Bulk jobs</Link>
-            <span>/</span>
-            <span className="font-semibold text-ink">{job.job_no}</span>
-          </div>
-        }
-        description={`${job.order.customer} · ${job.product_category} × ${job.order.quantity} · ${job.material ?? "No material"} · Due ${formatBusinessDate(job.order.due_date)}`}
-        actions={
-          <div className="flex flex-wrap items-center gap-2.5">
-            <Badge tone={bulkStatusTone(job.status.value)} dot>{job.status.label}</Badge>
-            <Link href={`/bulk-jobs/job-card/?id=${job.id}`} className="inline-flex items-center gap-1 rounded-lg border border-line px-3 py-1.5 text-xs font-semibold text-ink hover:bg-subtle">
-              <FileTextIcon size={14} /> Job Card
+      {/* Executive Command Header */}
+      <div className="flex flex-col gap-4 rounded-2xl border border-line bg-surface p-6 shadow-xs">
+        {/* Breadcrumb + Metadata */}
+        <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-muted">
+          <div className="flex items-center gap-2">
+            <Link
+              href={a?.assign || job.mode === "external" || job.bulk_designer === null ? "/bulk-jobs/" : "/bulk-jobs/mine/"}
+              className="hover:text-ink font-medium"
+            >
+              Bulk Production
             </Link>
-            {a?.assign && <Button size="sm" variant="secondary" onClick={() => setModal("assign")}>{job.mode === null ? "Assign" : "Reassign"}</Button>}
-            {a?.submit_for_review && <Button size="sm" onClick={() => setModal("review-submit")}>Submit for review</Button>}
-            {a?.review && <Button size="sm" onClick={() => setModal("review")}>Review bulk</Button>}
-            {a?.submit_final && <Button size="sm" onClick={() => setModal("final")}>Submit final bulk</Button>}
+            <span>/</span>
+            <Link href={`/orders/view/?id=${job.order.id}`} className="hover:text-ink font-mono font-semibold text-brand">
+              Order {job.job_no}
+            </Link>
+            <span>/</span>
+            <span className="font-semibold text-ink">Production Workspace</span>
           </div>
-        }
-      />
 
-      <div className="grid gap-3 sm:grid-cols-4">
-        <Stat label="Production">{job.mode === null ? <span className="text-danger">Not assigned</span> : job.mode === "internal" ? "Internal" : "External"}</Stat>
-        <Stat label="Assigned to">{job.mode === "external" ? job.supplier?.name : (job.bulk_designer?.name ?? "—")}</Stat>
-        <Stat label="Correction rounds">{job.review?.correction_rounds ?? 0}</Stat>
-        <Stat label="Job status">{job.order.status.label}</Stat>
+          <div className="flex items-center gap-2">
+            <span className="rounded-md bg-subtle px-2 py-0.5 text-xs font-semibold text-ink">
+              Branch: {job.branch}
+            </span>
+            <span className="rounded-md bg-subtle px-2 py-0.5 text-xs font-semibold text-ink">
+              Page: {job.page.name} ({job.page.code})
+            </span>
+          </div>
+        </div>
+
+        {/* Title, Badges & Action Bar */}
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-line pb-5">
+          <div className="flex flex-col gap-2">
+            <div className="flex flex-wrap items-center gap-3">
+              <h1 className="text-2xl font-extrabold tracking-tight text-ink">
+                Bulk Job — {job.job_no}
+              </h1>
+
+              <Badge tone={bulkStatusTone(job.status.value)} dot>
+                {job.status.label}
+              </Badge>
+
+              {job.order.is_urgent && (
+                <Badge tone="danger" dot>
+                  ⚡ URGENT PRIORITY
+                </Badge>
+              )}
+
+              <Badge tone="neutral">
+                {job.mode === null ? "Unassigned" : job.mode === "internal" ? "Internal Production" : "External Production"}
+              </Badge>
+            </div>
+
+            <p className="text-xs text-muted">
+              Client: <strong className="text-ink font-semibold">{job.order.customer}</strong> · Category: {job.product_category} · Quantity: {job.order.quantity} pcs · Fabric: {job.material ?? "Standard Fabric"} · Islandwide Target: {formatBusinessDate(job.order.due_date)}
+            </p>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex flex-wrap items-center gap-2">
+            <Link
+              href={`/bulk-jobs/job-card/?id=${job.id}`}
+              className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-brand/30 bg-brand/10 px-3.5 text-xs font-bold text-brand shadow-xs hover:bg-brand hover:text-white transition"
+            >
+              <PrinterIcon size={14} />
+              <span>Production Job Card</span>
+            </Link>
+
+            {a?.assign && (
+              <Button size="sm" variant="secondary" onClick={() => setModal("assign")}>
+                {job.mode === null ? "Assign" : "Reassign"}
+              </Button>
+            )}
+
+            {a?.submit_for_review && (
+              <Button size="sm" onClick={() => setModal("review-submit")}>
+                Submit for review
+              </Button>
+            )}
+
+            {a?.review && (
+              <Button size="sm" onClick={() => setModal("review")}>
+                Review bulk
+              </Button>
+            )}
+
+            {a?.submit_final && (
+              <Button size="sm" onClick={() => setModal("final")}>
+                Submit final bulk
+              </Button>
+            )}
+          </div>
+        </div>
+
+        {/* 4 KPI Summary Tiles */}
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <Stat
+            label="Production Assignment"
+            value={job.mode === null ? <span className="text-danger">Not assigned</span> : job.mode === "internal" ? "Internal Workshop" : "External Producer"}
+            subvalue={job.mode === "external" ? job.supplier?.name : (job.bulk_designer?.name ?? "No designer assigned")}
+            icon={<UserIcon size={18} className="text-brand" />}
+          />
+
+          <Stat
+            label="Total Order Volume"
+            value={`${job.order.quantity} garments`}
+            subvalue={job.product_category}
+            icon={<BoxesIcon size={18} className="text-amber-500" />}
+          />
+
+          <Stat
+            label="Fabric & Material"
+            value={job.material ?? "Standard"}
+            subvalue="Confirmed production material"
+            icon={<ScissorsIcon size={18} className="text-emerald-500" />}
+          />
+
+          <Stat
+            label="Delivery Target"
+            value={formatBusinessDate(job.order.due_date)}
+            subvalue={`Job Status: ${job.order.status.label}`}
+            icon={<CalendarIcon size={18} className="text-purple-500" />}
+          />
+        </div>
       </div>
 
       {missing.length > 0 && job.status.value !== "pending_assignment" && (
-        <div className="rounded-xl border border-warning/40 bg-warning/10 p-4 text-xs text-ink">
-          <p className="mb-1 font-semibold">Still needed before the bulk can be completed</p>
-          <ul className="list-disc pl-5">{missing.map((line) => <li key={line}>{line}</li>)}</ul>
+        <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-xs text-amber-950 shadow-xs flex items-start gap-3">
+          <AlertTriangleIcon size={18} className="text-amber-600 shrink-0 mt-0.5" />
+          <div>
+            <p className="font-bold text-sm text-ink mb-1">Items still required before bulk completion:</p>
+            <ul className="list-disc pl-4 space-y-1 text-ink/80">
+              {missing.map((line) => (
+                <li key={line}>{line}</li>
+              ))}
+            </ul>
+          </div>
         </div>
       )}
 
-      <Section title="Approved design">
-        <div className="flex flex-wrap items-start gap-4 text-xs">
-          {job.design_preview_url && (
-            // eslint-disable-next-line @next/next/no-img-element -- signed, short-lived private URL
-            <img src={job.design_preview_url} alt={`Approved design of ${job.job_no}`} className="max-h-56 rounded-lg border border-line object-contain" />
-          )}
-          <div className="flex flex-col gap-2">
-            <span className="text-muted">Approved design version {job.design?.approved_version_no ?? "—"}</span>
-            {job.final_design_link && (
-              <a className="inline-flex items-center gap-1 font-semibold text-brand hover:underline" href={job.final_design_link} target="_blank" rel="noopener noreferrer nofollow">
-                Final design link <ExternalLinkIcon size={12} />
-              </a>
+      {/* Approved Design Showcase Card */}
+      <Section title="Approved production design" description="Final vector artwork and production proofs approved for bulk cutting & sublimation.">
+        <div className="flex flex-col lg:flex-row items-stretch gap-6 rounded-2xl border border-line bg-surface p-5 shadow-xs">
+          {/* Left Preview Image Box */}
+          <div className="flex flex-1 items-center justify-center overflow-hidden rounded-xl border border-line bg-subtle/30 p-3 min-h-[160px]">
+            {job.design_preview_url ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={job.design_preview_url}
+                alt={`Approved design of ${job.job_no}`}
+                className="max-h-64 w-full object-contain rounded-lg shadow-2xs transition hover:scale-[1.01]"
+              />
+            ) : (
+              <div className="flex flex-col items-center gap-2 py-8 text-center text-xs text-muted">
+                <ShirtIcon size={28} className="text-muted/60" />
+                <p>No preview graphic available</p>
+              </div>
             )}
-            {job.design?.final_files.map((f) => (
-              <a key={f.url} className="inline-flex items-center gap-1 font-semibold text-brand hover:underline" href={f.url}>
-                <DownloadIcon size={12} /> {f.name}
-              </a>
-            ))}
+          </div>
+
+          {/* Right Info & Actions Panel: fixed width to prevent horizontal squeezing */}
+          <div className="flex flex-col justify-between gap-4 w-full lg:w-80 shrink-0 border-t lg:border-t-0 lg:border-l border-line pt-4 lg:pt-0 lg:pl-6">
+            <div className="flex flex-col gap-2">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="font-bold text-sm text-ink">
+                  Approved Design Version {job.design?.approved_version_no ?? "—"}
+                </span>
+                <Badge tone="success" dot>Client Approved</Badge>
+              </div>
+              <p className="text-xs text-muted leading-relaxed">
+                This artwork proof was approved by customer and merchandiser. All cutting lines and numbers must follow this file.
+              </p>
+            </div>
+
+            <div className="flex flex-col gap-2 pt-2 border-t border-line/60">
+              {job.final_design_link && (
+                <a
+                  className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl border border-brand/30 bg-brand/10 px-3.5 text-xs font-bold text-brand hover:bg-brand hover:text-white transition shadow-2xs"
+                  href={job.final_design_link}
+                  target="_blank"
+                  rel="noopener noreferrer nofollow"
+                >
+                  <ExternalLinkIcon size={13} />
+                  <span>Open Full High-Res Artwork Link</span>
+                </a>
+              )}
+
+              {job.design?.final_files.map((f) => (
+                <a
+                  key={f.url}
+                  className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl border border-line bg-surface px-3.5 text-xs font-semibold text-ink hover:bg-subtle transition shadow-2xs truncate"
+                  href={f.url}
+                  title={f.name}
+                >
+                  <DownloadIcon size={13} className="shrink-0" />
+                  <span className="truncate">{f.name}</span>
+                </a>
+              ))}
+            </div>
           </div>
         </div>
       </Section>

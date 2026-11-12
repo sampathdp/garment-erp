@@ -357,7 +357,7 @@ export function UserDetail({ id }: { id: number }) {
         <RolesEditor key={user.roles.map((r) => r.name).join()} user={user} editable={abilities.administer} />
       </Section>
 
-      <Section title="Branch & Page scope" description="Determines which orders, customers, and financial reports this staff member can access.">
+      <Section title="Company & Page scope" description="Determines which companies, customer orders, and financial reports this staff member can access.">
         <AssignmentsEditor key={[...user.branches.map((b) => b.id), "|", ...user.pages.map((p) => `${p.id}${p.is_owner ? "o" : ""}`)].join()} user={user} editable={abilities.administer} />
       </Section>
 

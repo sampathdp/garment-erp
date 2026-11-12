@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { PageHeader } from "@/components/ui/form-controls";
-import { PlusIcon } from "@/components/ui/icons";
+import { ChevronLeftIcon, PlusIcon, UsersIcon } from "@/components/ui/icons";
 import { RequirePermission, WithIdParam } from "@/components/ui/record-page";
 import { EmptyState } from "@/components/ui/states";
 import { useAuth } from "@/features/auth/auth-provider";
@@ -19,7 +19,7 @@ export function UsersScreen() {
       <div className="flex flex-col gap-6">
         <PageHeader
           title="Staff User Accounts"
-          description="Manage staff credentials, assigned roles, and physical branch / Facebook page access boundaries."
+          description="Manage staff credentials, assigned roles, and company / page access boundaries."
           actions={
             can("users.manage") ? (
               <Link href="/settings/users/new/" className={linkButton}>
@@ -49,6 +49,15 @@ export function NewUserScreen() {
             </div>
           }
           description="Provision a staff member account with defined permission scope."
+          actions={
+            <Link
+              href="/settings/users/"
+              className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-line bg-surface px-3 text-xs font-semibold text-muted shadow-xs hover:bg-subtle hover:text-ink transition"
+            >
+              <ChevronLeftIcon size={14} />
+              <span>Back to users</span>
+            </Link>
+          }
         />
         <CreateUserForm />
       </div>

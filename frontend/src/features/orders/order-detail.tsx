@@ -26,6 +26,7 @@ import {
   ExternalLinkIcon,
   FileTextIcon,
   LayersIcon,
+  PaletteIcon,
   PencilIcon,
   PhoneIcon,
   PlusIcon,
@@ -682,6 +683,33 @@ function OrderDetail({ id }: { id: number }) {
 
           {/* Header Action Buttons */}
           <div className="flex flex-wrap items-center gap-2">
+            <Link
+              href={`/orders/garment-list/?id=${order.id}`}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-surface px-3 py-1.5 text-xs font-semibold text-ink shadow-xs hover:border-brand/40 hover:bg-subtle hover:text-brand transition"
+            >
+              <ShirtIcon size={14} className="text-brand" />
+              <span>Configure garment list</span>
+            </Link>
+
+            {order.design_task ? (
+              <Link
+                href={`/designs/view/?id=${order.design_task.id}`}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-surface px-3 py-1.5 text-xs font-semibold text-ink shadow-xs hover:border-brand/40 hover:bg-subtle hover:text-brand transition"
+              >
+                <PaletteIcon size={14} className="text-brand" />
+                <span>Open design workspace</span>
+              </Link>
+            ) : (
+              <Link
+                href={`/designs/`}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-surface px-3 py-1.5 text-xs font-semibold text-muted shadow-xs hover:border-brand/40 hover:bg-subtle hover:text-brand transition"
+                title="Design queue"
+              >
+                <PaletteIcon size={14} className="text-muted" />
+                <span>Open design workspace</span>
+              </Link>
+            )}
+
             {order.abilities?.record_payment && (
               <Button
                 size="sm"

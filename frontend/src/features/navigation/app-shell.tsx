@@ -135,10 +135,6 @@ export function AppShell({ children }: { children: ReactNode }) {
     .join("")
     .toUpperCase();
 
-  const primaryScope = user.scope.all_branches
-    ? "All Branches"
-    : user.scope.branches[0]?.name ?? "Branch Access";
-
   const renderNavList = () => (
     <nav aria-label="Main" className="flex flex-col gap-6 px-3 pt-4 pb-8">
       {NAV_SECTIONS.map((section) => {
@@ -187,9 +183,9 @@ export function AppShell({ children }: { children: ReactNode }) {
   );
 
   return (
-    <div className="flex min-h-screen bg-canvas text-ink antialiased">
+    <div className="flex min-h-screen bg-canvas text-ink antialiased print:min-h-0 print:bg-white print:text-black">
       {/* Desktop Sidebar */}
-      <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col border-r border-line bg-surface md:flex z-30">
+      <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col border-r border-line bg-surface md:flex z-30 print:hidden">
         {/* Brand Header */}
         <div className="flex h-16 shrink-0 items-center justify-between border-b border-line px-5">
           <Link href="/dashboard/" className="flex items-center gap-2.5 group">
@@ -237,13 +233,13 @@ export function AppShell({ children }: { children: ReactNode }) {
       {/* Mobile Drawer Backdrop & Sidebar */}
       {mobileMenuOpen && (
         <div
-          className="fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-xs md:hidden transition-opacity"
+          className="fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-xs md:hidden transition-opacity print:hidden"
           onClick={() => setMobileMenuOpen(false)}
         />
       )}
       <div
         className={cn(
-          "fixed inset-y-0 left-0 z-50 flex w-72 flex-col bg-surface border-r border-line shadow-2xl transition-transform duration-300 ease-in-out md:hidden",
+          "fixed inset-y-0 left-0 z-50 flex w-72 flex-col bg-surface border-r border-line shadow-2xl transition-transform duration-300 ease-in-out md:hidden print:hidden",
           mobileMenuOpen ? "translate-x-0" : "-translate-x-full",
         )}
       >
@@ -280,9 +276,9 @@ export function AppShell({ children }: { children: ReactNode }) {
       </div>
 
       {/* Main Content Area */}
-      <div className="flex flex-1 flex-col min-w-0">
-        {/* Top Header */}
-        <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-line bg-surface/80 px-4 md:px-8 backdrop-blur-md">
+      <div className="flex flex-1 flex-col min-w-0 print:block print:w-full">
+        {/* Top Header (Hidden on Print) */}
+        <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-line bg-surface/80 px-4 md:px-8 backdrop-blur-md print:hidden">
           <div className="flex items-center gap-3">
             <button
               type="button"
@@ -326,7 +322,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </header>
 
         {/* Main page content container */}
-        <main className="flex-1 px-4 py-6 md:px-8 max-w-7xl w-full mx-auto">{children}</main>
+        <main className="flex-1 px-4 py-6 md:px-8 max-w-7xl w-full mx-auto print:p-0 print:m-0 print:max-w-none print:w-full">{children}</main>
       </div>
 
       <ConfirmDialog

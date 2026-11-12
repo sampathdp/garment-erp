@@ -76,7 +76,7 @@ function RowEditor({
 }: {
   list: GarmentList;
   row: Partial<GarmentRow> | null;
-  onSave: (r: RowInput) => void;
+  onSave: (r: RowInput, andAddAnother?: boolean) => void;
   onCancel: () => void;
   pending: boolean;
   error: unknown;
@@ -100,19 +100,43 @@ function RowEditor({
 
   const set = (k: string, val: string) => setV((p) => ({ ...p, [k]: val }));
 
-  const save = () => {
+  const sizeOptions = useMemo(() => [
+    { value: "", label: "Select size…" },
+    ...list.schema.sizes.map((s) => ({
+      value: String(s.id),
+      label: s.label.includes("Kids") || s.label.includes("Adult")
+        ? s.label
+        : /^\d+$/.test(s.code)
+          ? `${s.code} (Kids)`
+          : `${s.label} (Adult)`,
+    })),
+  ], [list.schema.sizes]);
+
+  const save = (andAddAnother = false) => {
     const values: Record<string, string> = {};
     fields
       .filter((f) => f.key !== "player_name" && f.key !== "number" && v[f.key] !== "")
       .forEach((f) => (values[f.key] = v[f.key]));
-    onSave({
-      size_id: v.size_id ? Number(v.size_id) : null,
-      quantity: Number(v.quantity) || 1,
-      player_name: v.player_name ? v.player_name.trim() : null,
-      number: v.number ? v.number.trim() : null,
-      notes: v.notes ? v.notes.trim() : null,
-      values,
-    });
+    onSave(
+      {
+        size_id: v.size_id ? Number(v.size_id) : null,
+        quantity: Number(v.quantity) || 1,
+        player_name: v.player_name ? v.player_name.trim() : null,
+        number: v.number ? v.number.trim() : null,
+        notes: v.notes ? v.notes.trim() : null,
+        values,
+      },
+      andAddAnother,
+    );
+    if (andAddAnother) {
+      setV((prev) => ({
+        ...prev,
+        player_name: "",
+        number: "",
+        notes: "",
+        quantity: "1",
+      }));
+    }
   };
 
   const hasNameOrNum = fields.some((f) => f.key === "player_name" || f.key === "number");
@@ -125,10 +149,7 @@ function RowEditor({
       <div className="grid gap-3 sm:grid-cols-2">
         <SelectField
           label="Garment Size *"
-          options={[
-            { value: "", label: "Select size…" },
-            ...list.schema.sizes.map((s) => ({ value: String(s.id), label: s.label })),
-          ]}
+          options={sizeOptions}
           value={v.size_id}
           onChange={(e) => set("size_id", e.target.value)}
         />
@@ -208,13 +229,25 @@ function RowEditor({
         onChange={(e) => set("notes", e.target.value)}
       />
 
-      <div className="flex justify-end gap-2.5 pt-3 border-t border-line">
+      <div className="flex flex-wrap items-center justify-between gap-2.5 pt-3 border-t border-line">
         <Button variant="secondary" onClick={onCancel}>
           Cancel
         </Button>
-        <Button loading={pending} disabled={!v.size_id} onClick={save}>
-          Save item
-        </Button>
+        <div className="flex items-center gap-2">
+          {!row?.id && (
+            <Button
+              variant="secondary"
+              loading={pending}
+              disabled={!v.size_id}
+              onClick={() => save(true)}
+            >
+              Save & Add Another
+            </Button>
+          )}
+          <Button loading={pending} disabled={!v.size_id} onClick={() => save(false)}>
+            {row?.id ? "Update item" : "Save item"}
+          </Button>
+        </div>
       </div>
     </div>
   );
@@ -425,8 +458,8 @@ function ListEditor({ orderId }: { orderId: number }) {
         </div>
       )}
 
-      {/* Validation Errors & Warnings Callouts */}
-      {review.errors.length > 0 && (
+      {/* Validation Errors & Warnings Callouts (Only show errors when rows exist) */}
+      {list.items.length > 0 && review.errors.length > 0 && (
         <div className="rounded-2xl border border-danger/30 bg-danger-soft/20 p-4 text-xs text-danger shadow-xs">
           <div className="flex items-center gap-2 font-bold text-sm mb-2">
             <AlertTriangleIcon size={16} className="shrink-0" />
@@ -457,119 +490,235 @@ function ListEditor({ orderId }: { orderId: number }) {
         </div>
       )}
 
-      {/* 3 Analytics Summary Cards */}
-      <div className="grid gap-4 md:grid-cols-3">
-        {/* Card 1: Sizing Distribution Matrix */}
-        <div className="rounded-2xl border border-line bg-surface p-5 shadow-xs flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between border-b border-line pb-3 mb-3">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-muted">
-                Size Breakdown ({review.by_size.length} Sizes)
+      {/* Quick-Start Onboarding Hub when Roster is Empty; Analytics Cards when Roster has Items */}
+      {list.items.length === 0 ? (
+        <div className="rounded-2xl border border-line bg-surface p-6 shadow-xs flex flex-col gap-5">
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center gap-2">
+              <span className="flex size-7 items-center justify-center rounded-lg bg-brand/10 text-brand font-bold text-xs">
+                ⚡
               </span>
-              <span className="text-xs text-muted">Click to filter</span>
+              <h3 className="text-base font-bold text-ink">Choose How to Add Garments & Player Roster</h3>
             </div>
-
-            <div className="flex flex-wrap gap-1.5">
-              {review.by_size.map((s) => {
-                const isSelected = sizeFilter === s.size;
-                return (
-                  <button
-                    key={s.size_id}
-                    type="button"
-                    onClick={() => setSizeFilter(isSelected ? "all" : s.size)}
-                    className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-semibold transition cursor-pointer ${
-                      isSelected
-                        ? "border-brand bg-brand text-white shadow-xs"
-                        : "border-line bg-subtle/50 text-ink hover:border-brand/40 hover:bg-subtle"
-                    }`}
-                  >
-                    <span>{s.size}:</span>
-                    <span className={isSelected ? "text-white font-bold" : "text-brand font-bold"}>
-                      {s.quantity}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
+            <p className="text-xs text-muted">
+              Select one of the 3 streamlined options below to quickly build this order&apos;s garment list.
+            </p>
           </div>
 
-          {sizeFilter !== "all" && (
-            <div className="mt-3 pt-2 border-t border-line/60 flex items-center justify-between text-xs">
-              <span className="text-brand font-semibold">Filtered by size: {sizeFilter}</span>
-              <button
-                type="button"
-                onClick={() => setSizeFilter("all")}
-                className="text-muted hover:text-ink underline text-[11px]"
-              >
-                Reset size filter
-              </button>
+          <div className="grid gap-4 md:grid-cols-3">
+            {/* Option 1: Manual Single Player */}
+            <div className="flex flex-col justify-between rounded-xl border border-line bg-subtle/30 p-5 hover:border-brand/40 transition">
+              <div className="flex flex-col gap-3">
+                <div className="flex size-10 items-center justify-center rounded-xl bg-brand/10 text-brand">
+                  <ShirtIcon size={22} />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-ink">Manual Player Entry</h4>
+                  <p className="mt-1 text-xs text-muted leading-relaxed">
+                    Add players one by one with custom jersey names, numbers, sizing, and sleeve options.
+                  </p>
+                </div>
+              </div>
+              <div className="mt-5">
+                <Button
+                  size="sm"
+                  icon={<PlusIcon size={14} />}
+                  onClick={() => setEditing("new")}
+                  disabled={locked || !list.abilities.edit}
+                  className="w-full shadow-xs"
+                >
+                  Add First Player
+                </Button>
+              </div>
             </div>
-          )}
+
+            {/* Option 2: Bulk Paste */}
+            <div className="flex flex-col justify-between rounded-xl border border-line bg-subtle/30 p-5 hover:border-brand/40 transition">
+              <div className="flex flex-col gap-3">
+                <div className="flex size-10 items-center justify-center rounded-xl bg-amber-500/10 text-amber-500">
+                  <FileTextIcon size={22} />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-ink">Copy & Paste Roster</h4>
+                  <p className="mt-1 text-xs text-muted leading-relaxed">
+                    Paste rows directly from Excel, Google Sheets, or WhatsApp with tab or comma separation.
+                  </p>
+                </div>
+              </div>
+              <div className="mt-5">
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  icon={<FileTextIcon size={13} />}
+                  onClick={() => setBulkOpen(true)}
+                  disabled={locked || !list.abilities.edit}
+                  className="w-full"
+                >
+                  Open Bulk Paste
+                </Button>
+              </div>
+            </div>
+
+            {/* Option 3: Import CSV */}
+            <div className="flex flex-col justify-between rounded-xl border border-line bg-subtle/30 p-5 hover:border-brand/40 transition">
+              <div className="flex flex-col gap-3">
+                <div className="flex size-10 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-500">
+                  <DownloadIcon size={22} className="rotate-180" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-ink">Import CSV File</h4>
+                  <p className="mt-1 text-xs text-muted leading-relaxed">
+                    Upload a standard spreadsheet CSV file to auto-populate the whole team roster in seconds.
+                  </p>
+                </div>
+              </div>
+              <div className="mt-5">
+                <label
+                  className={`flex h-9 w-full cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-line bg-surface text-xs font-semibold text-ink shadow-2xs hover:bg-subtle transition ${
+                    locked || !list.abilities.edit ? "pointer-events-none opacity-50" : ""
+                  }`}
+                >
+                  <DownloadIcon size={13} className="rotate-180" />
+                  <span>Upload CSV Roster</span>
+                  <input
+                    type="file"
+                    accept=".csv,text/csv"
+                    className="sr-only"
+                    disabled={locked || !list.abilities.edit}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        m.importCsv.mutate(
+                          { list, file, mode: "replace" },
+                          {
+                            onSuccess: () => notify("Roster imported successfully", "success"),
+                            onError: (err) => notify(errorOf(err) ?? "Import failed", "error"),
+                          },
+                        );
+                      }
+                      e.target.value = "";
+                    }}
+                  />
+                </label>
+              </div>
+            </div>
+          </div>
         </div>
+      ) : (
+        /* 3 Analytics Summary Cards */
+        <div className="grid gap-4 md:grid-cols-3">
+          {/* Card 1: Sizing Distribution Matrix */}
+          <div className="rounded-2xl border border-line bg-surface p-5 shadow-xs flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between border-b border-line pb-3 mb-3">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-muted">
+                  Size Breakdown ({review.by_size.length} Sizes)
+                </span>
+                <span className="text-xs text-muted">Click to filter</span>
+              </div>
 
-        {/* Card 2: Price Groups */}
-        <div className="rounded-2xl border border-line bg-surface p-5 shadow-xs flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between border-b border-line pb-3 mb-3">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-muted">
-                Price Groups & Classifications
-              </span>
-              <span className="text-xs text-muted">{review.price_groups.length} groups</span>
+              <div className="flex flex-wrap gap-1.5">
+                {review.by_size.map((s) => {
+                  const isSelected = sizeFilter === s.size;
+                  return (
+                    <button
+                      key={s.size_id}
+                      type="button"
+                      onClick={() => setSizeFilter(isSelected ? "all" : s.size)}
+                      className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-semibold transition cursor-pointer ${
+                        isSelected
+                          ? "border-brand bg-brand text-white shadow-xs"
+                          : "border-line bg-subtle/50 text-ink hover:border-brand/40 hover:bg-subtle"
+                      }`}
+                    >
+                      <span>{s.size}:</span>
+                      <span className={isSelected ? "text-white font-bold" : "text-brand font-bold"}>
+                        {s.quantity}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
-            <ul className="text-xs space-y-2">
-              {review.price_groups.map((g) => (
-                <li key={g.label} className="flex items-center justify-between">
-                  <span className="text-muted truncate max-w-[180px]">{g.label}</span>
-                  <span className="font-bold text-ink rounded bg-subtle px-2 py-0.5">
-                    {g.quantity} pcs
-                  </span>
-                </li>
-              ))}
-            </ul>
+            {sizeFilter !== "all" && (
+              <div className="mt-3 pt-2 border-t border-line/60 flex items-center justify-between text-xs">
+                <span className="text-brand font-semibold">Filtered by size: {sizeFilter}</span>
+                <button
+                  type="button"
+                  onClick={() => setSizeFilter("all")}
+                  className="text-muted hover:text-ink underline text-[11px]"
+                >
+                  Reset size filter
+                </button>
+              </div>
+            )}
           </div>
 
-          <p className="mt-3 text-[11px] text-muted border-t border-line/60 pt-2">
-            Attributes affecting pricing matrix rules are calculated automatically.
-          </p>
-        </div>
+          {/* Card 2: Price Groups */}
+          <div className="rounded-2xl border border-line bg-surface p-5 shadow-xs flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between border-b border-line pb-3 mb-3">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-muted">
+                  Price Groups & Classifications
+                </span>
+                <span className="text-xs text-muted">{review.price_groups.length} groups</span>
+              </div>
 
-        {/* Card 3: Commercial Pricing Preview */}
-        <div className="rounded-2xl border border-line bg-surface p-5 shadow-xs flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between border-b border-line pb-3 mb-3">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-muted">
-                Commercial Pricing Preview
-              </span>
-              {list.pricing_preview.price_list && (
-                <Badge tone="brand">{list.pricing_preview.price_list}</Badge>
-              )}
-            </div>
-
-            {list.pricing_preview.error ? (
-              <p className="text-xs font-semibold text-danger">
-                {list.pricing_preview.error} {(list.pricing_preview.details ?? []).join(" ")}
-              </p>
-            ) : (
-              <ul className="text-xs space-y-1.5">
-                {list.pricing_preview.lines.map((l) => (
-                  <li key={l.description} className="flex items-center justify-between">
-                    <span className="text-muted truncate max-w-[150px]">{l.description}</span>
-                    <span className="font-medium text-ink font-mono text-[11px]">
-                      {l.quantity} × {formatMoney(l.unit_price_minor, list.order.currency)}
+              <ul className="text-xs space-y-2">
+                {review.price_groups.map((g) => (
+                  <li key={g.label} className="flex items-center justify-between">
+                    <span className="text-muted truncate max-w-[180px]">{g.label}</span>
+                    <span className="font-bold text-ink rounded bg-subtle px-2 py-0.5">
+                      {g.quantity} pcs
                     </span>
                   </li>
                 ))}
               </ul>
-            )}
+            </div>
+
+            <p className="mt-3 text-[11px] text-muted border-t border-line/60 pt-2">
+              Attributes affecting pricing matrix rules are calculated automatically.
+            </p>
           </div>
 
-          <div className="mt-3 border-t border-line/60 pt-2 flex items-center justify-between font-extrabold text-sm text-ink">
-            <span>Subtotal</span>
-            <span>{formatMoney(list.pricing_preview.subtotal_minor, list.order.currency)}</span>
+          {/* Card 3: Commercial Pricing Preview */}
+          <div className="rounded-2xl border border-line bg-surface p-5 shadow-xs flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between border-b border-line pb-3 mb-3">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-muted">
+                  Commercial Pricing Preview
+                </span>
+                {list.pricing_preview.price_list && (
+                  <Badge tone="brand">{list.pricing_preview.price_list}</Badge>
+                )}
+              </div>
+
+              {list.pricing_preview.error ? (
+                <p className="text-xs font-semibold text-danger">
+                  {list.pricing_preview.error} {(list.pricing_preview.details ?? []).join(" ")}
+                </p>
+              ) : (
+                <ul className="text-xs space-y-1.5">
+                  {list.pricing_preview.lines.map((l) => (
+                    <li key={l.description} className="flex items-center justify-between">
+                      <span className="text-muted truncate max-w-[150px]">{l.description}</span>
+                      <span className="font-medium text-ink font-mono text-[11px]">
+                        {l.quantity} × {formatMoney(l.unit_price_minor, list.order.currency)}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            <div className="mt-3 border-t border-line/60 pt-2 flex items-center justify-between font-extrabold text-sm text-ink">
+              <span>Subtotal</span>
+              <span>{formatMoney(list.pricing_preview.subtotal_minor, list.order.currency)}</span>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Main Roster Workspace Table */}
       <div className="rounded-2xl border border-line bg-surface p-5 shadow-xs flex flex-col gap-4">
@@ -657,42 +806,55 @@ function ListEditor({ orderId }: { orderId: number }) {
             </div>
           </div>
 
-          {/* Size Pill filter */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
-            <span className="text-xs font-medium text-muted mr-1">Size:</span>
-            <button
-              type="button"
-              onClick={() => setSizeFilter("all")}
-              className={`rounded-lg px-2.5 py-1 text-xs font-medium transition cursor-pointer ${
-                sizeFilter === "all"
-                  ? "bg-brand text-white font-semibold shadow-xs"
-                  : "bg-subtle text-muted hover:text-ink"
-              }`}
-            >
-              All
-            </button>
-            {list.schema.sizes.map((s) => (
+          {/* Size Pill filter (Only displayed when items exist, showing active sizes without overflow) */}
+          {list.items.length > 0 && review.by_size.length > 0 && (
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="text-xs font-medium text-muted mr-1">Size Filter:</span>
               <button
-                key={s.id}
                 type="button"
-                onClick={() => setSizeFilter(s.code)}
+                onClick={() => setSizeFilter("all")}
                 className={`rounded-lg px-2.5 py-1 text-xs font-medium transition cursor-pointer ${
-                  sizeFilter === s.code
+                  sizeFilter === "all"
                     ? "bg-brand text-white font-semibold shadow-xs"
-                    : "bg-subtle text-muted hover:text-ink"
+                    : "bg-subtle text-muted hover:text-ink hover:bg-subtle/80"
                 }`}
               >
-                {s.code}
+                All ({list.items.length})
               </button>
-            ))}
-          </div>
+              {review.by_size.map((s) => {
+                const isSelected = sizeFilter === s.size;
+                return (
+                  <button
+                    key={s.size_id}
+                    type="button"
+                    onClick={() => setSizeFilter(isSelected ? "all" : s.size)}
+                    className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium transition cursor-pointer ${
+                      isSelected
+                        ? "bg-brand text-white font-semibold shadow-xs"
+                        : "bg-subtle text-ink hover:bg-subtle/80"
+                    }`}
+                  >
+                    <span>{s.size}</span>
+                    <span
+                      className={`rounded px-1.5 py-0.2 text-[10px] font-bold ${
+                        isSelected ? "bg-white/20 text-white" : "bg-brand/10 text-brand"
+                      }`}
+                    >
+                      {s.quantity}
+                    </span>
+                    {isSelected && <span className="ml-0.5 text-[10px]">✕</span>}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* Table View */}
         {rows.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-line bg-subtle/20 p-10 text-center">
+          <div className="rounded-xl border border-dashed border-line bg-subtle/20 p-8 text-center">
             <div className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-subtle text-muted mb-3">
-              <ShirtIcon size={24} />
+              {search || sizeFilter !== "all" ? <SearchIcon size={22} /> : <ShirtIcon size={24} />}
             </div>
             <h4 className="text-sm font-bold text-ink">
               {search || sizeFilter !== "all" ? "No matching garment items" : "No roster rows added yet"}
@@ -700,7 +862,7 @@ function ListEditor({ orderId }: { orderId: number }) {
             <p className="text-xs text-muted max-w-sm mx-auto mt-1">
               {search || sizeFilter !== "all"
                 ? "Try adjusting your search query or resetting the size filter."
-                : "Add individual players, paste rows directly from Excel/Sheets, or import a CSV file."}
+                : "Add individual players, paste rows directly from Excel/Sheets, or import a CSV file using the options above."}
             </p>
             <div className="mt-4 flex justify-center gap-2">
               {search || sizeFilter !== "all" ? (
@@ -893,15 +1055,22 @@ function ListEditor({ orderId }: { orderId: number }) {
             pending={m.addRows.isPending || m.updateRow.isPending}
             error={editing === "new" ? m.addRows.error : m.updateRow.error}
             onCancel={() => setEditing(null)}
-            onSave={(row) =>
+            onSave={(row, andAddAnother) =>
               editing === "new"
                 ? m.addRows.mutate(
                     { list, rows: [row] },
                     {
                       onSuccess: () => {
-                        notify("Row added", "success");
-                        setEditing(null);
+                        notify(
+                          andAddAnother ? "Player added! Ready for next." : "Row added",
+                          "success",
+                        );
+                        if (!andAddAnother) {
+                          setEditing(null);
+                        }
                       },
+                      onError: (err) =>
+                        notify(errorOf(err) ?? "Failed to add player row", "error"),
                     },
                   )
                 : m.updateRow.mutate(
@@ -911,6 +1080,8 @@ function ListEditor({ orderId }: { orderId: number }) {
                         notify("Row updated", "success");
                         setEditing(null);
                       },
+                      onError: (err) =>
+                        notify(errorOf(err) ?? "Failed to update row", "error"),
                     },
                   )
             }

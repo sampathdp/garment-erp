@@ -1,8 +1,12 @@
-import type { Metadata } from "next";
-import { BranchesScreen } from "@/features/organizations/branches-screen";
+"use client";
 
-export const metadata: Metadata = { title: "Branches" };
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 
 export default function BranchesPage() {
-  return <BranchesScreen />;
+  const router = useRouter();
+  useEffect(() => {
+    router.replace("/settings/pages/");
+  }, [router]);
+  return null;
 }

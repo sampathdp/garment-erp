@@ -375,7 +375,7 @@ function CuttingJobDetail({ id }: { id: number }) {
             <span className="font-semibold text-ink">{job.job_no}</span>
           </div>
         }
-        description={`${job.order.customer} · ${job.branch} / ${job.page.code} · ${job.product_category} × ${job.quantity} · ${job.material ?? "No material"} · Due ${formatBusinessDate(job.order.due_date)}`}
+        description={`${job.order.customer} · ${job.page.code} · ${job.product_category} × ${job.quantity} · ${job.material ?? "No material"} · Due ${formatBusinessDate(job.order.due_date)}`}
         actions={
           <div className="flex flex-wrap items-center gap-2.5">
             <Badge tone={cuttingStatusTone(job.status.value)} dot>{job.status.label}</Badge>

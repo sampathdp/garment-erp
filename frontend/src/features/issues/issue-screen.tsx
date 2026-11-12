@@ -108,7 +108,7 @@ function IssueDetail({ id }: { id: number }) {
             <span className="font-semibold text-ink">#{issue.id}</span>
           </div>
         }
-        description={`${issue.job_no} · ${issue.order.customer} · ${issue.branch} / ${issue.page.code}`}
+        description={`${issue.job_no} · ${issue.order.customer} · ${issue.page.code}`}
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <Badge tone={issueStatusTone(issue.status.value)} dot>{issue.status.label}</Badge>

@@ -151,7 +151,7 @@ function DeliveryDetail({ id }: { id: number }) {
             <span className="font-semibold text-ink">{d.job_no}</span>
           </div>
         }
-        description={`${d.customer.name} · ${d.branch} / ${d.page.code} · ${d.product.category ?? ""} × ${d.quantity} · Due ${formatBusinessDate(d.order.due_date)}`}
+        description={`${d.customer.name} · ${d.page.code} · ${d.product.category ?? ""} × ${d.quantity} · Due ${formatBusinessDate(d.order.due_date)}`}
         actions={
           <div className="flex flex-wrap items-center gap-2.5">
             <Badge tone={deliveryStatusTone(d.status.value, completed)} dot>{completed ? "Completed" : d.status.label}</Badge>

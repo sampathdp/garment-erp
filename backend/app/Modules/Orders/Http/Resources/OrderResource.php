@@ -111,10 +111,10 @@ final class OrderResource extends JsonResource
                 ] : null,
                 'submitted_at' => $this->details_submitted_at?->toIso8601ZuluString(),
             ]),
-            'design_task' => $this->when($detail && $this->relationLoaded('designTask'), fn () => $this->designTask ? [
+            'design_task' => $this->when($this->relationLoaded('designTask'), fn () => $this->designTask ? [
                 'id' => $this->designTask->id,
                 'status' => ['value' => $this->designTask->status->value, 'label' => $this->designTask->status->label()],
-                'designer' => $this->designTask->designer ? ['id' => $this->designTask->designer->id, 'name' => $this->designTask->designer->name] : null,
+                'designer' => $this->designTask->relationLoaded('designer') && $this->designTask->designer ? ['id' => $this->designTask->designer->id, 'name' => $this->designTask->designer->name] : null,
                 'correction_rounds' => $this->designTask->correction_rounds,
             ] : null),
             'bulk' => $this->when($detail && $this->status->isReleased() && $this->relationLoaded('bulkJob'), fn (): array => [

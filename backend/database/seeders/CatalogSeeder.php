@@ -51,7 +51,13 @@ class CatalogSeeder extends Seeder
 
         $sleeve = $this->optionSet('sleeve_type', 'Sleeve types', ['short' => 'Short sleeve', 'long' => 'Long sleeve', 'sleeveless' => 'Sleeveless']);
         $age = $this->optionSet('age_group', 'Kids / Adult', ['adult' => 'Adult', 'kids' => 'Kids']);
-        $bottom = $this->optionSet('bottom_category', 'Bottom categories', []);
+        $bottom = $this->optionSet('bottom_category', 'Bottom categories', [
+            'plain' => 'Plain',
+            'side_patches' => 'Side Patches',
+            'side_color_line_piping' => 'Side Color Line Piping',
+            'front_sublimation' => 'Front Only Sublimation Print',
+            'full_sublimation' => 'Full Sublimation Print',
+        ]);
 
         foreach (self::UPPER as $code) {
             $this->fields($code, [
@@ -100,11 +106,16 @@ class CatalogSeeder extends Seeder
 
         $templates = [
             [ChecklistStage::BulkPreparation, 'Internal bulk checklist', [
-                'Names and numbers match the confirmed list',
-                'Sizes and quantities match the confirmed list',
-                'Layout matches the approved final design',
-                'Colours checked against the approved design',
-                'Bulk meter and patch meter measured',
+                'Pattern — verify cutting pattern & template',
+                'Adult / Kids — verify adult vs kids cut & proportions',
+                'Material — verify fabric type & GSM specification',
+                'Width — verify fabric roll width',
+                'Logo — verify logo placement, size & print resolution',
+                'Labels — verify brand labels, neck tags & care labels',
+                'Name/No — cross-check names & numbers against confirmed roster',
+                'Quantity — verify total piece count matches order',
+                'Collars — verify collar design, cut & ribbing specifications',
+                'Patch — verify sleeve patches, arm cuts & tournament badges',
             ]],
             [ChecklistStage::BulkExternal, 'External bulk checklist', [
                 'External producer received the approved design and confirmed list',

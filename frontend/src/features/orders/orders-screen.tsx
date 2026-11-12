@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { TextField } from "@/components/ui/field";
 import { Badge, PageHeader, SelectField } from "@/components/ui/form-controls";
-import { AlertTriangleIcon, ChevronRightIcon, CreditCardIcon, PlusIcon, SearchIcon } from "@/components/ui/icons";
+import { ActionMenu, type ActionMenuItem } from "@/components/ui/action-menu";
+import { AlertTriangleIcon, ChevronRightIcon, CreditCardIcon, MenuIcon, PaletteIcon, PlusIcon, SearchIcon, ShirtIcon } from "@/components/ui/icons";
 import { Modal } from "@/components/ui/modal";
 import { RequirePermission } from "@/components/ui/record-page";
 import { useAuth } from "@/features/auth/auth-provider";
@@ -147,28 +148,66 @@ export function OrdersScreen({ group }: { group?: OrderGroup }) {
       key: "actions",
       header: "Actions",
       className: "text-right",
-      cell: (o) => (
-        <div className="flex items-center justify-end gap-1.5">
-          {!o.advance.meets_requirement && o.status.value !== "draft" && can("orders.create") && (
-            <Button
-              size="sm"
-              variant="outline"
-              icon={<CreditCardIcon size={12} />}
-              onClick={() => setPayOrder(o)}
-              className="text-xs font-semibold text-brand hover:bg-brand/10 border-brand/30 shrink-0"
+      cell: (o) => {
+        const canRecordPayment = can("payments.record") || can("orders.create") || can("orders.update");
+
+        const actionItems: ActionMenuItem[] = [
+          {
+            key: "garment-list",
+            label: "Configure Garment List",
+            description: "Player names, numbers & sizes",
+            icon: <ShirtIcon size={14} className="text-brand" />,
+            href: `/orders/garment-list/?id=${o.id}`,
+            tone: "brand",
+          },
+          {
+            key: "design-workspace",
+            label: "Open Design Workspace",
+            description: o.design_task ? `Task #${o.design_task.id} (${o.design_task.status.label})` : "Artwork files & approvals",
+            icon: <PaletteIcon size={14} className="text-purple-500" />,
+            href: o.design_task ? `/designs/view/?id=${o.design_task.id}` : `/designs/`,
+            tone: "brand",
+          },
+          ...(canRecordPayment
+            ? [
+              {
+                key: "record-payment",
+                label: "Record Payment",
+                description: "Add customer deposit / advance",
+                icon: <CreditCardIcon size={14} className="text-emerald-500" />,
+                onClick: () => setPayOrder(o),
+                tone: "success" as const,
+              },
+            ]
+            : []),
+          {
+            key: "view-order",
+            label: "View Full Details",
+            description: `Job #${o.order_no} overview`,
+            icon: <ChevronRightIcon size={14} className="text-muted" />,
+            href: `/orders/view/?id=${o.id}`,
+          },
+        ];
+
+        return (
+          <div className="flex items-center justify-end gap-1.5 whitespace-nowrap">
+            <Link
+              href={`/orders/view/?id=${o.id}`}
+              className="inline-flex items-center gap-1 rounded-lg border border-line bg-surface px-2.5 py-1.5 text-xs font-semibold text-ink shadow-xs hover:border-brand/40 hover:bg-subtle hover:text-brand transition shrink-0"
+              title="View order details"
             >
-              Add payment
-            </Button>
-          )}
-          <Link
-            href={`/orders/view/?id=${o.id}`}
-            className="inline-flex items-center gap-1 rounded-lg border border-line bg-surface px-2.5 py-1.5 text-xs font-semibold text-ink shadow-xs hover:border-brand/40 hover:bg-subtle hover:text-brand transition shrink-0"
-          >
-            <span>View</span>
-            <ChevronRightIcon size={13} />
-          </Link>
-        </div>
-      ),
+              <span>View</span>
+              <ChevronRightIcon size={13} />
+            </Link>
+
+            <ActionMenu
+              items={actionItems}
+              triggerLabel="Actions"
+              triggerIcon={<MenuIcon size={13} className="text-brand" />}
+            />
+          </div>
+        );
+      },
     },
   ];
 

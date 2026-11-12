@@ -145,6 +145,7 @@ final class OrderController
             'items' => fn ($q) => $q->select(['id', 'order_id', 'product_type_id', 'quantity', 'unit_price_minor', 'sort_order'])->orderBy('sort_order'),
             'items.productType:id,name',
             'currentUrgentApproval.decisions',
+            'designTask:id,order_id,status,designer_id,correction_rounds',
         ];
     }
 

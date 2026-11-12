@@ -43,7 +43,6 @@ class DatabaseSeeder extends Seeder
         Branch::query()->firstOrCreate(['code' => 'KDY'], ['organization_id' => $org->id, 'name' => 'Kandy', 'is_active' => true]);
 
         $pages = [
-            ['name' => 'Apex Apparel - Main Store', 'code' => 'APEX', 'invoice_prefix' => 'APEX', 'invoice_header_name' => 'Apex Apparel - Main Store', 'platform' => 'website'],
             ['name' => 'Jersey.lk', 'code' => 'JLK', 'invoice_prefix' => 'JLK', 'invoice_header_name' => 'Jersey.lk', 'platform' => 'website'],
             ['name' => 'Jersey Company', 'code' => 'JCO', 'invoice_prefix' => 'JCO', 'invoice_header_name' => 'Jersey Company', 'platform' => 'website'],
             ['name' => 'Neat Clothing', 'code' => 'NEAT', 'invoice_prefix' => 'NEAT', 'invoice_header_name' => 'Neat Clothing', 'platform' => 'website'],
@@ -57,10 +56,31 @@ class DatabaseSeeder extends Seeder
             ]);
         }
 
+        $this->call(PriceListSeeder::class);
+
         // Development samples only (real sizes and fabrics are configured by the client).
         $chart = SizeChart::query()->firstOrCreate(['name' => SizeChart::STANDARD]);
-        foreach (['XS', 'S', 'M', 'L', 'XL', '2XL'] as $i => $size) {
-            Size::query()->firstOrCreate(['size_chart_id' => $chart->id, 'code' => $size], ['label' => $size, 'sort_order' => $i]);
+        $standardSizes = [
+            ['code' => '2XS', 'label' => '2XS', 'sort_order' => 10],
+            ['code' => 'XS', 'label' => 'XS', 'sort_order' => 20],
+            ['code' => 'S', 'label' => 'S', 'sort_order' => 30],
+            ['code' => 'M', 'label' => 'M', 'sort_order' => 40],
+            ['code' => 'L', 'label' => 'L', 'sort_order' => 50],
+            ['code' => 'XL', 'label' => 'XL', 'sort_order' => 60],
+            ['code' => '2XL', 'label' => '2XL', 'sort_order' => 70],
+            ['code' => '3XL', 'label' => '3XL', 'sort_order' => 80],
+            ['code' => '4XL', 'label' => '4XL', 'sort_order' => 90],
+            ['code' => '5XL', 'label' => '5XL', 'sort_order' => 100],
+            ['code' => '20', 'label' => '20 (Kids)', 'sort_order' => 110],
+            ['code' => '22', 'label' => '22 (Kids)', 'sort_order' => 120],
+            ['code' => '24', 'label' => '24 (Kids)', 'sort_order' => 130],
+            ['code' => '26', 'label' => '26 (Kids)', 'sort_order' => 140],
+            ['code' => '28', 'label' => '28 (Kids)', 'sort_order' => 150],
+            ['code' => '30', 'label' => '30 (Kids)', 'sort_order' => 160],
+            ['code' => '32', 'label' => '32 (Kids)', 'sort_order' => 170],
+        ];
+        foreach ($standardSizes as $s) {
+            Size::query()->firstOrCreate(['size_chart_id' => $chart->id, 'code' => $s['code']], ['label' => $s['label'], 'sort_order' => $s['sort_order']]);
         }
         Material::query()->firstOrCreate(['code' => 'sample_fabric'], ['name' => 'Sample fabric', 'is_active' => true]);
 
