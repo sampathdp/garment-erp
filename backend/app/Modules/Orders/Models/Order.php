@@ -40,6 +40,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon $required_delivery_date
  * @property Carbon|null $submitted_at
  * @property Carbon|null $details_submitted_at
+ * @property Carbon|null $completed_at
  */
 class Order extends Model
 {

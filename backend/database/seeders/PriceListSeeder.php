@@ -10,7 +10,6 @@ use App\Modules\Organizations\Models\Page;
 use App\Modules\Pricing\Models\Material;
 use App\Modules\Pricing\Models\PriceList;
 use App\Modules\Pricing\Models\PriceListItem;
-use App\Modules\Pricing\Models\PriceListItemCondition;
 use App\Modules\Pricing\Models\ProductType;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Seeder;
@@ -251,4 +250,3 @@ class PriceListSeeder extends Seeder
         }
     }
 }
-

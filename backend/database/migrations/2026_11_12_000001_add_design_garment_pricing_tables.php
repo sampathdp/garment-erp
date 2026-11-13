@@ -117,10 +117,12 @@ return new class extends Migration
 
         // Pricing rules: product type × material × branch × quantity tier × attribute conditions.
         Schema::table('price_list_items', function (Blueprint $table) {
+            // Add the replacement index first: the price_list_id foreign key needs an index
+            // starting with price_list_id, so uq_price_rule cannot be dropped before it exists.
+            $table->index(['price_list_id', 'product_type_id']);
             $table->dropUnique('uq_price_rule'); // conditions make it non-unique; checked in the Action
             $table->foreignId('branch_id')->nullable()->after('material_id')->constrained()->restrictOnDelete();
             $table->string('label', 120)->nullable();
-            $table->index(['price_list_id', 'product_type_id']);
         });
 
         Schema::create('price_list_item_conditions', function (Blueprint $table) {
@@ -175,10 +177,10 @@ return new class extends Migration
         });
         Schema::dropIfExists('price_list_item_conditions');
         Schema::table('price_list_items', function (Blueprint $table) {
+            $table->unique(['price_list_id', 'product_type_id', 'material_id', 'min_qty'], 'uq_price_rule');
             $table->dropIndex(['price_list_id', 'product_type_id']);
             $table->dropConstrainedForeignId('branch_id');
             $table->dropColumn('label');
-            $table->unique(['price_list_id', 'product_type_id', 'material_id', 'min_qty'], 'uq_price_rule');
         });
         Schema::table('garment_list_versions', fn (Blueprint $table) => $table->dropColumn('total_quantity'));
         Schema::dropIfExists('garment_list_item_values');

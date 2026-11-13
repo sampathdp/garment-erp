@@ -102,6 +102,6 @@ final class JobCompletion
             : DeliveryDocument::query()->where('delivery_id', $delivery->id)->distinct()->pluck('type');
         $present = $types->map(fn ($t) => $t instanceof DeliveryDocumentType ? $t : DeliveryDocumentType::from((string) $t))->all();
 
-        return array_values(array_filter([$required], fn (array $set) => array_intersect(array_map(fn ($t) => $t->value, $set), array_map(fn ($t) => $t->value, $present)) === []));
+        return array_filter([$required], fn (array $set) => array_intersect(array_map(fn ($t) => $t->value, $set), array_map(fn ($t) => $t->value, $present)) === []);
     }
 }

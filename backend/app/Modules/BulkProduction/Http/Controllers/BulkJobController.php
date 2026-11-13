@@ -20,6 +20,7 @@ use App\Modules\Garments\Support\GarmentSchema;
 use App\Modules\Identity\Models\User;
 use App\Modules\Identity\Support\Permissions;
 use App\Modules\Identity\Support\StaffDirectory;
+use App\Modules\Orders\Models\Order;
 use App\Modules\Orders\Models\OrderItem;
 use App\Support\Http\ApiResponse;
 use App\Support\Http\ListQuery;

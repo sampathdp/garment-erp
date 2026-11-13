@@ -72,7 +72,10 @@ final class ReportQuery
         ]);
     }
 
-    /** @param  array{from: string, to: string, branch_id: int|null, page_id: int|null, days: int}  $filters */
+    /**
+     * @param  array{from: string, to: string, branch_id: int|null, page_id: int|null, days: int}  $filters
+     * @return LengthAwarePaginator<int, Order>
+     */
     public function paginate(string $report, User $user, array $filters, int $perPage): LengthAwarePaginator
     {
         $today = BusinessDate::today()->toDateString();
@@ -96,8 +99,12 @@ final class ReportQuery
         return $query->paginate($perPage);
     }
 
-    /** Totals of the outstanding-balance report (cached like the aggregates). */
-    /** @param  array{from: string, to: string, branch_id: int|null, page_id: int|null, days: int}  $filters */
+    /**
+     * Totals of the outstanding-balance report (cached like the aggregates).
+     *
+     * @param  array{from: string, to: string, branch_id: int|null, page_id: int|null, days: int}  $filters
+     * @return array<int|string, mixed>
+     */
     public function outstandingTotals(User $user, array $filters): array
     {
         $key = 'report:outstanding-totals:'.ReportScope::fingerprint($user).':'.md5(json_encode($filters, JSON_THROW_ON_ERROR));
@@ -124,7 +131,10 @@ final class ReportQuery
             ->when($dated, fn ($q) => $q->whereBetween('orders.created_at', self::range($filters)));
     }
 
-    /** @param  array{from: string, to: string, branch_id: int|null, page_id: int|null, days: int}  $filters */
+    /**
+     * @param  array{from: string, to: string, branch_id: int|null, page_id: int|null, days: int}  $filters
+     * @return array<string, mixed>
+     */
     private function jobsByStatus(User $user, array $filters): array
     {
         $rows = $this->orders($user, $filters)->where('orders.status', '!=', OrderStatus::Draft->value)
@@ -135,7 +145,10 @@ final class ReportQuery
             'total' => (int) $rows->sum()];
     }
 
-    /** @param  array{from: string, to: string, branch_id: int|null, page_id: int|null, days: int}  $filters */
+    /**
+     * @param  array{from: string, to: string, branch_id: int|null, page_id: int|null, days: int}  $filters
+     * @return array<string, mixed>
+     */
     private function jobsByBranchPage(User $user, array $filters): array
     {
         $active = self::activeStatuses();
@@ -151,7 +164,10 @@ final class ReportQuery
             'value' => self::money((int) $r->getAttribute('value_minor'), (string) $r->getAttribute('currency'))])->all()];
     }
 
-    /** @param  array{from: string, to: string, branch_id: int|null, page_id: int|null, days: int}  $filters */
+    /**
+     * @param  array{from: string, to: string, branch_id: int|null, page_id: int|null, days: int}  $filters
+     * @return array<string, mixed>
+     */
     private function paymentStatus(User $user, array $filters): array
     {
         $bucket = 'CASE WHEN orders.verified_paid_minor <= 0 THEN \'no_verified_payment\' WHEN orders.verified_paid_minor < orders.advance_required_minor THEN \'advance_short\' '
@@ -167,7 +183,10 @@ final class ReportQuery
         ])->values()->all()];
     }
 
-    /** @param  array{from: string, to: string, branch_id: int|null, page_id: int|null, days: int}  $filters */
+    /**
+     * @param  array{from: string, to: string, branch_id: int|null, page_id: int|null, days: int}  $filters
+     * @return array<string, mixed>
+     */
     private function advanceCollection(User $user, array $filters): array
     {
         $rows = $this->orders($user, $filters)->whereNotIn('orders.status', [OrderStatus::Draft->value, OrderStatus::Cancelled->value])
@@ -192,6 +211,7 @@ final class ReportQuery
      * per branch, for records COMPLETED within the date range.
      *
      * @param  array{from: string, to: string, branch_id: int|null, page_id: int|null, days: int}  $filters
+     * @return array<string, mixed>
      */
     private function duration(User $user, array $filters, string $table, string $start, string $end, ?string $statusColumn, ?string $doneStatus): array
     {
@@ -211,7 +231,10 @@ final class ReportQuery
         ];
     }
 
-    /** @param  array{from: string, to: string, branch_id: int|null, page_id: int|null, days: int}  $filters */
+    /**
+     * @param  array{from: string, to: string, branch_id: int|null, page_id: int|null, days: int}  $filters
+     * @return array<string, mixed>
+     */
     private function issueSummary(User $user, array $filters): array
     {
         $base = fn (): QueryBuilder => DB::table('production_issues')->whereIn('order_id', $this->orders($user, $filters, dated: false)->select('orders.id'))

@@ -126,7 +126,7 @@ final class DashboardQuery
             self::metric('corrections', 'Corrections requested', $mine()->where('status', DesignTaskStatus::ChangesRequested->value)->count(), '/designs/'),
             self::metric('final_files', 'Final files due', $mine()->where('status', DesignTaskStatus::Approved->value)->count(), '/designs/'),
         ], 'items' => $due->map(fn ($t) => ['label' => $t->getAttribute('order_no'), 'due_date' => self::date($t->getAttribute('required_delivery_date')),
-            'is_urgent' => (bool) $t->getAttribute('is_urgent'), 'status' => $t->getAttribute('status')?->value ?? (string) $t->getAttribute('status'), 'link' => "/designs/view/?id={$t->id}"])->all()];
+            'is_urgent' => (bool) $t->getAttribute('is_urgent'), 'status' => $t->status->value, 'link' => "/designs/view/?id={$t->id}"])->all()];
     }
 
     /** @return array<string, mixed> */

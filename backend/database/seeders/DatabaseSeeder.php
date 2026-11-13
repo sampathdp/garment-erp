@@ -6,12 +6,12 @@ namespace Database\Seeders;
 
 use App\Modules\Identity\Models\User;
 use App\Modules\Identity\Support\Roles;
+use App\Modules\Organizations\Models\AppSetting;
 use App\Modules\Organizations\Models\Branch;
 use App\Modules\Organizations\Models\Organization;
 use App\Modules\Organizations\Models\Page;
-use App\Modules\Organizations\Models\AppSetting;
-use App\Modules\Organizations\Support\WorkflowSettings;
 use App\Modules\Organizations\Models\WorkingCalendarDay;
+use App\Modules\Organizations\Support\WorkflowSettings;
 use App\Modules\Pricing\Models\Material;
 use App\Modules\Pricing\Models\Size;
 use App\Modules\Pricing\Models\SizeChart;

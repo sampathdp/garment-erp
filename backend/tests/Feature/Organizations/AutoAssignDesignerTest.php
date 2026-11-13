@@ -108,4 +108,3 @@ it('allows the Super Admin to toggle auto-assignment in workflow settings', func
     expect($settings->autoAssignDesigner())->toBeFalse();
     expect($settings->autoAssignBulkDesigner())->toBeFalse();
 });
-

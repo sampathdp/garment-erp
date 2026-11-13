@@ -45,7 +45,7 @@ final class ReportScope
      */
     public static function remember(string $key, int $seconds, callable $callback): mixed
     {
-        return Cache::remember("reporting:{$key}", $seconds, $callback);
+        return Cache::remember("reporting:{$key}", $seconds, $callback(...));
     }
 
     public static function seconds(string $start, string $end): string
