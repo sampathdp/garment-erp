@@ -180,8 +180,8 @@ frontend/src/
 | Concern | A — Shared hosting (current) | B — VPS (later, config change only) |
 |---|---|---|
 | PHP | Host's PHP 8.3+ selector | PHP-FPM 8.3+ |
-| Web | Apache + `.htaccess`; `public_html/api` points to Laravel `public/`, all other Laravel files stay outside `public_html` | Nginx |
-| Frontend | Static export files in `public_html/app` (or the `app.` subdomain) | Same, or a Node server |
+| Web | Apache + `.htaccess` on one origin (`garment-erp.codeplaystudios.com`): the root `.htaccess` routes `/api`, `/sanctum` and `/up` to `backend/public/index.php` and forbids every other `backend/` path; the settings file lives outside the web root (`<home>/envs/garment-erp.env`). See docs/DEPLOYMENT.md | Nginx |
+| Frontend | Static export files in the subdomain root, next to `backend/` | Same, or a Node server |
 | DB | Host MySQL 8 (MariaDB only if MySQL is unavailable — must be checked in Phase 01) | MySQL 8.4 |
 | Cache / sessions / locks | `database` driver | Redis |
 | Queues | `database` driver, processed by cron every minute | Redis + Horizon (Supervisor) |
@@ -189,7 +189,7 @@ frontend/src/
 | Realtime | Polling | Reverb (optional) |
 | Files | Private folder outside `public_html`, or S3-compatible storage | S3-compatible storage |
 | Virus scan | Not available — rely on type allow-list, re-encoding and download-only serving | ClamAV |
-| Deploy | CI builds artifacts (vendor + static frontend), uploads over SSH/SFTP, runs migrations over SSH | Same pipeline, or zero-downtime releases |
+| Deploy | `.github/workflows/deploy.yml`: after CI passes on `master`, builds vendor + static frontend and uploads over FTPS (lftp); migrations are run on the server (SSH or cPanel Terminal) | Same pipeline, or zero-downtime releases |
 
 ### 5.2 Shared hosting requirements (Phase 01 must confirm, Q24)
 PHP 8.3+ with `intl`, `sodium`, `pdo_mysql`, `fileinfo`, `bcmath`, `gd`; **SSH access**; **cron jobs** at 1-minute intervals; MySQL 8; subdomains with free TLS; the ability to place the Laravel app outside `public_html`. Without SSH and per-minute cron the system cannot run reliably, and a VPS is required.

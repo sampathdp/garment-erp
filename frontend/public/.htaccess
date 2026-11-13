@@ -1,19 +1,26 @@
-# Apache config for the static export on shared hosting (profile A).
-# Deployed with the contents of `out/` into the app subdomain's document root.
+# Web root of https://garment-erp.codeplaystudios.com (shared hosting, profile A).
+# `npm run build` copies this file into out/, and the deploy workflow uploads out/ to the subdomain root.
+# One origin serves both apps:
+#   /                     static Next.js export (this folder)
+#   /api/*, /sanctum/*    Laravel, uploaded to backend/ next to the export (only backend/public is reachable)
+# Same origin means no CORS preflights and a host-only session cookie.
 
 Options -Indexes -MultiViews
 DirectoryIndex index.html
+ServerSignature Off
 
 <IfModule mod_headers.c>
+    Header always unset X-Powered-By
+    Header unset X-Powered-By
     Header always set X-Content-Type-Options "nosniff"
     Header always set X-Frame-Options "DENY"
     Header always set Referrer-Policy "strict-origin-when-cross-origin"
-    Header always set Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=()"
-    Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains" env=HTTPS
-    # CSP: Phase 01 baseline. The App Router injects inline bootstrap scripts; Phase 15 replaces
-    # 'unsafe-inline' in script-src with build-time hashes (see SECURITY_STANDARDS.md §4).
-    # Set connect-src to the real API origin at deploy time.
-    Header always set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://api.example.lk; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'"
+    Header always set Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
+    Header always set Cross-Origin-Opener-Policy "same-origin"
+    Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
+    # The App Router injects inline bootstrap scripts; Phase 15 replaces 'unsafe-inline' in script-src
+    # with build-time hashes (SECURITY_STANDARDS.md §4). The API and signed file URLs are same-origin.
+    Header always set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'"
 
     # HTML must revalidate (new deploys); hashed assets are immutable.
     <FilesMatch "\.html$">
@@ -26,9 +33,31 @@ DirectoryIndex index.html
 
 <IfModule mod_rewrite.c>
     RewriteEngine On
+
     # Force HTTPS
     RewriteCond %{HTTPS} !=on
+    RewriteCond %{HTTP:X-Forwarded-Proto} !=https
     RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+    # Some PHP handlers (CGI/FastCGI) drop the Authorization header.
+    RewriteCond %{HTTP:Authorization} .
+    RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
+    # The whole Laravel project is uploaded to backend/. Only backend/public/ may be reached:
+    # app code, vendor, storage (logs), database, config and composer files never are.
+    RewriteRule ^backend/?$ - [F,L]
+    RewriteRule ^backend/(?!public/) - [F,L]
+
+    # Hidden paths (except ACME challenges)
+    RewriteRule (^|/)\.(?!well-known/) - [F,L]
+
+    # Secrets, logs, dumps, archives and source maps are never served.
+    RewriteRule \.(env|log|sql|sqlite|bak|old|swp|zip|tar|gz|rar|7z|map)$ - [F,L,NC]
+
+    # API, Sanctum CSRF cookie and the framework health check go to Laravel.
+    RewriteRule ^(api|sanctum)(/.*)?$ backend/public/index.php [QSA,L]
+    RewriteRule ^up$ backend/public/index.php [QSA,L]
+
     # Unknown paths -> exported 404 page
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteCond %{REQUEST_FILENAME} !-d

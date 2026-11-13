@@ -185,5 +185,6 @@ Horizon and Reverb are **not** installed (shared hosting).
 - The local XAMPP **MariaDB data directory is corrupt** (InnoDB "log sequence number in the future", privilege tables unreadable). Do not start it or attempt repair without the user's explicit approval and a backup of `C:\xampp\mysql\data`. Local dev uses SQLite (`backend/database/database.sqlite`).
 - Disk I/O is slow (the permission seeder takes about 5 min on SQLite, and phpstan's parallel mode hangs, so use `--debug`). Run long commands in the background.
 - Preferred dev environment remains WSL2 or Docker with PHP 8.3+ and MySQL 8.
+- Production: https://garment-erp.codeplaystudios.com (shared hosting, MySQL). One origin: static export at `/`, Laravel at `/api` and `/sanctum` via `frontend/public/.htaccess`; settings in `<home>/envs/garment-erp.env` (loaded by `bootstrap/app.php`). `.github/workflows/deploy.yml` uploads over FTPS after CI passes on `master`; migrations and seeders are run on the server. First run: `ProductionBootstrapSeeder`. Full steps: docs/DEPLOYMENT.md.
 - Production is shared hosting. Before relying on a server feature (PHP extension, cron frequency, triggers, upload limit), check that the host supports it.
 - Do not touch the sibling projects in `D:\React`.

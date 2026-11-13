@@ -12,7 +12,7 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 
-return Application::configure(basePath: dirname(__DIR__))
+$app = Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
         web: __DIR__.'/../routes/web.php',
         api: __DIR__.'/../routes/api.php',
@@ -40,3 +40,18 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withExceptions(function (Exceptions $exceptions): void {
         ApiExceptionRenderer::register($exceptions);
     })->create();
+
+/*
+| Shared hosting: backend/ sits inside the web root, so the production settings file is kept outside it,
+| at <home>/envs/garment-erp.env (docs/DEPLOYMENT.md). The home directory is two levels above backend/
+| when the subdomain root is <home>/<subdomain>/, three when it is <home>/public_html/<subdomain>/.
+| Without that file Laravel reads backend/.env as usual (local development, CI).
+*/
+foreach ([dirname(__DIR__, 3), dirname(__DIR__, 4)] as $home) {
+    if (is_file($home.'/envs/garment-erp.env')) {
+        $app->useEnvironmentPath($home.'/envs')->loadEnvironmentFrom('garment-erp.env');
+        break;
+    }
+}
+
+return $app;

@@ -1,0 +1,142 @@
+name: Deploy to Shared Hosting
+
+# https://garment-erp.codeplaystudios.com — one subdomain serves the static frontend at / and
+# Laravel at /api and /sanctum (frontend/public/.htaccess). Server setup: docs/DEPLOYMENT.md.
+#
+# Runs after CI passes on master (CI includes the MySQL test run, so migrations are checked
+# against MySQL before every deploy), or manually from the Actions tab.
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+env:
+  SITE_URL: https://garment-erp.codeplaystudios.com
+
+jobs:
+  deploy-backend:
+    name: Build & deploy backend
+    if: github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get code
+        uses: actions/checkout@v4
+        with:
+          # workflow_run: deploy exactly the commit CI tested.
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      # composer.lock targets PHP >= 8.2; the server must run 8.2+ with these extensions.
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          extensions: intl, sodium, pdo_mysql, bcmath, gd, zip, fileinfo, mbstring
+          tools: composer
+          coverage: none
+
+      - name: Install backend dependencies (production)
+        working-directory: backend
+        run: composer install --no-dev --optimize-autoloader --no-interaction --no-progress --prefer-dist
+
+      - name: Strip files that must not reach the server
+        working-directory: backend
+        run: |
+          rm -rf tests node_modules storage/framework/phpstan storage/framework/testing
+          rm -f .env .env.* phpunit.xml phpstan.neon pint.json storage/phpstan.txt database/*.sqlite
+
+      - name: Install lftp
+        run: sudo apt-get update && sudo apt-get install -y lftp
+
+      # No --delete: the remote backend/ also holds storage/ contents written by the app.
+      # storage/ and bootstrap/cache/ get 775 because --no-perms leaves new directories at the
+      # FTP server's umask, which may not be writable by PHP.
+      # The settings file is NOT uploaded: it lives at <home>/envs/garment-erp.env (bootstrap/app.php).
+      # Migrations are not run from CI: run `php artisan migrate --force` on the server.
+      - name: Upload backend
+        env:
+          FTP_SERVER: ${{ secrets.FTP_SERVER }}
+          FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
+          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+        run: |
+          lftp -c "
+            set ftp:ssl-allow yes;
+            set ftp:ssl-protect-data yes;
+            set ssl:verify-certificate no;
+            set net:max-retries 5;
+            set net:reconnect-interval-base 5;
+            set net:reconnect-interval-multiplier 1;
+            set net:timeout 60;
+            set ftp:passive-mode true;
+            open -u \"$FTP_USERNAME\",\"$FTP_PASSWORD\" \"$FTP_SERVER\";
+            mirror -R --parallel=8 --only-newer --no-perms --exclude-glob '.git*' --exclude-glob '.env*' --exclude-glob 'storage/logs/*' ./backend ./backend;
+            set cmd:fail-exit no;
+            chmod -R 775 ./backend/storage;
+            chmod -R 775 ./backend/bootstrap/cache;
+            bye;
+          "
+
+  deploy-frontend:
+    name: Build & deploy frontend
+    needs: deploy-backend
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      # Static export to frontend/out. NEXT_PUBLIC_API_URL is the API ORIGIN: lib/api-client.ts
+      # appends /api/v1 and /sanctum itself. It is inlined at build time.
+      - name: Build frontend (static export)
+        working-directory: frontend
+        env:
+          NEXT_PUBLIC_API_URL: ${{ env.SITE_URL }}
+        run: npm run build
+
+      - name: Check the root .htaccess is in the export
+        run: test -f frontend/out/.htaccess
+
+      - name: Install lftp
+        run: sudo apt-get update && sudo apt-get install -y lftp
+
+      # Never add --delete here: it would remove backend/ from the server.
+      - name: Upload frontend
+        env:
+          FTP_SERVER: ${{ secrets.FTP_SERVER }}
+          FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
+          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+        run: |
+          lftp -c "
+            set ftp:ssl-allow yes;
+            set ftp:ssl-protect-data yes;
+            set ssl:verify-certificate no;
+            set net:max-retries 5;
+            set net:reconnect-interval-base 5;
+            set net:reconnect-interval-multiplier 1;
+            set net:timeout 60;
+            set ftp:passive-mode true;
+            open -u \"$FTP_USERNAME\",\"$FTP_PASSWORD\" \"$FTP_SERVER\";
+            mirror -R --parallel=8 --only-newer --no-perms --exclude-glob '.git*' --exclude-glob '.env*' ./frontend/out/ .;
+            bye;
+          "
