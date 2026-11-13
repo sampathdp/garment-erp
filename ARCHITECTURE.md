@@ -108,6 +108,7 @@ Rules:
 - Policies extend `ScopedPolicy`: out of scope → 404, in scope without permission → 403.
 - Route model binding is always followed by `Gate::authorize()`.
 - The `authenticated` middleware group = `auth:sanctum` → `EnsureSessionIsValid` (active account, 12 h absolute lifetime) → `RequireAuthorization`, which fails any successful response for which no Gate check ran.
+- Only **policy abilities and named Gates** count as that check (Phase 09). Plain permission lookups (`$user->can('orders.view')`, `scope.*`) run all over a request — inside list scopes, other policies and every Resource's `abilities` — so they are ignored by `AuthorizationTracker`; otherwise a controller that forgot `Gate::authorize()` but returned a Resource would pass the safety net.
 
 ### 3.5 Authentication
 - Sanctum **SPA stateful cookie** authentication. No bearer tokens are kept in browser storage.
@@ -119,7 +120,8 @@ Rules:
 - Queues: `default`, `notifications`, `documents` (PDFs, thumbnails), `imports`. The driver comes from config: `database` on shared hosting, `redis` + Horizon on a VPS. Code never depends on a specific driver.
 - On shared hosting, a cron entry runs `schedule:run` every minute. The scheduler starts `queue:work --stop-when-empty --max-time=50`, which processes jobs without a long-running process. Expect up to about one minute of delay for queued work.
 - Events are dispatched **after commit** (`ShouldDispatchAfterCommit`), so listeners never see rolled-back data.
-- Notifications: the database channel is always used. The frontend polls `GET /api/v1/notifications/unread-count` every 30 s (paused when the tab is hidden). Reverb broadcasting can be enabled later on a VPS without changing callers.
+- Notifications: written to the transactional outbox inside the business transaction (`Notify::send()`), delivered by a queued job after commit and by the per-minute sweep. The bell polls `GET /api/v1/notifications/poll?since=` every 20 s (paused when the tab is hidden); the poll and the history are index-only lookups (`notifications(notifiable…, created_at)`). Reverb broadcasting can be enabled later on a VPS without changing callers.
+- Scheduler heartbeat (Phase 09): the scheduler writes `health:scheduler_heartbeat` every minute and `GET /api/v1/health` reports `scheduler: ok | stale | unknown` (503 when stale). On shared hosting the queue and the outbox are drained only by cron, so point the uptime monitor at the health URL.
 - Locks: `Cache::lock()` works with the `database` cache store on shared hosting and with Redis on a VPS. Workflow correctness never depends on the lock alone — row locks (`lockForUpdate`) are the main guard.
 
 ### 3.7 Files
@@ -180,7 +182,7 @@ frontend/src/
 | Concern | A — Shared hosting (current) | B — VPS (later, config change only) |
 |---|---|---|
 | PHP | Host's PHP 8.3+ selector | PHP-FPM 8.3+ |
-| Web | Apache + `.htaccess` on one origin (`garment-erp.codeplaystudios.com`): the root `.htaccess` routes `/api`, `/sanctum` and `/up` to `backend/public/index.php` and forbids every other `backend/` path; the settings file lives outside the web root (`<home>/envs/garment-erp.env`). See docs/DEPLOYMENT.md | Nginx |
+| Web | Apache + `.htaccess` on one origin (`garment-erp.codeplaystudios.com`): the root `.htaccess` routes `/api`, `/sanctum` and `/up` to `backend/public/index.php` and forbids every other `backend/` path; the settings file lives outside the web root (`<home>/envs/garment-erp.env`). See DEPLOYMENT_GUIDE.md | Nginx |
 | Frontend | Static export files in the subdomain root, next to `backend/` | Same, or a Node server |
 | DB | Host MySQL 8 (MariaDB only if MySQL is unavailable — must be checked in Phase 01) | MySQL 8.4 |
 | Cache / sessions / locks | `database` driver | Redis |
@@ -225,5 +227,5 @@ PHP 8.3+ with `intl`, `sodium`, `pdo_mysql`, `fileinfo`, `bcmath`, `gd`; **SSH a
 |---|---|---|
 | Laravel 12.71, not 13.x | Laravel 12 security fixes end around Feb 2027 | Upgrade in Phase 02, after PHP 8.3+ is installed locally and confirmed on the host (Q24). Code uses no APIs removed in 13 |
 | Frontend CSP allows `'unsafe-inline'` scripts | Weaker XSS defence | Phase 15: build-time script hashes |
-| No E2E (Playwright) yet | Full browser flow verified only by a manual curl smoke test | Add in Phase 02 together with the user-management screens |
+| No browser E2E (Playwright) yet | The UI flow is not exercised in a browser. Phase 09 added an API-level end-to-end lifecycle test (`tests/Feature/Lifecycle`, internal and external bulk) that drives every step through the HTTP API | Install Playwright where browsers can be downloaded (CI) and port the lifecycle test to the screens |
 | ~~Login timing differs for unknown and known emails~~ | Resolved in Phase 02: `SessionGuard::attempt()` and the password broker run inside Laravel's `Timebox` (fixed minimum duration) | — |

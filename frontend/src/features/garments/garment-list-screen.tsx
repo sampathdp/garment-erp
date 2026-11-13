@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useDeferredValue, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { TextField } from "@/components/ui/field";
 import {
@@ -269,10 +269,12 @@ function ListEditor({ orderId }: { orderId: number }) {
   const [reason, setReason] = useState("");
 
   const list = query.data;
+  // Lists hold up to 2,000 rows: filter with a deferred term so typing stays responsive.
+  const deferredSearch = useDeferredValue(search);
 
   const rows = useMemo(() => {
     if (!list) return [];
-    const term = search.trim().toLowerCase();
+    const term = deferredSearch.trim().toLowerCase();
     return list.items.filter((r) => {
       const matchesSearch =
         !term ||
@@ -282,7 +284,9 @@ function ListEditor({ orderId }: { orderId: number }) {
       const matchesSize = sizeFilter === "all" || r.size === sizeFilter;
       return matchesSearch && matchesSize;
     });
-  }, [list, search, sizeFilter]);
+  }, [list, deferredSearch, sizeFilter]);
+  // Parsed only when the pasted text (or the schema) changes, not on every render of the editor.
+  const parsedBulk = useMemo(() => (list ? parseBulkRows(bulkText, list.schema.sizes, list.schema.fields) : null), [bulkText, list]);
 
   if (query.isPending) return <LoadingState label="Loading garment roster & sizing list…" />;
   if (query.error || !list) {
@@ -291,7 +295,7 @@ function ListEditor({ orderId }: { orderId: number }) {
 
   const locked = list.current_version.status !== "draft";
   const review = list.review;
-  const bulk = parseBulkRows(bulkText, list.schema.sizes, list.schema.fields);
+  const bulk = parsedBulk ?? parseBulkRows(bulkText, list.schema.sizes, list.schema.fields);
 
   const allocationPercent =
     review.expected_quantity > 0

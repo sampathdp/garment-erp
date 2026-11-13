@@ -12,7 +12,7 @@ use Illuminate\Database\Seeder;
 use Illuminate\Support\Str;
 
 /**
- * First-run setup for a new production database (docs/DEPLOYMENT.md). Idempotent, safe to re-run.
+ * First-run setup for a new production database (DEPLOYMENT_GUIDE.md). Idempotent, safe to re-run.
  *
  *   SEED_ORG_NAME="..." SEED_ADMIN_EMAIL="..." php artisan db:seed --class=ProductionBootstrapSeeder --force
  *

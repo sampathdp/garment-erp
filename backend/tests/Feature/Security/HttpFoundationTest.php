@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\HealthController;
+use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
 
@@ -9,7 +11,7 @@ it('serves the health endpoint with security headers and a request id', function
     $response = $this->getJson('/api/v1/health');
 
     $response->assertOk()
-        ->assertExactJson(['status' => 'ok', 'checks' => ['database' => 'ok', 'cache' => 'ok']])
+        ->assertExactJson(['status' => 'ok', 'checks' => ['database' => 'ok', 'cache' => 'ok', 'scheduler' => 'unknown']])
         ->assertHeader('X-Content-Type-Options', 'nosniff')
         ->assertHeader('X-Frame-Options', 'DENY')
         ->assertHeader('Referrer-Policy', 'strict-origin-when-cross-origin')
@@ -17,6 +19,19 @@ it('serves the health endpoint with security headers and a request id', function
 
     expect(Str::isUuid($response->headers->get('X-Request-Id')))->toBeTrue()
         ->and($response->headers->get('Content-Security-Policy'))->toContain("default-src 'none'");
+});
+
+it('reports a stopped scheduler (cron) as degraded, without revealing details', function () {
+    // The scheduler registers the heartbeat; run just that event (schedule:run would also start the queue worker).
+    $heartbeat = collect(app(Schedule::class)->events())
+        ->first(fn ($event) => $event->description === 'health-heartbeat');
+    expect($heartbeat)->not->toBeNull()->and($heartbeat->expression)->toBe('* * * * *');
+    $heartbeat->run(app());
+    $this->getJson('/api/v1/health')->assertOk()->assertJsonPath('checks.scheduler', 'ok');
+
+    $this->travel(HealthController::HEARTBEAT_STALE_SECONDS + 60)->seconds();
+    $this->getJson('/api/v1/health')->assertStatus(503)
+        ->assertExactJson(['status' => 'degraded', 'checks' => ['database' => 'ok', 'cache' => 'ok', 'scheduler' => 'stale']]);
 });
 
 it('echoes a valid client request id and replaces an invalid one', function () {

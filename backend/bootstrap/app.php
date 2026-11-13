@@ -43,7 +43,7 @@ $app = Application::configure(basePath: dirname(__DIR__))
 
 /*
 | Shared hosting: backend/ sits inside the web root, so the production settings file is kept outside it,
-| at <home>/envs/garment-erp.env (docs/DEPLOYMENT.md). The home directory is two levels above backend/
+| at <home>/envs/garment-erp.env (DEPLOYMENT_GUIDE.md). The home directory is two levels above backend/
 | when the subdomain root is <home>/<subdomain>/, three when it is <home>/public_html/<subdomain>/.
 | Without that file Laravel reads backend/.env as usual (local development, CI).
 */

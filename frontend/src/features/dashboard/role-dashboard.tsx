@@ -6,6 +6,7 @@ import { Badge, Section } from "@/components/ui/form-controls";
 import { ErrorState, LoadingState } from "@/components/ui/states";
 import { api } from "@/lib/api-client";
 import { formatBusinessDate } from "@/lib/format";
+import { safeInAppPath } from "@/lib/safe-path";
 
 export interface DashboardMetric {
   key: string;
@@ -24,7 +25,7 @@ export interface DashboardSection {
 }
 
 /** Only in-app paths are linked. */
-const inApp = (href: string | null) => (href && href.startsWith("/") && !href.startsWith("//") ? href : null);
+const inApp = (href: string | null): string | null => safeInAppPath(href);
 
 export function MetricCard({ metric }: { metric: DashboardMetric }) {
   const href = inApp(metric.link);

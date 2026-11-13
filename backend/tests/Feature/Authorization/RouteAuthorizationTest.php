@@ -64,6 +64,19 @@ it('fails a protected route that never performs an authorization check', functio
     $this->signedInAs(User::factory()->create())->getJson('/api/v1/_test/unchecked');
 })->throws(LogicException::class, 'completed without an authorization check');
 
+it('does not count incidental permission lookups as an authorization check', function () {
+    // A controller that only reads permissions (as a Resource's `abilities` or a list scope does)
+    // without calling a policy or Gate ability must still fail the safety net.
+    Route::middleware(['api', 'authenticated'])->get('/api/v1/_test/permission-only', function () {
+        $user = request()->user();
+
+        return ['can_view' => $user->can('orders.view'), 'all_pages' => $user->can('scope.all_pages')];
+    })->name('test.permission-only');
+
+    $this->withoutExceptionHandling();
+    $this->signedInAs(User::factory()->create())->getJson('/api/v1/_test/permission-only');
+})->throws(LogicException::class, 'completed without an authorization check');
+
 it('fails closed with 403 in production when a check is missing', function () {
     Route::middleware(['api', 'authenticated'])->get('/api/v1/_test/unchecked-prod', fn () => ['secret' => 'data'])->name('test.unchecked-prod');
     app()->detectEnvironment(fn () => 'production');

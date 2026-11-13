@@ -75,6 +75,7 @@ final class RecordPayment
                 ]);
                 $payment->forceFill([
                     'branch_id' => $order->branch_id,
+                    'page_id' => $order->page_id,
                     'status' => PaymentStatus::PendingVerification,
                     'recorded_by' => $actor->id,
                     'idempotency_key' => $idempotencyKey,

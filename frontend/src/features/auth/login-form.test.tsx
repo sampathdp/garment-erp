@@ -55,6 +55,9 @@ describe("safeNextPath", () => {
     expect(safeNextPath("//evil.example")).toBe("/dashboard/");
     expect(safeNextPath("/\\evil.example")).toBe("/dashboard/");
     expect(safeNextPath("/login/")).toBe("/dashboard/");
+    // Browsers strip TAB/LF, which would turn these into //evil.example.
+    expect(safeNextPath("/\t/evil.example")).toBe("/dashboard/");
+    expect(safeNextPath("/\n/evil.example")).toBe("/dashboard/");
     expect(safeNextPath(null)).toBe("/dashboard/");
   });
 });

@@ -1,7 +1,7 @@
 name: Deploy to Shared Hosting
 
 # https://garment-erp.codeplaystudios.com — one subdomain serves the static frontend at / and
-# Laravel at /api and /sanctum (frontend/public/.htaccess). Server setup: docs/DEPLOYMENT.md.
+# Laravel at /api and /sanctum (frontend/public/.htaccess). Server setup: DEPLOYMENT_GUIDE.md.
 #
 # Runs after CI passes on master (CI includes the MySQL test run, so migrations are checked
 # against MySQL before every deploy), or manually from the Actions tab.

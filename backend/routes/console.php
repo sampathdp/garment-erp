@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\HealthController;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Schedule;
 
 /*
@@ -18,6 +20,10 @@ Schedule::command('queue:work database --queue=default,notifications,documents,i
 
 // Transactional outbox sweep: delivers notifications whose fast-path job failed or was lost.
 Schedule::command('notifications:dispatch-outbox')->everyMinute()->withoutOverlapping(5)->runInBackground();
+
+// Heartbeat for /api/v1/health ("scheduler"): a stopped cron entry becomes visible to uptime monitoring.
+Schedule::call(static fn () => Cache::forever(HealthController::HEARTBEAT_KEY, now()->getTimestamp()))
+    ->everyMinute()->name('health-heartbeat');
 
 // Reporting summaries are cached (ReportCache); nothing to precompute on a schedule yet.
 Schedule::command('queue:prune-failed --hours=720')->daily();

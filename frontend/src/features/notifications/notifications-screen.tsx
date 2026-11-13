@@ -9,6 +9,7 @@ import { BellIcon, CheckIcon, ChevronLeftIcon, ChevronRightIcon } from "@/compon
 import { EmptyState, ErrorState, LoadingState } from "@/components/ui/states";
 import { api, type Paginated } from "@/lib/api-client";
 import { formatDateTime } from "@/lib/format";
+import { safeInAppPath } from "@/lib/safe-path";
 import { notificationKeys } from "./notification-bell";
 
 interface AppNotification {
@@ -20,7 +21,7 @@ interface AppNotification {
 }
 
 /** Only in-app paths are followed (the payload comes from our API, but never trust a link blindly). */
-export const safeLink = (link: string | null | undefined) => (link && link.startsWith("/") && !link.startsWith("//") ? link : null);
+export const safeLink = (link: string | null | undefined): string | null => safeInAppPath(link);
 
 export function NotificationsScreen() {
   const [page, setPage] = useState(1);

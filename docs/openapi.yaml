@@ -33,7 +33,7 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Health" }
         "503":
-          description: A dependency is failing
+          description: A dependency is failing, or the scheduler heartbeat is stale
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Health" }
@@ -732,6 +732,13 @@ components:
           properties:
             database: { type: string, enum: [ok, fail] }
             cache: { type: string, enum: [ok, fail] }
+            scheduler:
+              type: string
+              enum: [ok, stale, unknown]
+              description: >-
+                Cron heartbeat (written every minute by schedule:run). `stale` (older than 5 minutes)
+                answers 503: the queue and the notification outbox are not being drained.
+                `unknown` = never ran (fresh install) and does not fail the probe.
     ScopeRef:
       type: object
       properties:

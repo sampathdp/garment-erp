@@ -28,10 +28,11 @@ class Payment extends Model
 {
     use BranchScoped;
 
-    protected bool $scopeByPageViaOrder = true;
+    /** page_id is copied from the order (it never changes), so page scoping needs no subquery on orders. */
+    protected bool $scopeByPage = true;
 
     /**
-     * status / verification / branch_id / recorded_by are set by Actions only.
+     * status / verification / branch_id / page_id / recorded_by are set by Actions only.
      *
      * @var list<string>
      */

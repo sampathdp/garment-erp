@@ -103,7 +103,7 @@ final class DashboardQuery
 
         return ['key' => 'page_owner', 'title' => 'My pages', 'metrics' => [
             self::metric('new_orders', 'New orders (7 days)', Order::query()->visibleTo($user)->where('orders.status', '!=', OrderStatus::Draft->value)->where('orders.created_at', '>=', now()->subDays(7))->count(), '/orders/'),
-            self::metric('pending_payments', 'Payments awaiting verification', Payment::query()->whereIn('order_id', $scope)->where('status', PaymentStatus::PendingVerification->value)->count(), '/payments/'),
+            self::metric('pending_payments', 'Payments awaiting verification', Payment::query()->visibleTo($user)->where('payments.status', PaymentStatus::PendingVerification->value)->count(), '/payments/'),
             self::metric('design_approvals', 'Design approvals', Order::query()->visibleTo($user)->where('orders.status', OrderStatus::DesignReview->value)->count(), '/designs/'),
             self::metric('list_approvals', 'Lists to confirm', $listApprovals, '/orders/approved/'),
             self::metric('bulk_approvals', 'Bulk approvals', BulkJob::query()->whereIn('order_id', $scope)->where('status', BulkJobStatus::InReview->value)->count(), '/bulk-jobs/'),

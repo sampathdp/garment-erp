@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { TextField } from "@/components/ui/field";
 import { AlertCircleIcon, ShieldIcon, UserIcon } from "@/components/ui/icons";
 import { applyServerErrors } from "@/lib/forms";
+import { safeInAppPath } from "@/lib/safe-path";
 import { authKeys, login } from "./api";
 
 // Client-side validation is UX only; the API validates again.
@@ -22,8 +23,8 @@ type LoginValues = z.infer<typeof schema>;
 
 /** Only same-origin relative paths are allowed as post-login targets (open-redirect protection). */
 export function safeNextPath(next: string | null): string {
-  if (!next || !next.startsWith("/") || next.startsWith("//") || next.startsWith("/\\") || next.startsWith("/login")) return "/dashboard/";
-  return next;
+  const path = safeInAppPath(next);
+  return path === null || path.startsWith("/login") ? "/dashboard/" : path;
 }
 
 export function LoginForm() {

@@ -19,8 +19,14 @@ $app->make(Kernel::class)->bootstrap();
 $count = (int) ($argv[1] ?? 10);
 $generator = $app->make(GenerateJobNumber::class);
 
-for ($i = 0; $i < $count; $i++) {
-    $number = DB::transaction(fn () => $generator->handle('CMB', 'JRSY'));
-    fwrite(STDOUT, $number.PHP_EOL);
-    usleep(random_int(0, 3000)); // interleave with the other workers
+try {
+    for ($i = 0; $i < $count; $i++) {
+        $number = DB::transaction(fn () => $generator->handle('CMB', 'JRSY'));
+        fwrite(STDOUT, $number.PHP_EOL);
+        usleep(random_int(0, 3000)); // interleave with the other workers
+    }
+} catch (Throwable $e) {
+    // Laravel's console handler would print to STDOUT and exit 0; fail loudly so the test reports it.
+    fwrite(STDERR, $e::class.': '.$e->getMessage().PHP_EOL);
+    exit(1);
 }

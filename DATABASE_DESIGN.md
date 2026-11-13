@@ -74,7 +74,8 @@ Target: **MySQL 8 (8.4 LTS preferred), InnoDB, utf8mb4.** The default collation 
 
 - Users are assigned to branches (`branch_user`) and pages (`page_user`). **Deny by default:** without assignments, and without `scope.all_branches` / `scope.all_pages`, a user sees nothing.
 - Tables that are listed directly carry a denormalised, immutable `branch_id` copied from the order: `orders`, `payments`, `invoices`, `deliveries`, `gate_passes`, `bulk_assignments`, `print_jobs`, `cutting_jobs`, `sewing_jobs`, `qc_inspections`, `production_issues`.
-- `orders` and `invoices` also carry `page_id`. The other tables get their page scope **through `order_id`** (a subquery on the indexed `orders.page_id`), so `page_id` is not duplicated further.
+- `orders`, `invoices` and (Phase 09) `payments` also carry `page_id`. The other tables get their page scope **through `order_id`** (a subquery on the indexed `orders.page_id`).
+- Why `payments.page_id` (Phase 09): MySQL/MariaDB run `order_id IN (SELECT id FROM orders WHERE page_id IN …)` (and the `EXISTS` form) as a semi-join driven by `orders`. With 300k payments the page-scoped verification queue took 7.4 s and the payment list 11.6 s. Payments are the only via-order table with many rows per order; with the copied `page_id` both take under 3 ms. An order never changes page (`page_id` is prohibited on update), so the copy cannot drift. Copy `page_id` to another via-order table only after measuring it.
 - The `App\Support\Authorization\BranchScoped` trait implements `scopeVisibleTo($user)` for lists and `isVisibleTo($user)` for policies. `ScopedPolicy` turns an out-of-scope record into 404.
 - Customers, suppliers and reference data are company-wide. Access to a customer's **orders** is still branch/page scoped.
 
@@ -160,15 +161,40 @@ MySQL forbids `ON DELETE` actions on FK columns used in CHECK constraints, so th
 - Overlapping price-list validity per page is rejected in the Action.
 
 ## 7. Index strategy
+- Phase 09 (measured, §7a): `orders (created_at)`, `payments (created_at)`, `payments (status, created_at)`, `payments (page_id, status, created_at)`, `notifications (notifiable_type, notifiable_id, created_at)`. Removed as redundant: `deliveries_order_id_index` (duplicate of the unique index) and `notifications (notifiable_type, notifiable_id)` (left prefix of two other indexes). A scan of every index for duplicates and redundant left prefixes found no others.
 - Composite indexes lead with the scope column, followed by the filter and then the sort: `orders (branch_id, status, required_delivery_date)`, `(page_id, status, required_delivery_date)`, `(branch_id, page_id, created_at)`, `(branch_id, payment_status)`, `payments (branch_id, status, created_at)`, `gate_passes (branch_id, status, expected_return_date)`, `deliveries (branch_id, status, scheduled_date)`, `audit_logs (subject_type, subject_id, occurred_at)`.
 - Every FK is indexed (InnoDB creates the index if the FK column does not lead an existing one).
 - A new filter or sort needs a matching index and an `EXPLAIN` in the pull request.
+
+## 7a. Phase 09 performance audit (EXPLAIN / ANALYZE)
+
+Volume copy: 200k orders, 200k order items, 300k payments, 30k customers, 500k notifications (separate database, synthetic data). The local server is MariaDB 10.4 with a 16 MB buffer pool, so full scans are disk-bound; production MySQL 8 with a larger pool will scan faster, but the access paths are the same. Times are `r_total_time_ms` from `ANALYZE FORMAT=JSON`.
+
+| Query (endpoint) | Before | After | Change |
+|---|---|---|---|
+| Orders list, global scope, newest first (`GET /orders`) | 208 ms (full index scan + filesort) | 0.3 ms | `orders(created_at)` |
+| Orders list, page 101 (OFFSET 2500) | 4.1 s | 27 ms | same |
+| Orders list, page-scoped (2 pages) | 228 ms | 0.1–14 ms | same (walks `created_at`, filters the page) |
+| Orders "approved" group (9 statuses) | 247 ms | 10 ms | same |
+| Payment verification queue, page-scoped (`GET /payments?filter[status]=pending_verification`) | 7,416 ms | 2.8 ms | `payments.page_id` + `(status, created_at)` |
+| Payments list, page-scoped | 11,560 ms | 0.6 ms | `payments.page_id` + `(created_at)` |
+| Payments list count, page-scoped | 3,090 ms | 77 ms | `(page_id, status, created_at)` |
+| Payment queue, global | 206 ms | 0.1 ms | `(status, created_at)` |
+| Notification history (`GET /notifications`) | 247 ms + filesort | 0.1 ms | `notifications(notifiable…, created_at)` |
+| Notification poll, every 20 s per user (`GET /notifications/poll`) | 256 ms + filesort | < 0.1 ms | same |
+| Unread count | 2.4 ms | 2.1 ms | unchanged (existing unread index) |
+| Orders of one customer | < 0.1 ms | < 0.1 ms | unchanged |
+| Free-text order search (`filter[search]`: `order_no LIKE '%…%'` or customer name) | 0.3–4 s (cold) | 0.3–7 s (cold) | **not fixed**: a leading-wildcard search reads every order whatever the index (KNOWN_LIMITATIONS.md) |
+
+Tried and dropped: `orders(page_id, created_at)` (the `created_at` index already serves page-scoped lists in under 15 ms). The dashboard work lists (design, bulk, printing, cutting, delivery) sort small active sets on the joined `orders.required_delivery_date` and were not re-indexed.
 
 ## 8. Transactions and concurrency
 - Every Action that writes more than one row runs in `DB::transaction()`.
 - Workflow transitions: `lockForUpdate()` on the order, plus a `version` check and history and audit rows in the same transaction. Events are dispatched after commit.
 - Number generation: `sequences` row `FOR UPDATE` inside the inserting transaction, so numbers are gap-free and never reused.
 - `Cache::lock()` (database store on shared hosting) is only an extra guard for long operations; row locks are the real guarantee.
+- Lock order: the **order** row first, then the workflow row (payment, print job, cutting job, delivery). `ConfirmGarmentList` locks the list and its version, then the order; no Action locks the order and then the list, so the two cannot deadlock.
+- Phase 09 multi-process race tests (`tests/Feature/Concurrency`, `--group=concurrency`) send the same request from several OS processes at the same instant: payment verification, urgent approval slots, list confirmation (invoice issue), bulk job creation, sample approval, cutting completion, job completion and payment creation with one Idempotency-Key. Exactly one wins; the others get a clean 409; there are no duplicate rows, double approvals, deadlocks or 500s. Database backstops: UNIQUE `bulk_jobs.order_id`, `print_jobs.bulk_job_id`, `cutting_jobs.print_job_id`, `sewing_jobs.cutting_job_id`, `deliveries.order_id`, `payments.idempotency_key`, `invoices.invoice_no`, `orders.order_no`.
 
 ## 9. Deletion and retention policy
 

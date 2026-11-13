@@ -67,7 +67,7 @@ describe('cross-page access', function () {
 
     it('scopes child records through their order', function () {
         $taskB = record(DesignTask::class, ['order_id' => $this->orderB->id, 'status' => DesignTaskStatus::InReview, 'designer_id' => null]);
-        $paymentB = record(Payment::class, ['order_id' => $this->orderB->id, 'branch_id' => $this->branch->id, 'status' => PaymentStatus::PendingVerification, 'recorded_by' => $this->ownerA->id]);
+        $paymentB = record(Payment::class, ['order_id' => $this->orderB->id, 'branch_id' => $this->branch->id, 'page_id' => $this->orderB->page_id, 'status' => PaymentStatus::PendingVerification, 'recorded_by' => $this->ownerA->id]);
         $listB = GarmentList::query()->forceCreate(['order_item_id' => $this->makeOrderItemId($this->orderB)]);
 
         expect(decision($this->ownerA, 'approve', $taskB))->toBe(404)
@@ -120,7 +120,7 @@ describe('page owner', function () {
     });
 
     it('cannot verify payments or do operations work', function () {
-        $payment = record(Payment::class, ['order_id' => $this->orderA->id, 'branch_id' => $this->branch->id, 'status' => PaymentStatus::PendingVerification, 'recorded_by' => null]);
+        $payment = record(Payment::class, ['order_id' => $this->orderA->id, 'branch_id' => $this->branch->id, 'page_id' => $this->orderA->page_id, 'status' => PaymentStatus::PendingVerification, 'recorded_by' => null]);
         $assignable = $this->makeOrder($this->branch, $this->pageA, OrderStatus::DesignApproved);
 
         expect(decision($this->ownerA, 'verify', $payment))->toBe(403)
@@ -131,7 +131,7 @@ describe('page owner', function () {
 describe('second admin', function () {
     it('verifies payments of assigned pages but never one they recorded', function () {
         $second = $this->userWithRole(Roles::SECOND_ADMIN, pages: [$this->pageA]);
-        $payment = record(Payment::class, ['order_id' => $this->orderA->id, 'branch_id' => $this->branch->id, 'status' => PaymentStatus::PendingVerification, 'recorded_by' => $this->ownerA->id]);
+        $payment = record(Payment::class, ['order_id' => $this->orderA->id, 'branch_id' => $this->branch->id, 'page_id' => $this->orderA->page_id, 'status' => PaymentStatus::PendingVerification, 'recorded_by' => $this->ownerA->id]);
 
         expect(decision($second, 'verify', $payment))->toBe(200);
 
