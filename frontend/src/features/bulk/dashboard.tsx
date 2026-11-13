@@ -5,7 +5,7 @@ import { useState } from "react";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { TextField } from "@/components/ui/field";
 import { Badge, Checkbox, PageHeader, SelectField } from "@/components/ui/form-controls";
-import { ChevronRightIcon, ExternalLinkIcon, SearchIcon } from "@/components/ui/icons";
+import { ChevronRightIcon, ExternalLinkIcon, SearchIcon, ShirtIcon } from "@/components/ui/icons";
 import { RequirePermission } from "@/components/ui/record-page";
 import { formatBusinessDate } from "@/lib/format";
 import { useDebounced } from "@/lib/use-debounced";
@@ -38,94 +38,155 @@ export function BulkDashboard({ variant }: { variant: Variant }) {
   const columns: Column<BulkJob>[] = [
     {
       key: "job",
-      header: "Job No.",
+      header: "Job & Design",
       cell: (j) => (
-        <Link href={`/bulk-jobs/view/?id=${j.id}`} className="font-mono text-xs font-bold text-brand bg-brand/10 px-2 py-0.5 rounded hover:bg-brand/20 transition">
-          {j.job_no}
-        </Link>
-      ),
-    },
-    {
-      key: "preview",
-      header: "Design",
-      cell: (j) =>
-        j.design_preview_url ? (
-          // eslint-disable-next-line @next/next/no-img-element -- signed, short-lived private URL
-          <img src={j.design_preview_url} alt={`Approved design of ${j.job_no}`} className="h-10 w-10 rounded-md border border-line object-cover" />
-        ) : (
-          <span className="text-xs text-muted">—</span>
-        ),
-    },
-    { key: "customer", header: "Customer", cell: (j) => <span className="font-medium text-ink">{j.order.customer}</span> },
-    { key: "where", header: "Company / Shop", cell: (j) => <span className="text-xs text-muted">{j.page.code}</span> },
-    {
-      key: "due",
-      header: "Due date",
-      sortKey: "due_date",
-      cell: (j) => (
-        <div className="flex items-center gap-1.5">
-          <span className="text-xs font-medium text-ink">{formatBusinessDate(j.order.due_date)}</span>
-          {j.order.is_urgent && <Badge tone="danger" dot>Urgent</Badge>}
+        <div className="flex items-center gap-3 py-0.5">
+          {j.design_preview_url ? (
+            // eslint-disable-next-line @next/next/no-img-element -- signed, short-lived private URL
+            <img
+              src={j.design_preview_url}
+              alt={`Approved design of ${j.job_no}`}
+              className="h-11 w-11 shrink-0 rounded-lg border border-line object-cover bg-subtle"
+            />
+          ) : (
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-line bg-subtle text-muted">
+              <ShirtIcon size={20} />
+            </div>
+          )}
+          <div className="flex flex-col gap-1 min-w-0">
+            <Link
+              href={`/bulk-jobs/view/?id=${j.id}`}
+              className="font-mono text-xs font-bold text-brand bg-brand/10 hover:bg-brand/20 px-2 py-0.5 rounded whitespace-nowrap transition inline-block w-fit"
+            >
+              {j.job_no}
+            </Link>
+            <div className="flex items-center gap-1.5 text-xs text-muted">
+              <span className="rounded bg-subtle px-1.5 py-0.5 text-[10px] font-semibold text-ink">
+                {j.page.code}
+              </span>
+            </div>
+          </div>
         </div>
       ),
     },
-    { key: "category", header: "Category", cell: (j) => j.product_category },
-    { key: "qty", header: "Qty", cell: (j) => <span className="font-semibold text-ink">{j.order.quantity}</span> },
-    { key: "material", header: "Material", cell: (j) => <span className="text-xs">{j.material ?? "—"}</span> },
     {
-      key: "final",
-      header: "Final design",
-      cell: (j) =>
-        j.final_design_link ? (
-          <a className="inline-flex items-center gap-1 text-xs font-semibold text-brand hover:underline" href={j.final_design_link} target="_blank" rel="noopener noreferrer nofollow">
-            Open <ExternalLinkIcon size={12} />
-          </a>
-        ) : (
-          <span className="text-xs text-muted">Files only</span>
-        ),
+      key: "customer",
+      header: "Customer",
+      cell: (j) => (
+        <div className="flex flex-col">
+          <span className="font-semibold text-ink text-sm leading-snug">{j.order.customer}</span>
+          <span className="text-xs text-muted font-mono">Order #{j.order.order_no}</span>
+        </div>
+      ),
     },
     {
-      key: "list",
-      header: "Confirmed list",
-      cell: (j) =>
-        j.list ? (
-          <Link href={`/bulk-jobs/view/?id=${j.id}#list`} className="text-xs font-medium text-brand hover:underline">
-            v{j.list.version_no} · {j.list.total_quantity} pcs{j.list.status !== "locked" ? " (superseded)" : ""}
-          </Link>
-        ) : (
-          <span className="text-xs text-muted">—</span>
-        ),
+      key: "product",
+      header: "Product & Fabric",
+      cell: (j) => (
+        <div className="flex flex-col">
+          <div className="flex items-center gap-1.5">
+            <span className="font-bold text-ink text-sm">{j.order.quantity} pcs</span>
+            <span className="text-muted">·</span>
+            <span className="font-medium text-ink text-xs">{j.product_category}</span>
+          </div>
+          <span className="text-xs text-muted truncate max-w-[200px]" title={j.material ?? undefined}>
+            {j.material ? j.material : "Material not specified"}
+          </span>
+        </div>
+      ),
+    },
+    {
+      key: "due",
+      header: "Due Date",
+      sortKey: "due_date",
+      cell: (j) => (
+        <div className="flex flex-col">
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs font-semibold text-ink whitespace-nowrap">
+              {formatBusinessDate(j.order.due_date)}
+            </span>
+            {j.order.is_urgent && <Badge tone="danger" dot>Urgent</Badge>}
+          </div>
+        </div>
+      ),
     },
     ...(variant === "manage"
       ? [
           {
             key: "assigned",
-            header: "Assigned to",
+            header: "Assignment",
             cell: (j: BulkJob) =>
               j.mode === null ? (
-                <span className="text-xs font-semibold text-danger">Not assigned</span>
+                <Badge tone="danger">Unassigned</Badge>
               ) : (
-                <span className="inline-flex items-center gap-1.5 text-xs text-ink">
-                  <Badge tone={j.mode === "external" ? "warning" : "neutral"}>{j.mode === "external" ? "External" : "Internal"}</Badge>
-                  {j.mode === "external" ? j.supplier?.name : j.bulk_designer?.name}
-                </span>
+                <div className="flex flex-col gap-0.5">
+                  <div className="flex items-center gap-1.5">
+                    <Badge tone={j.mode === "external" ? "warning" : "brand"}>
+                      {j.mode === "external" ? "External" : "Internal"}
+                    </Badge>
+                    <span
+                      className="text-xs font-medium text-ink truncate max-w-[140px]"
+                      title={j.mode === "external" ? j.supplier?.name : j.bulk_designer?.name}
+                    >
+                      {j.mode === "external" ? (j.supplier?.name ?? "—") : (j.bulk_designer?.name ?? "—")}
+                    </span>
+                  </div>
+                </div>
               ),
           } satisfies Column<BulkJob>,
         ]
       : []),
-    { key: "status", header: "Status", cell: (j) => <Badge tone={bulkStatusTone(j.status.value)} dot>{j.status.label}</Badge> },
+    {
+      key: "status",
+      header: "Status & Assets",
+      cell: (j) => (
+        <div className="flex flex-col gap-1">
+          <div>
+            <Badge tone={bulkStatusTone(j.status.value)} dot>
+              {j.status.label}
+            </Badge>
+          </div>
+          <div className="flex items-center gap-2 text-[11px] text-muted">
+            {j.final_design_link ? (
+              <a
+                href={j.final_design_link}
+                target="_blank"
+                rel="noopener noreferrer nofollow"
+                className="inline-flex items-center gap-1 text-brand font-medium hover:underline"
+              >
+                <span>Artwork</span>
+                <ExternalLinkIcon size={11} />
+              </a>
+            ) : (
+              <span className="text-muted/60">Artwork pending</span>
+            )}
+            {j.list && (
+              <>
+                <span>·</span>
+                <Link
+                  href={`/bulk-jobs/view/?id=${j.id}#list`}
+                  className="text-muted hover:text-ink font-medium hover:underline transition"
+                >
+                  Roster v{j.list.version_no}
+                </Link>
+              </>
+            )}
+          </div>
+        </div>
+      ),
+    },
     {
       key: "actions",
       header: "Actions",
       className: "text-right",
       cell: (j) => (
-        <div className="flex items-center justify-end gap-1.5">
+        <div className="flex items-center justify-end">
           <Link
             href={`/bulk-jobs/view/?id=${j.id}`}
-            className="inline-flex items-center gap-1 rounded-lg border border-line bg-surface px-2.5 py-1.5 text-xs font-semibold text-ink shadow-xs hover:border-brand/40 hover:bg-subtle hover:text-brand transition shrink-0"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-surface px-3 py-1.5 text-xs font-semibold text-ink shadow-xs hover:border-brand/40 hover:bg-subtle hover:text-brand transition whitespace-nowrap"
           >
-            <span>View</span>
-            <ChevronRightIcon size={13} />
+            <span>Open Job</span>
+            <ChevronRightIcon size={14} />
           </Link>
         </div>
       ),
