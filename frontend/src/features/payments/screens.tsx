@@ -303,7 +303,7 @@ function PaymentDetail({ id }: { id: number }) {
                   <span className="text-muted">· {formatDateTime(h.at)}</span>
                   {h.actor && <span className="rounded bg-subtle px-1.5 py-0.5 text-muted">by {h.actor}</span>}
                 </div>
-                {h.notes && <p className="mt-1 text-muted italic">"{h.notes}"</p>}
+                {h.notes && <p className="mt-1 text-muted italic">&ldquo;{h.notes}&rdquo;</p>}
               </li>
             ))}
           </ol>

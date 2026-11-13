@@ -81,10 +81,11 @@ export function JobCardView({ id }: { id: number }) {
   const c = query.data;
 
   // Filter roster items for screen view
+  const rosterItems = rosterQuery.data?.items;
   const filteredItems = useMemo(() => {
-    if (!rosterQuery.data?.items) return [];
+    if (!rosterItems) return [];
     const term = search.trim().toLowerCase();
-    return rosterQuery.data.items.filter((item) => {
+    return rosterItems.filter((item) => {
       const matchSearch =
         !term ||
         [item.player_name, item.number, item.size, item.notes, ...Object.values(item.values)].some(
@@ -93,7 +94,7 @@ export function JobCardView({ id }: { id: number }) {
       const matchSize = selectedSize === "all" || item.size === selectedSize;
       return matchSearch && matchSize;
     });
-  }, [rosterQuery.data?.items, search, selectedSize]);
+  }, [rosterItems, search, selectedSize]);
 
   if (query.isPending) return <LoadingState label="Loading production job card…" />;
   if (query.error || !c) return <ErrorState error={query.error} onRetry={() => query.refetch()} />;

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "@/lib/cn";
 import { ChevronDownIcon, MenuIcon } from "./icons";
@@ -26,6 +26,8 @@ export interface ActionMenuProps {
   size?: "sm" | "md";
 }
 
+const noopSubscribe = () => () => {};
+
 export function ActionMenu({
   items,
   triggerLabel = "Actions",
@@ -36,13 +38,10 @@ export function ActionMenu({
 }: ActionMenuProps) {
   const [open, setOpen] = useState(false);
   const [coords, setCoords] = useState<{ top: number; left?: number; right?: number; openUp?: boolean } | null>(null);
-  const [mounted, setMounted] = useState(false);
+  // false while prerendering the static export, true in the browser: the portal needs document.body.
+  const mounted = useSyncExternalStore(noopSubscribe, () => true, () => false);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   const updatePosition = () => {
     if (!buttonRef.current) return;

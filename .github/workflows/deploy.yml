@@ -52,7 +52,7 @@ jobs:
         working-directory: backend
         run: |
           rm -rf tests node_modules storage/framework/phpstan storage/framework/testing
-          rm -f .env .env.* phpunit.xml phpstan.neon pint.json storage/phpstan.txt database/*.sqlite
+          rm -f .env .env.* phpunit.xml phpstan.neon pint.json storage/phpstan.txt
 
       - name: Install lftp
         run: sudo apt-get update && sudo apt-get install -y lftp

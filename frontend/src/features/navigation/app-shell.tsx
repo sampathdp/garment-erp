@@ -117,10 +117,12 @@ export function AppShell({ children }: { children: ReactNode }) {
     }
   }, [status, pathname, router]);
 
-  // Close mobile drawer on route change
-  useEffect(() => {
+  // Close mobile drawer on route change (state adjusted during render, not in an effect).
+  const [menuPathname, setMenuPathname] = useState(pathname);
+  if (menuPathname !== pathname) {
+    setMenuPathname(pathname);
     setMobileMenuOpen(false);
-  }, [pathname]);
+  }
 
   const items = useMemo(() => visibleNavItems(NAV_ITEMS, user?.permissions ?? []), [user]);
   const allHrefs = useMemo(() => items.map((i) => i.href), [items]);

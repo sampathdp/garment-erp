@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge, FormError, Section, SelectField, TextAreaField } from "@/components/ui/form-controls";
 import { TextField } from "@/components/ui/field";
@@ -44,18 +44,18 @@ export function JobDetailsPanel({ order }: { order: Order }) {
   });
   const [attachment, setAttachment] = useState<File | null>(null);
 
-  useEffect(() => {
-    if (isOpen) {
-      setV({
-        material_id: String(details?.material?.id ?? ""),
-        material_details: details?.material_details ?? "",
-        design_instructions: details?.design_instructions ?? "",
-        custom_notes: details?.custom_notes ?? "",
-        overall_remarks: details?.overall_remarks ?? "",
-      });
-      setAttachment(null);
-    }
-  }, [isOpen, details]);
+  // Each time the editor opens it starts from the saved details.
+  const openEditor = () => {
+    setV({
+      material_id: String(details?.material?.id ?? ""),
+      material_details: details?.material_details ?? "",
+      design_instructions: details?.design_instructions ?? "",
+      custom_notes: details?.custom_notes ?? "",
+      overall_remarks: details?.overall_remarks ?? "",
+    });
+    setAttachment(null);
+    setIsOpen(true);
+  };
 
   if (!details) return null;
 
@@ -123,7 +123,7 @@ export function JobDetailsPanel({ order }: { order: Order }) {
             size="sm"
             variant={hasDetails ? "outline" : "primary"}
             icon={hasDetails ? <PencilIcon size={13} /> : <PlusIcon size={14} />}
-            onClick={() => setIsOpen(true)}
+            onClick={openEditor}
             className="shrink-0 text-xs font-semibold"
           >
             {hasDetails ? "Edit Job Details" : "Configure Job Details"}
@@ -245,7 +245,7 @@ export function JobDetailsPanel({ order }: { order: Order }) {
             <Button
               size="sm"
               icon={<PlusIcon size={14} />}
-              onClick={() => setIsOpen(true)}
+              onClick={openEditor}
               className="mt-2 text-xs font-semibold"
             >
               Configure Job Details

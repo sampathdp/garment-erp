@@ -22,6 +22,4 @@
 Homestead.json
 Homestead.yaml
 Thumbs.db
-/database/*.sqlite
-/database/*.sqlite-journal
 /storage/framework/phpstan

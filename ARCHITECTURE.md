@@ -25,7 +25,7 @@ Installed versions are pinned in CLAUDE.md and in the lock files.
 garment-erp/
 ├── backend/                 Laravel API
 ├── frontend/                Next.js app
-├── .github/workflows/       CI: backend on SQLite + MySQL 8.4, frontend lint/type/test/build
+├── .github/workflows/       CI: backend on MySQL 8.4, frontend lint/type/test/build
 ├── docs/                    ERD.md, openapi.yaml
 ├── .tools/                  Local-only toolchain wrappers (git-ignored)
 ├── CLAUDE.md                Persistent instructions for AI-assisted development
@@ -224,7 +224,6 @@ PHP 8.3+ with `intl`, `sodium`, `pdo_mysql`, `fileinfo`, `bcmath`, `gd`; **SSH a
 | Item | Impact | Plan |
 |---|---|---|
 | Laravel 12.71, not 13.x | Laravel 12 security fixes end around Feb 2027 | Upgrade in Phase 02, after PHP 8.3+ is installed locally and confirmed on the host (Q24). Code uses no APIs removed in 13 |
-| Tests run on SQLite locally | CHECK constraints and audit triggers are not exercised locally | CI runs the suite on MySQL 8.4 as well. Not yet run: the repository has no remote |
 | Frontend CSP allows `'unsafe-inline'` scripts | Weaker XSS defence | Phase 15: build-time script hashes |
 | No E2E (Playwright) yet | Full browser flow verified only by a manual curl smoke test | Add in Phase 02 together with the user-management screens |
 | ~~Login timing differs for unknown and known emails~~ | Resolved in Phase 02: `SessionGuard::attempt()` and the password broker run inside Laravel's `Timebox` (fixed minimum duration) | — |

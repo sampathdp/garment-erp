@@ -40,38 +40,45 @@ it('restarts the running number each year', function () {
 });
 
 it('never hands out the same number to concurrent processes', function () {
-    $file = tempnam(sys_get_temp_dir(), 'seq').'.sqlite';
-    touch($file);
-    $pdo = new PDO('sqlite:'.$file);
-    $pdo->exec('CREATE TABLE sequences (scope_type VARCHAR(40) NOT NULL, scope_id INTEGER NOT NULL DEFAULT 0, year INTEGER NOT NULL, next_value INTEGER NOT NULL DEFAULT 1, created_at DATETIME NULL, updated_at DATETIME NULL, PRIMARY KEY (scope_type, scope_id, year))');
-    $pdo = null;
+    // The workers commit real rows in the test database, outside this test's rolled-back
+    // transaction, so the sequence row is removed through a separate autocommit connection.
+    $db = config('database.connections.'.config('database.default'));
+    $pdo = new PDO(sprintf('mysql:host=%s;port=%s;dbname=%s', $db['host'], $db['port'], $db['database']), $db['username'], $db['password']);
+    $yearNumber = (int) now('Asia/Colombo')->year;
+    $clear = fn () => $pdo->prepare("DELETE FROM sequences WHERE scope_type = 'order' AND scope_id = 0 AND year = ?")->execute([$yearNumber]);
+    $clear();
 
     $workers = 4;
     $perWorker = 15;
     $env = array_merge(getenv(), [
-        'APP_ENV' => 'testing', 'DB_CONNECTION' => 'sqlite', 'DB_DATABASE' => $file, 'DB_URL' => '',
+        'APP_ENV' => 'testing', 'DB_CONNECTION' => config('database.default'), 'DB_URL' => '',
+        'DB_HOST' => (string) $db['host'], 'DB_PORT' => (string) $db['port'], 'DB_DATABASE' => (string) $db['database'],
+        'DB_USERNAME' => (string) $db['username'], 'DB_PASSWORD' => (string) $db['password'],
         'CACHE_STORE' => 'array', 'SESSION_DRIVER' => 'array', 'QUEUE_CONNECTION' => 'sync', 'LOG_CHANNEL' => 'null',
     ]);
 
-    $processes = [];
-    for ($w = 0; $w < $workers; $w++) {
-        $process = proc_open([PHP_BINARY, base_path('tests/Support/sequence-worker.php'), (string) $perWorker], [1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes, base_path(), $env);
-        expect($process)->not->toBeFalse();
-        $processes[] = [$process, $pipes];
-    }
-
     $numbers = [];
     $errors = '';
-    foreach ($processes as [$process, $pipes]) {
-        $numbers = [...$numbers, ...array_filter(explode(PHP_EOL, (string) stream_get_contents($pipes[1])))];
-        $errors .= (string) stream_get_contents($pipes[2]);
-        fclose($pipes[1]);
-        fclose($pipes[2]);
-        expect(proc_close($process))->toBe(0, $errors);
-    }
-    @unlink($file);
+    try {
+        $processes = [];
+        for ($w = 0; $w < $workers; $w++) {
+            $process = proc_open([PHP_BINARY, base_path('tests/Support/sequence-worker.php'), (string) $perWorker], [1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes, base_path(), $env);
+            expect($process)->not->toBeFalse();
+            $processes[] = [$process, $pipes];
+        }
 
-    $year = substr((string) now('Asia/Colombo')->year, -2);
+        foreach ($processes as [$process, $pipes]) {
+            $numbers = [...$numbers, ...array_filter(explode(PHP_EOL, (string) stream_get_contents($pipes[1])))];
+            $errors .= (string) stream_get_contents($pipes[2]);
+            fclose($pipes[1]);
+            fclose($pipes[2]);
+            expect(proc_close($process))->toBe(0, $errors);
+        }
+    } finally {
+        $clear();
+    }
+
+    $year = substr((string) $yearNumber, -2);
     $expected = array_map(fn (int $n) => sprintf('CMB-JRSY-%s-%05d', $year, $n), range(1, $workers * $perWorker));
     sort($numbers);
 

@@ -89,4 +89,4 @@ If you do cache it, run `php artisan optimize:clear && php artisan config:cache`
 
 ## 5. Moving local data
 
-Local development uses SQLite with demo data only. Production starts from an empty MySQL database (steps above); do not copy `database.sqlite` to the server.
+Production starts from an empty MySQL database (steps above). Do not copy development data to the server.

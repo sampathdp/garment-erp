@@ -50,7 +50,7 @@
 - New `notification_outbox` (one row per recipient: `notification_id` UUID UNIQUE = the in-app notification id, `user_id`, `event`, JSON `payload` (display data, allowed exception like `notifications.data`), `status pending | sent | failed`, `attempts`, `available_at`, `sent_at`, `last_error`; index `(status, available_at)`).
 - Reports and dashboards add no tables: aggregates use the indexes above and are cached in the cache store (60 s dashboard sections, 10 min report aggregates).
 
-Target: **MySQL 8 (8.4 LTS preferred), InnoDB, utf8mb4.** The default collation is `utf8mb4_unicode_ci` because the shared host may run MariaDB; set `DB_COLLATION=utf8mb4_0900_ai_ci` on MySQL 8. Local development and the fast test suite use SQLite; CI also runs the full suite on MySQL 8.4.
+Target: **MySQL 8 (8.4 LTS preferred), InnoDB, utf8mb4.** The default collation is `utf8mb4_unicode_ci` because the shared host may run MariaDB; set `DB_COLLATION=utf8mb4_0900_ai_ci` on MySQL 8. Local development, the test suite, CI (MySQL 8.4) and production all use MySQL; SQLite is not supported.
 
 ## 1. Global standards
 
@@ -68,7 +68,7 @@ Target: **MySQL 8 (8.4 LTS preferred), InnoDB, utf8mb4.** The default collation 
 | JSON | Only `audit_logs.changes`, `notifications.data` and framework tables |
 | Polymorphic columns | Only framework/Spatie tables, `notifications` and `audit_logs`, all using the **enforced morph map** (`App\Support\Database\MorphMap`). Business ownership always uses real FKs |
 | Human numbers | `order_no` (globally unique "Job No."), `invoice_no` (per page per year), `gate_pass_no` (per branch per year), generated from `sequences` under `SELECT … FOR UPDATE` |
-| CHECK constraints | Added through `App\Support\Database\CheckConstraint` on MySQL/MariaDB only (SQLite skips them; the rules are also enforced in Actions) |
+| CHECK constraints | Added through `App\Support\Database\CheckConstraint` (MySQL 8.0.16+ / MariaDB; the rules are also enforced in Actions) |
 
 ## 2. Branch and page scoping (no data leakage)
 

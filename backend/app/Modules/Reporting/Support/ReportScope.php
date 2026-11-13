@@ -8,7 +8,6 @@ use App\Modules\Identity\Models\User;
 use App\Modules\Orders\Models\Order;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\DB;
 
 /**
  * Data isolation and caching for dashboards and reports.
@@ -18,7 +17,7 @@ use Illuminate\Support\Facades\DB;
  *  - remember(): cached results keyed by the user's SCOPE FINGERPRINT (branches, pages, global
  *    flags, permissions) — users with the same scope share entries, and a scope change gives a
  *    new key. Financial writes never read these caches.
- *  - seconds(): portable "end − start" in seconds (MySQL / MariaDB / SQLite).
+ *  - seconds(): "end − start" in seconds (MySQL / MariaDB).
  */
 final class ReportScope
 {
@@ -51,10 +50,6 @@ final class ReportScope
 
     public static function seconds(string $start, string $end): string
     {
-        return match (DB::connection()->getDriverName()) {
-            'sqlite' => "((julianday({$end}) - julianday({$start})) * 86400)",
-            'pgsql' => "EXTRACT(EPOCH FROM ({$end} - {$start}))",
-            default => "TIMESTAMPDIFF(SECOND, {$start}, {$end})",
-        };
+        return "TIMESTAMPDIFF(SECOND, {$start}, {$end})";
     }
 }

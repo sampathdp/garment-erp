@@ -355,7 +355,7 @@ function MeasurementsSection({ job }: { job: BulkJob }) {
                   <span>{h.old_value ?? "—"} → {h.new_value}</span>
                   <span className="text-muted">by {h.changed_by} ({formatDateTime(h.changed_at)})</span>
                   {h.is_correction && <Badge tone="warning">Correction</Badge>}
-                  {h.reason && <span className="italic text-muted">"{h.reason}"</span>}
+                  {h.reason && <span className="italic text-muted">&ldquo;{h.reason}&rdquo;</span>}
                 </li>
               ))}
             </ul>
