@@ -42,6 +42,9 @@ abstract class TestCase extends BaseTestCase
     {
         // Guards cache the resolved user between requests in one test; reset so each sign-in is honoured.
         $this->app['auth']->forgetGuards();
+        // Start from a clean session, as a real login does: a previous login in the same test leaves
+        // its user's password_hash_web behind, and Sanctum's AuthenticateSession would log this user out.
+        $this->flushSession();
 
         return $this->fromFrontend()
             ->actingAs($user, 'web')

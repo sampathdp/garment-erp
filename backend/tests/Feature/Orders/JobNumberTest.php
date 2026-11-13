@@ -81,6 +81,11 @@ it('never hands out the same number to concurrent processes', function () {
     $year = substr((string) $yearNumber, -2);
     $expected = array_map(fn (int $n) => sprintf('CMB-JRSY-%s-%05d', $year, $n), range(1, $workers * $perWorker));
     sort($numbers);
+    if (count($numbers) !== $workers * $perWorker) { file_put_contents(sys_get_temp_dir()."/jobnum-debug.txt", "NUMBERS
+".implode("
+", $numbers)."
+ERRORS
+".$errors); }
 
     expect($numbers)->toHaveCount($workers * $perWorker)
         ->and(array_unique($numbers))->toHaveCount($workers * $perWorker)

@@ -170,7 +170,8 @@ describe('status, roles and assignments', function () {
 
         $this->signedInAs($user->fresh())->getJson('/api/v1/branches')->assertForbidden();
         $log = AuditLog::query()->where('action', 'users.roles_changed')->sole();
-        expect($log->changes)->toBe(['before' => [Roles::DELIVERY_STAFF], 'after' => [Roles::CUTTING_STAFF]]);
+        // toEqual, not toBe: MySQL's JSON type re-orders object keys (shorter keys first).
+        expect($log->changes)->toEqual(['before' => [Roles::DELIVERY_STAFF], 'after' => [Roles::CUTTING_STAFF]]);
     });
 
     it('applies direct permission revocation immediately', function () {
