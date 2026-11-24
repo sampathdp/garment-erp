@@ -214,3 +214,15 @@ export const SERVER_FIELD_MAP: Record<string, keyof OrderFormValues> = {
   discount_minor: "discount",
   bank_name: "payment_bank",
 };
+
+/**
+ * Default page for a new order: the user's owned page first, else their first assigned page
+ * (active pages only). Users with all-page access and no assigned page get a default only when
+ * there is exactly one active page. Returns null when the user must choose.
+ */
+export function defaultPageId(userPages: { id: number; is_owner: boolean }[], pages: { id: number; is_active: boolean }[]): number | null {
+  const active = pages.filter((p) => p.is_active);
+  const activeIds = new Set(active.map((p) => p.id));
+  const mine = userPages.filter((p) => activeIds.has(p.id));
+  return (mine.find((p) => p.is_owner) ?? mine[0] ?? (active.length === 1 ? active[0] : undefined))?.id ?? null;
+}

@@ -3,7 +3,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { ToastProvider } from "@/components/ui/toast";
-import { daysUntil, emptyOrderForm, orderFormSchema, toCreateOrderInput } from "./order-form-schema";
+import { daysUntil, defaultPageId, emptyOrderForm, orderFormSchema, toCreateOrderInput } from "./order-form-schema";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }), useSearchParams: () => new URLSearchParams() }));
 vi.mock("@/features/auth/auth-provider", () => ({ useAuth: () => ({ can: () => true, user: null, status: "authenticated" }) }));
@@ -78,6 +78,23 @@ describe("daysUntil", () => {
     expect(daysUntil("bad", now)).toBeNull();
     // 23:30 in Colombo on the 9th is still the 9th.
     expect(daysUntil("2026-11-16", new Date("2026-11-09T18:00:00Z"))).toBe(7);
+  });
+});
+
+describe("defaultPageId", () => {
+  const pages = [
+    { id: 1, is_active: true },
+    { id: 2, is_active: true },
+    { id: 3, is_active: false },
+  ];
+  it("prefers the page the user owns, then their first assigned page", () => {
+    expect(defaultPageId([{ id: 1, is_owner: false }, { id: 2, is_owner: true }], pages)).toBe(2);
+    expect(defaultPageId([{ id: 1, is_owner: false }, { id: 2, is_owner: false }], pages)).toBe(1);
+  });
+  it("skips inactive pages and leaves the choice open when there is no single answer", () => {
+    expect(defaultPageId([{ id: 3, is_owner: true }], pages)).toBeNull();
+    expect(defaultPageId([], pages)).toBeNull();
+    expect(defaultPageId([], [{ id: 5, is_active: true }])).toBe(5);
   });
 });
 

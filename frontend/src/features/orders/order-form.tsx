@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/icons";
 import { RequirePermission } from "@/components/ui/record-page";
 import { useToast } from "@/components/ui/toast";
+import { useAuth } from "@/features/auth/auth-provider";
 import { type Customer, useCustomers } from "@/features/customers/api";
 import { useBranches, usePages } from "@/features/organizations/api";
 import { EVIDENCE_REQUIRED_METHODS, PAYMENT_METHODS } from "@/features/payments/api";
@@ -36,7 +37,7 @@ import { SRI_LANKA_DISTRICTS } from "@/lib/districts";
 import { formatMoney, parseMoneyToMinor } from "@/lib/format";
 import { useDebounced } from "@/lib/use-debounced";
 import { useCreateOrder, useProductCategories } from "./api";
-import { daysUntil, emptyOrderForm, type OrderFormValues, orderFormSchema, SERVER_FIELD_MAP, toCreateOrderInput } from "./order-form-schema";
+import { daysUntil, defaultPageId, emptyOrderForm, type OrderFormValues, orderFormSchema, SERVER_FIELD_MAP, toCreateOrderInput } from "./order-form-schema";
 
 const URGENT_DAYS = 7;
 
@@ -131,6 +132,15 @@ export function OrderForm() {
       setValue("branch_id", String(activeBranch?.id ?? "1"));
     }
   }, [branches.data, setValue, form]);
+
+  // Default the page to the signed-in user's own page: the page they own first, else their first
+  // assigned page. Users with all-page access get a default only when there is a single active page.
+  const { user } = useAuth();
+  useEffect(() => {
+    if (form.getValues("page_id") || !pages.data || !user) return;
+    const choice = defaultPageId(user.scope.pages, pages.data.data);
+    if (choice !== null) setValue("page_id", String(choice), { shouldValidate: false });
+  }, [pages.data, user, setValue, form]);
 
   // Real-time watchers for dynamic summary & calculations
   const pageId = useWatch({ control: form.control, name: "page_id" });
