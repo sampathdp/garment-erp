@@ -23,7 +23,7 @@ final class CustomerController
 {
     private const SORTS = ['name' => 'name', 'customer_code' => 'customer_code', 'created_at' => 'created_at'];
 
-    private const COLUMNS = ['id', 'customer_code', 'page_id', 'branch_id', 'name', 'phone_e164', 'whatsapp_e164', 'alt_phone_e164', 'address_line1', 'created_at'];
+    private const COLUMNS = ['id', 'customer_code', 'page_id', 'branch_id', 'name', 'phone_e164', 'whatsapp_e164', 'alt_phone_e164', 'address_line1', 'address_line2', 'street', 'city', 'district', 'created_at'];
 
     public function index(Request $request): JsonResponse
     {

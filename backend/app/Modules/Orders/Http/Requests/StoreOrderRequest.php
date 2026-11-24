@@ -69,7 +69,6 @@ final class StoreOrderRequest extends FormRequest
         return [
             'branch_id' => (int) $v['branch_id'],
             'page_id' => (int) $v['page_id'],
-            'order_type_id' => (int) $v['order_type_id'],
             'due_date' => (string) $v['due_date'],
             'product_type_id' => (int) $v['product_type_id'],
             'gross_quantity' => (int) $v['gross_quantity'],

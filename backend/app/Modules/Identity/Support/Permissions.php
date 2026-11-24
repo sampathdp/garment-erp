@@ -227,7 +227,7 @@ final class Permissions
                 self::CUSTOMERS_VIEW => 'View customers',
                 self::CUSTOMERS_MANAGE => 'Manage customer information',
                 self::PRICING_VIEW => 'View pricing',
-                self::PRICING_MANAGE => 'Manage pricing, product categories and order types',
+                self::PRICING_MANAGE => 'Manage pricing and product categories',
             ]],
             'orders' => ['label' => 'Orders (jobs)', 'permissions' => [
                 self::ORDERS_VIEW => 'View orders in scope',

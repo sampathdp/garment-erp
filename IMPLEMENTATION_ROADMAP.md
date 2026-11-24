@@ -37,7 +37,7 @@ Audit, architecture, database design, standards, workflow rules, CLAUDE.md.
 
 The user's Phase 03 brief replaced the original Phase 03 below. Delivered (2026-11-09):
 - Customers CRUD (page/branch association, WhatsApp, E.164 validation, page-scoped duplicate protection without merging, search, soft delete without orders).
-- Configurable order types and product categories (`CatalogSeeder`), order form (customer information + job specifications + agreed price), drafts and submission, edits before approval with optimistic locking.
+- Configurable product categories (`CatalogSeeder`; order types were removed on 2026-11-24), order form (customer information + job specifications + agreed price), drafts and submission, edits before approval with optimistic locking.
 - Server-generated job numbers `{BRANCH}-{PAGE}-{YY}-{NNNNN}` (increment-first sequences, real multi-process concurrency test).
 - Seven-day rule on working days (exactly 7 = normal), dual urgent approval (Second Admin + Operation Admin, two people), re-evaluation on due-date change.
 - Statuses Draft / Pending Payment Verification / Payment Rejected / Urgent Approval Pending / Urgent Approval Rejected / Approved Order, applied only by `TransitionOrder`.

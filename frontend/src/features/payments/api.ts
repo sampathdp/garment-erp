@@ -20,9 +20,16 @@ export interface Payment {
   amount_minor: number;
   currency: string;
   method: string;
+  bank_name?: string | null;
   reference_no: string | null;
   payment_date: string;
+  /** HH:MM, Asia/Colombo. */
+  payment_time: string | null;
   status: PaymentStatusValue;
+  /** Another page has a payment with the same amount, bank, date and time. */
+  is_duplicate: boolean;
+  /** Detail only. Order and page are named only when the viewer may see that payment. */
+  duplicate_matches?: { id: number | null; visible: boolean; order_no: string | null; page: { code: string; name: string } | null; status: PaymentStatusValue | null }[];
   recorded_by: { id: number; name: string } | null;
   recorded_at: string | null;
   verified_by: { id: number; name: string } | null;
@@ -58,10 +65,11 @@ export const paymentKeys = {
   forOrder: (orderId: number) => ["payments", "order", orderId] as const,
 };
 
-export function usePayments(params: { page?: number; status?: PaymentStatusValue | ""; search?: string; sort?: string }) {
+export function usePayments(params: { page?: number; status?: PaymentStatusValue | ""; search?: string; sort?: string; duplicate?: boolean }) {
   return useQuery({
     queryKey: paymentKeys.list(params),
-    queryFn: ({ signal }) => api.get<Paginated<Payment>>("payments", { page: params.page, sort: params.sort, "filter[status]": params.status, "filter[search]": params.search }, signal),
+    queryFn: ({ signal }) =>
+      api.get<Paginated<Payment>>("payments", { page: params.page, sort: params.sort, "filter[status]": params.status, "filter[search]": params.search, "filter[duplicate]": params.duplicate ? 1 : undefined }, signal),
     placeholderData: keepPreviousData,
   });
 }
@@ -85,8 +93,10 @@ export function useOrderPayments(orderId: number, enabled: boolean) {
 export interface RecordPaymentInput {
   amount_minor: number;
   method: string;
+  bank_name?: string | null;
   reference_no: string;
   payment_date: string;
+  payment_time?: string | null;
   notes: string;
   evidence: File | null;
 }
@@ -100,6 +110,8 @@ export function useRecordPayment(orderId: number) {
       body.set("amount_minor", String(input.amount_minor));
       body.set("method", input.method);
       body.set("payment_date", input.payment_date);
+      if (input.bank_name) body.set("bank_name", input.bank_name);
+      if (input.payment_time) body.set("payment_time", input.payment_time);
       if (input.reference_no) body.set("reference_no", input.reference_no);
       if (input.notes) body.set("notes", input.notes);
       if (input.evidence) body.set("evidence", input.evidence);

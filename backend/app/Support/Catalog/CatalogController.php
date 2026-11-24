@@ -15,7 +15,7 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 
 /**
- * Small configurable lists (order types, product categories): code + name + active flag.
+ * Small configurable lists (product categories, materials): code + name + active flag.
  * Entries are deactivated, never deleted, because orders reference them. Codes never change.
  *
  * @template TModel of Model

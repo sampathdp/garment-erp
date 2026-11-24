@@ -6,6 +6,7 @@ namespace App\Modules\Payments\Http\Resources;
 
 use App\Modules\Payments\Models\Payment;
 use App\Modules\Payments\Models\PaymentVerificationEvent;
+use App\Modules\Payments\Queries\DuplicatePayments;
 use App\Support\Time\BusinessDate;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -20,6 +21,8 @@ final class PaymentResource extends JsonResource
     {
         $detail = $request->routeIs('payments.show', 'payments.store', 'payments.verify', 'payments.reject');
         $order = $this->relationLoaded('order') ? $this->order : null;
+        // Detail screens resolve the matches; lists use the `is_duplicate` sub-select.
+        $matches = $detail || ! array_key_exists('is_duplicate', $this->resource->getAttributes()) ? DuplicatePayments::matches($this->resource) : null;
 
         return [
             'id' => $this->id,
@@ -38,8 +41,15 @@ final class PaymentResource extends JsonResource
             'amount_minor' => $this->amount_minor,
             'currency' => $this->currency,
             'method' => $this->method->value,
+            'bank_name' => $this->bank_name,
             'reference_no' => $this->reference_no,
             'payment_date' => BusinessDate::of($this->paid_at)->toDateString(),
+            'payment_time' => $this->payment_time === null ? null : substr($this->payment_time, 0, 5),
+            'is_duplicate' => $matches !== null ? $matches->isNotEmpty() : (bool) $this->getAttribute('is_duplicate'),
+            // Matching payments on other pages. Order and page are named only when the viewer may see that payment.
+            'duplicate_matches' => $this->when($matches !== null, fn () => $matches->map(fn (Payment $m): array => Gate::allows('view', $m) ? [
+                'id' => $m->id, 'visible' => true, 'order_no' => $m->order->order_no, 'page' => ['code' => $m->order->page->code, 'name' => $m->order->page->name], 'status' => $m->status->value,
+            ] : ['id' => null, 'visible' => false, 'order_no' => null, 'page' => null, 'status' => null])->values()->all()),
             'status' => $this->status->value,
             'recorded_by' => $this->relationLoaded('recorder') ? ['id' => $this->recorder->id, 'name' => $this->recorder->name] : null,
             'recorded_at' => $this->created_at?->toIso8601ZuluString(),

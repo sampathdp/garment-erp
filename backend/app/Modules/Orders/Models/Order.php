@@ -53,7 +53,7 @@ class Order extends Model
      *
      * @var list<string>
      */
-    protected $fillable = ['order_no', 'branch_id', 'page_id', 'customer_id', 'order_type_id', 'sales_owner_id', 'required_delivery_date', 'currency', 'notes', 'created_by'];
+    protected $fillable = ['order_no', 'branch_id', 'page_id', 'customer_id', 'sales_owner_id', 'required_delivery_date', 'currency', 'notes', 'created_by'];
 
     protected function casts(): array
     {
@@ -128,12 +128,6 @@ class Order extends Model
     public function acceptsJobDetails(): bool
     {
         return in_array($this->status, [OrderStatus::Confirmed, OrderStatus::DesignInProgress, OrderStatus::DesignReview], true);
-    }
-
-    /** @return BelongsTo<OrderType, $this> */
-    public function orderType(): BelongsTo
-    {
-        return $this->belongsTo(OrderType::class);
     }
 
     /** Verified advance still missing before the order may be released to production (minor units, ≥ 0). */

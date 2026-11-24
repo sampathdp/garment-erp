@@ -170,7 +170,7 @@ final class DeliveryController
         return [
             'order' => fn ($q) => $q->select(['id', 'order_no', 'branch_id', 'page_id', 'customer_id', 'material_id', 'status', 'required_delivery_date', 'is_urgent', 'total_quantity',
                 'total_minor', 'verified_paid_minor', 'currency', 'completed_at', 'completed_by', 'completion_notes']),
-            'order.customer:id,name,phone_e164,address_line1', 'order.page:id,code,name', 'order.material:id,name', 'branch:id,code',
+            'order.customer:id,name,phone_e164,address_line1,address_line2,street,city,district', 'order.page:id,code,name', 'order.material:id,name', 'branch:id,code',
             'order.items' => fn ($q) => $q->select(['id', 'order_id', 'product_type_id', 'sort_order'])->orderBy('sort_order'), 'order.items.productType:id,name',
         ];
     }

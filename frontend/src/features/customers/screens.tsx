@@ -17,6 +17,7 @@ import { useAuth } from "@/features/auth/auth-provider";
 import { OrdersTableFor } from "@/features/orders/customer-orders";
 import { useBranches, usePages } from "@/features/organizations/api";
 import { ApiError } from "@/lib/api-client";
+import { SRI_LANKA_DISTRICTS } from "@/lib/districts";
 import { formatDateTime } from "@/lib/format";
 import { useDebounced } from "@/lib/use-debounced";
 import { type Customer, type CustomerFormInput, useCustomer, useCustomers, useDeleteCustomer, useSaveCustomer } from "./api";
@@ -33,13 +34,28 @@ function CustomerForm({ customer, onDone }: { customer: Customer | null; onDone:
     phone: customer?.phone ?? "",
     whatsapp: customer?.whatsapp ?? "",
     other_phone: customer?.other_phone ?? "",
-    address: customer?.address ?? "",
+    address_line1: customer?.address_line1 ?? "",
+    address_line2: customer?.address_line2 ?? "",
+    street: customer?.street ?? "",
+    city: customer?.city ?? "",
+    district: customer?.district ?? "",
     confirm_distinct: false,
   });
+  const [localErrors, setLocalErrors] = useState<{ city?: string; district?: string }>({});
   const apiError = save.error instanceof ApiError ? save.error : null;
   const errors = apiError?.fieldErrors ?? {};
 
   const submit = () => {
+    const newErrors: { city?: string; district?: string } = {};
+    if (!v.city.trim()) newErrors.city = "Main town is required";
+    if (!v.district.trim()) newErrors.district = "District is required";
+    if (Object.keys(newErrors).length > 0) {
+      setLocalErrors(newErrors);
+      return;
+    }
+    setLocalErrors({});
+
+    const formattedAddress = [v.address_line1, v.address_line2, v.street, v.city, v.district].filter(Boolean).join(", ");
     const input: CustomerFormInput = {
       ...(customer === null ? { page_id: Number(v.page_id) } : {}),
       branch_id: v.branch_id ? Number(v.branch_id) : null,
@@ -47,7 +63,12 @@ function CustomerForm({ customer, onDone }: { customer: Customer | null; onDone:
       phone: v.phone,
       whatsapp: v.whatsapp,
       other_phone: v.other_phone || null,
-      address: v.address || null,
+      address_line1: v.address_line1 || null,
+      address_line2: v.address_line2 || null,
+      street: v.street || null,
+      city: v.city || null,
+      district: v.district || null,
+      address: formattedAddress || null,
       ...(v.confirm_distinct ? { confirm_distinct: true } : {}),
     };
     save.mutate(input, { onSuccess: (c) => (notify(customer ? "Customer saved" : `Customer ${c.customer_code} created`, "success"), onDone(c)) });
@@ -71,7 +92,67 @@ function CustomerForm({ customer, onDone }: { customer: Customer | null; onDone:
         <TextField label="WhatsApp number *" type="tel" placeholder="077 123 4567" maxLength={20} value={v.whatsapp} error={errors.whatsapp?.[0]} onChange={(e) => setV({ ...v, whatsapp: e.target.value })} />
         <TextField label="Other number" type="tel" placeholder="Optional backup contact" maxLength={20} value={v.other_phone} error={errors.other_phone?.[0]} onChange={(e) => setV({ ...v, other_phone: e.target.value })} />
       </div>
-      <TextAreaField label="Delivery Address" placeholder="Street name, district, postal code" maxLength={200} value={v.address} error={errors.address?.[0]} onChange={(e) => setV({ ...v, address: e.target.value })} />
+
+      {/* Structured Delivery Address */}
+      <div className="rounded-xl border border-line bg-subtle/30 p-3.5 flex flex-col gap-3">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-wider text-ink">Delivery Address</p>
+          <p className="text-[11px] text-muted">Courier delivery destination details</p>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <TextField
+            label="Address Line 1"
+            placeholder="Building name, flat, house no."
+            maxLength={200}
+            value={v.address_line1}
+            error={errors.address_line1?.[0]}
+            onChange={(e) => setV({ ...v, address_line1: e.target.value })}
+          />
+          <TextField
+            label="Address Line 2"
+            placeholder="Apartment, suite, unit (optional)"
+            maxLength={200}
+            value={v.address_line2}
+            error={errors.address_line2?.[0]}
+            onChange={(e) => setV({ ...v, address_line2: e.target.value })}
+          />
+          <TextField
+            label="Street"
+            placeholder="Street name / Road"
+            maxLength={200}
+            value={v.street}
+            error={errors.street?.[0]}
+            onChange={(e) => setV({ ...v, street: e.target.value })}
+          />
+          <TextField
+            label="Main Town *"
+            placeholder="Nearest main town / city"
+            maxLength={80}
+            value={v.city}
+            error={localErrors.city || errors.city?.[0]}
+            onChange={(e) => {
+              setV({ ...v, city: e.target.value });
+              if (localErrors.city) setLocalErrors({ ...localErrors, city: undefined });
+            }}
+          />
+          <div className="sm:col-span-2">
+            <SelectField
+              label="District *"
+              options={[
+                { value: "", label: "-- Select District --" },
+                ...SRI_LANKA_DISTRICTS.map((d) => ({ value: d, label: d })),
+              ]}
+              value={v.district}
+              error={localErrors.district || errors.district?.[0]}
+              onChange={(e) => {
+                setV({ ...v, district: e.target.value });
+                if (localErrors.district) setLocalErrors({ ...localErrors, district: undefined });
+              }}
+            />
+          </div>
+        </div>
+      </div>
+
       {apiError?.code === "possible_duplicate_customer" && (
         <div className="rounded-xl border border-warning/30 bg-warning-soft p-3">
           <Checkbox label="This is a different person who shares the phone number" checked={v.confirm_distinct} onChange={(e) => setV({ ...v, confirm_distinct: e.target.checked })} />
@@ -289,9 +370,14 @@ function CustomerDetail({ id }: { id: number }) {
             <span className="text-[11px] font-bold uppercase tracking-wider text-muted">Secondary Phone</span>
             <span className="text-sm font-semibold text-ink">{c.other_phone ?? "—"}</span>
           </div>
-          <div className="flex flex-col gap-1 rounded-lg bg-subtle/50 p-3">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-muted">Address</span>
+          <div className="flex flex-col gap-1 rounded-lg bg-subtle/50 p-3 sm:col-span-4">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-muted">Delivery Address</span>
             <span className="text-sm font-semibold text-ink">{c.address ?? "—"}</span>
+            {(c.city || c.district) && (
+              <span className="text-xs text-muted mt-0.5">
+                Main Town: <strong className="text-ink">{c.city || "—"}</strong> · District: <strong className="text-ink">{c.district || "—"}</strong>
+              </span>
+            )}
           </div>
         </div>
       </div>

@@ -36,7 +36,7 @@ final class CreateOrder
     ) {}
 
     /**
-     * @param  array{branch_id: int, page_id: int, order_type_id: int, due_date: string, product_type_id: int, gross_quantity: int,
+     * @param  array{branch_id: int, page_id: int, due_date: string, product_type_id: int, gross_quantity: int,
      *               unit_price_minor: int, delivery_fee_minor: int|null, discount_minor: int, customer_id: int|null,
      *               customer: array<string, mixed>|null, confirm_distinct: bool, submit: bool}  $input
      */
@@ -53,7 +53,6 @@ final class CreateOrder
                 'branch_id' => $branch->id,
                 'page_id' => $page->id,
                 'customer_id' => $customer->id,
-                'order_type_id' => $input['order_type_id'],
                 'sales_owner_id' => $actor->id,
                 'required_delivery_date' => $input['due_date'],
                 'currency' => $page->currency,
@@ -80,7 +79,7 @@ final class CreateOrder
 
             OrderStatusHistory::query()->create(['order_id' => $order->id, 'from_status' => null, 'to_status' => OrderStatus::Draft, 'reason' => 'Created.', 'actor_id' => $actor->id]);
             $this->audit->record('orders.created', $order, ['after' => [
-                'order_no' => $order->order_no, 'customer_id' => $customer->id, 'order_type_id' => $order->order_type_id,
+                'order_no' => $order->order_no, 'customer_id' => $customer->id,
                 'due_date' => $input['due_date'], 'product_type_id' => $input['product_type_id'], 'gross_quantity' => $input['gross_quantity'],
                 'total_minor' => $order->total_minor, 'advance_required_minor' => $order->advance_required_minor,
             ]], actor: $actor);

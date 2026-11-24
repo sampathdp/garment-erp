@@ -34,7 +34,7 @@ export const NAV_ITEMS: NavItem[] = [
   { label: "Workflow settings", href: "/settings/workflow/", permissions: ["settings.manage"], section: "settings" },
   { label: "Bulk setup", href: "/settings/bulk-setup/", permissions: ["bulk.configure"], section: "settings" },
   { label: "Cutting setup", href: "/settings/cutting-setup/", permissions: ["cutting.configure"], section: "settings" },
-  { label: "Order types & categories", href: "/settings/catalog/", permissions: ["pricing.view", "pricing.manage"], section: "settings" },
+  { label: "Categories & materials", href: "/settings/catalog/", permissions: ["pricing.view", "pricing.manage"], section: "settings" },
   { label: "Users", href: "/settings/users/", permissions: ["users.view"], section: "settings" },
   { label: "Roles", href: "/settings/roles/", permissions: ["roles.view", "roles.manage"], section: "settings" },
   { label: "Companies & shops", href: "/settings/pages/", permissions: ["pages.view"], section: "settings" },

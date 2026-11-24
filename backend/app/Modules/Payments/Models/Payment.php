@@ -21,6 +21,7 @@ use Illuminate\Support\Carbon;
  * @property PaymentStatus $status
  * @property PaymentMethod $method
  * @property Carbon $paid_at
+ * @property string|null $payment_time  HH:MM:SS, Asia/Colombo wall-clock time of the transfer
  * @property Carbon|null $verified_at
  * @property Carbon|null $created_at
  */
@@ -36,7 +37,7 @@ class Payment extends Model
      *
      * @var list<string>
      */
-    protected $fillable = ['order_id', 'amount_minor', 'currency', 'method', 'reference_no', 'paid_at', 'slip_document_id', 'delivery_id'];
+    protected $fillable = ['order_id', 'amount_minor', 'currency', 'method', 'bank_name', 'reference_no', 'paid_at', 'payment_time', 'slip_document_id', 'delivery_id'];
 
     /** Methods that always need a slip or screenshot as evidence. */
     public const EVIDENCE_REQUIRED = [PaymentMethod::BankTransfer, PaymentMethod::Online, PaymentMethod::Cheque];

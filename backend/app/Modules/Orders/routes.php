@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 use App\Modules\Orders\Http\Controllers\JobDetailsController;
 use App\Modules\Orders\Http\Controllers\OrderController;
-use App\Modules\Orders\Http\Controllers\OrderTypeController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -22,8 +21,4 @@ Route::middleware('authenticated')->group(function (): void {
     Route::post('orders/{order}/job-details', [JobDetailsController::class, 'update'])->whereNumber('order')->middleware('throttle:uploads')->name('orders.job-details.update');
     Route::post('orders/{order}/job-details/submit', [JobDetailsController::class, 'submit'])->whereNumber('order')->name('orders.job-details.submit');
     Route::get('orders/{order}/job-details/attachment', [JobDetailsController::class, 'attachment'])->whereNumber('order')->middleware('signed')->name('orders.job-details.attachment');
-
-    Route::get('order-types', [OrderTypeController::class, 'index'])->name('order-types.index');
-    Route::post('order-types', [OrderTypeController::class, 'store'])->name('order-types.store');
-    Route::patch('order-types/{id}', [OrderTypeController::class, 'update'])->whereNumber('id')->name('order-types.update');
 });

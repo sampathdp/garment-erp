@@ -125,7 +125,7 @@ export interface JobCard {
   final_design_link: string | null;
   material: string | null;
   material_details: string | null;
-  product: { category: string; order_type: string | null };
+  product: { category: string };
   quantity: number;
   bulk_meter: JobCardMeasurement | null;
   patch_meter: JobCardMeasurement | null;

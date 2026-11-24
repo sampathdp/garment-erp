@@ -10,10 +10,11 @@
 - `bulk_assignments`: `bulk_designer_id` (assigned internal/external bulk designer), index `(bulk_designer_id, status)`. Assignee columns used by "assigned only" roles: `design_tasks.designer_id`, `bulk_assignments.bulk_designer_id`, `cutting_jobs.supervisor_id`.
 
 **Phase 03 changes** (`2026_11_11_000001_add_order_intake_tables`):
-- `customers`: `whatsapp_e164`, `page_id` (customer's page, scopes visibility), `branch_id`; indexes `(page_id, phone_e164)`, `(page_id, whatsapp_e164)`, `(page_id, name)`. The order form's "Customer Address" is stored in `address_line1`.
-- `order_types` (code, name, is_active, sort_order); `orders.order_type_id` (nullable only for pre-Phase-03 rows), index `(status, created_at)`; `orders.order_no` widened to 60 on MySQL for `{BRANCH}-{PAGE}-{YY}-{NNNNN}`.
+- `customers`: `whatsapp_e164`, `page_id` (customer's page, scopes visibility), `branch_id`; indexes `(page_id, phone_e164)`, `(page_id, whatsapp_e164)`, `(page_id, name)`. Granular delivery address fields: `address_line1`, `address_line2`, `street`, `city` (Main town), `district`.
+- `order_types` (code, name, is_active, sort_order) and `orders.order_type_id` — **dropped on 2026-11-24** (`2026_11_24_000003_drop_order_types`, order types removed from the system); index `(status, created_at)`; `orders.order_no` widened to 60 on MySQL for `{BRANCH}-{PAGE}-{YY}-{NNNNN}`.
 - `urgent_approvals`: `reference_date`, `superseded_at` (a due-date change supersedes the request). New `urgent_approval_decisions` (one row per slot `second_admin` / `operation_admin`; UNIQUE `(urgent_approval_id, slot)` and `(urgent_approval_id, decided_by)` so two different people decide).
-- `payments.verification_notes`; new append-only `payment_verification_events` (submitted / verified / rejected, actor, notes). `payments.verified_by` holds the decider for both confirmations and rejections.
+- `payments`: `bank_name` (Sri Lankan bank from catalog / dropdown), `verification_notes`; new append-only `payment_verification_events` (submitted / verified / rejected, actor, notes). `payments.verified_by` holds the decider for both confirmations and rejections.
+- 2026-11-24 (`2026_11_24_000004_add_payment_time_to_payments_table`): `payments.payment_time` TIME nullable (Asia/Colombo wall-clock time of the transfer) and index `payments_duplicate_match_index (amount_minor, paid_at, payment_time, bank_name)` for duplicate detection across pages (WORKFLOW_REQUIREMENTS.md §3.2).
 - `sequences` scopes in use: `('order', 0, year)` for job numbers, `('customer', 0, 0)` for customer codes.
 - Product categories are `product_types`; categories created from the UI use the `Standard` size chart until size charts are configured.
 

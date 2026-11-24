@@ -31,8 +31,11 @@ final class StorePaymentRequest extends FormRequest
             'amount_minor' => ['required', 'integer', 'min:1', 'max:100000000000000'],
             // Cash on delivery is recorded by delivery staff with the delivery (later phase).
             'method' => ['required', Rule::enum(PaymentMethod::class)->except([PaymentMethod::Cod])],
+            'bank_name' => ['sometimes', 'nullable', 'string', 'max:80'],
             'reference_no' => [Rule::requiredIf(in_array($this->input('method'), [PaymentMethod::BankTransfer->value, PaymentMethod::Online->value, PaymentMethod::Cheque->value], true)), 'nullable', 'string', 'max:80'],
             'payment_date' => ['required', 'date_format:Y-m-d', 'before_or_equal:'.BusinessDate::today()->toDateString(), 'after_or_equal:'.BusinessDate::today()->subYear()->toDateString()],
+            // Time of the transfer / deposit (Asia/Colombo). Needed with the bank for duplicate detection.
+            'payment_time' => ['required_with:bank_name', 'nullable', 'date_format:H:i'],
             'notes' => ['sometimes', 'nullable', 'string', 'max:500'],
             'evidence' => [$evidenceRequired ? 'required' : 'nullable', 'file', new AllowedDocument(DocumentCategory::PaymentSlip)],
             'status' => ['prohibited'],
@@ -49,6 +52,8 @@ final class StorePaymentRequest extends FormRequest
             'evidence.required' => 'Attach the payment slip or screenshot.',
             'payment_date.before_or_equal' => 'The payment date cannot be in the future.',
             'reference_no.required' => 'Enter the bank or transaction reference.',
+            'payment_time.required_with' => 'Enter the time of the payment shown on the slip.',
+            'payment_time.date_format' => 'Enter the time as HH:MM.',
             '*.prohibited' => 'This field is set by the system and cannot be sent.',
         ];
     }

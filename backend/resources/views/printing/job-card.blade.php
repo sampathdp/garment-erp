@@ -18,7 +18,7 @@
     <div>
         <table>
             <tr><th>Category</th><td>{{ $card['product']['category'] }}</td></tr>
-            <tr><th>Order type</th><td>{{ $card['product']['order_type'] ?? '—' }}</td></tr>
+
             <tr><th>Material</th><td>{{ $card['material'] ?? '—' }} {{ $card['material_details'] ?? '' }}</td></tr>
             <tr><th>Quantity</th><td>{{ $card['quantity'] }}</td></tr>
             @foreach (array_filter([$card['bulk_meter'], $card['patch_meter'], ...$card['other_measurements']]) as $m)

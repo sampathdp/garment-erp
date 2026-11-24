@@ -5,7 +5,6 @@ declare(strict_types=1);
 use App\Modules\Identity\Models\User;
 use App\Modules\Identity\Support\Roles;
 use App\Modules\Orders\Models\Order;
-use App\Modules\Orders\Models\OrderType;
 use App\Modules\Organizations\Models\Branch;
 use App\Modules\Organizations\Models\Organization;
 use App\Modules\Organizations\Models\Page;
@@ -41,7 +40,6 @@ function intakeWorld(TestCase $test): void
     $test->ownerB = $test->userWithRole(Roles::PAGE_OWNER, pages: [$test->pageB]);
     $test->secondB = $test->userWithRole(Roles::SECOND_ADMIN, pages: [$test->pageB]);
 
-    $test->single = OrderType::query()->where('code', 'single')->firstOrFail();
     $test->jersey = ProductType::query()->where('code', 'jersey')->firstOrFail();
 }
 
@@ -52,7 +50,6 @@ function orderPayload(TestCase $test, array $overrides = []): array
         'branch_id' => $test->branch->id,
         'page_id' => $test->pageA->id,
         'customer' => ['name' => 'Nimal Perera', 'phone' => '0771234567', 'whatsapp' => '0771234567', 'other_phone' => null, 'address' => '12 Galle Road, Colombo 03'],
-        'order_type_id' => $test->single->id,
         'due_date' => '2026-11-30',
         'product_type_id' => $test->jersey->id,
         'gross_quantity' => 10,

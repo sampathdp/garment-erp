@@ -27,8 +27,24 @@ class Customer extends Model
     /** @var list<string> */
     protected $fillable = [
         'customer_code', 'page_id', 'branch_id', 'name', 'phone_e164', 'whatsapp_e164', 'alt_phone_e164',
-        'email', 'address_line1', 'address_line2', 'city', 'notes', 'created_by',
+        'email', 'address_line1', 'address_line2', 'street', 'city', 'district', 'notes', 'created_by',
     ];
+
+    /**
+     * Formats the multi-part delivery address into a single readable string.
+     */
+    public function getFormattedAddressAttribute(): ?string
+    {
+        $parts = array_filter([
+            $this->address_line1,
+            $this->address_line2,
+            $this->street,
+            $this->city,
+            $this->district,
+        ], fn (?string $v): bool => $v !== null && trim($v) !== '');
+
+        return $parts === [] ? null : implode(', ', $parts);
+    }
 
     protected function casts(): array
     {

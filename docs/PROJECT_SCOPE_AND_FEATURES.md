@@ -4,7 +4,7 @@
 
 ## 1. Executive Summary
 
-The **Garment Manufacturing & Production Management ERP** is a centralized, end-to-end operational platform designed specifically for custom apparel and sportswear manufacturing businesses. 
+The **Garment Manufacturing & Production Management ERP** is a centralized, end-to-end operational platform designed specifically for custom apparel and sportswear manufacturing businesses.
 
 The system bridges the gap between front-end customer sales (primarily social media and branch sales channels) and the factory floor. It enforces strict business rules, financial controls, multi-tier approvals, quality checkpoints, and stage-by-stage accountability—from initial customer contact to doorstep delivery and final financial settlement.
 
@@ -13,17 +13,22 @@ The system bridges the gap between front-end customer sales (primarily social me
 ## 2. Business Scope & Organizational Model
 
 ### 2.1 Single Enterprise with Multiple Branches
+
 The system supports a single manufacturing company operating across multiple physical branches and production facilities. Data and operations are organized around physical factory locations while maintaining consolidated central oversight.
 
 ### 2.2 Sales Channels ("Pages")
+
 Orders originate through specialized brand channels, primarily **Facebook/Social Media Pages**. Each page represents a distinct commercial brand or sales channel with its own:
+
 - Dedicated sales and page management team (**Page Owners**)
 - Brand-specific customer base
 - Customized product pricing structures and quantity tiers
 - Distinct invoice numbering sequences and branding headers
 
 ### 2.3 Hybrid Manufacturing Capability
+
 The platform orchestrates both:
+
 - **Internal Production**: In-house design studios, bulk preparation, printing, cutting, and tailoring facilities.
 - **External Subcontracting**: Outsourced printing facilities and external garment manufacturing suppliers, fully tracked using formal gate passes and assignment histories.
 
@@ -33,17 +38,17 @@ The platform orchestrates both:
 
 The system structures user access around specialized job responsibilities, ensuring strict separation of duties and preventing unauthorized operational actions:
 
-| Role | Operational Scope | Key Responsibilities |
-| :--- | :--- | :--- |
-| **Super Admin** | Company-wide | Complete system configuration, staff accounts, role permissions, branch and page setup, master catalogs, and override controls. |
-| **Page Owner (Sales Lead)** | Assigned Sales Pages | Managing incoming customer inquiries, creating orders, recording advance payment slips, submitting design instructions, customer review communication, and approving final designs, bulk specifications, and print samples. |
-| **Second Admin (Accounts / Finance)** | Assigned Pages / Company-wide | Independent verification of advance payments, review of cash-on-delivery collections, issuing official invoices, handling credit notes, and evaluating urgent order requests. |
-| **Operation Admin (Factory Manager)** | Factory / Production-wide | Central production scheduling, urgent order manufacturing approval, assigning internal vs. external bulk jobs, managing printing queues, supervising cutting and sewing, and overseeing quality control and production issues. |
-| **Design Designer** | Assigned Design Tasks | Creating artwork, preparing sportswear mockups, uploading design revisions in response to customer feedback, and providing production-ready vector/print files. |
-| **Bulk Production Designer** | Assigned Production Jobs | Setting up bulk measurements (fabric meterage, patch meters, collar specs), completing production readiness checklists, and packaging digital assets for the print floor. |
-| **External Bulk Designer** | Assigned Outsourced Jobs | External supplier personnel recording measurements and checklist progress for outsourced production runs. |
-| **Cutting Staff / Cutter** | Assigned Cutting Jobs | Executing fabric cutting, logging physical cut quantities by size, inspecting cut bundles against mandatory checklists, and flagging fabric defects. |
-| **Delivery Staff** | Assigned Branches | Packaging finished orders, assigning couriers or internal drivers, uploading delivery waybills and proof of delivery, and collecting Cash on Delivery (COD). |
+| Role                                  | Operational Scope             | Key Responsibilities                                                                                                                                                                                                           |
+| :------------------------------------ | :---------------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Super Admin**                       | Company-wide                  | Complete system configuration, staff accounts, role permissions, branch and page setup, master catalogs, and override controls.                                                                                                |
+| **Page Owner (Sales Lead)**           | Assigned Sales Pages          | Managing incoming customer inquiries, creating orders, recording advance payment slips, submitting design instructions, customer review communication, and approving final designs, bulk specifications, and print samples.    |
+| **Second Admin (Accounts / Finance)** | Assigned Pages / Company-wide | Independent verification of advance payments, review of cash-on-delivery collections, issuing official invoices, handling credit notes, and evaluating urgent order requests.                                                  |
+| **Operation Admin (Factory Manager)** | Factory / Production-wide     | Central production scheduling, urgent order manufacturing approval, assigning internal vs. external bulk jobs, managing printing queues, supervising cutting and sewing, and overseeing quality control and production issues. |
+| **Design Designer**                   | Assigned Design Tasks         | Creating artwork, preparing sportswear mockups, uploading design revisions in response to customer feedback, and providing production-ready vector/print files.                                                                |
+| **Bulk Production Designer**          | Assigned Production Jobs      | Setting up bulk measurements (fabric meterage, patch meters, collar specs), completing production readiness checklists, and packaging digital assets for the print floor.                                                      |
+| **External Bulk Designer**            | Assigned Outsourced Jobs      | External supplier personnel recording measurements and checklist progress for outsourced production runs.                                                                                                                      |
+| **Cutting Staff / Cutter**            | Assigned Cutting Jobs         | Executing fabric cutting, logging physical cut quantities by size, inspecting cut bundles against mandatory checklists, and flagging fabric defects.                                                                           |
+| **Delivery Staff**                    | Assigned Branches             | Packaging finished orders, assigning couriers or internal drivers, uploading delivery waybills and proof of delivery, and collecting Cash on Delivery (COD).                                                                   |
 
 ---
 
@@ -93,7 +98,14 @@ The platform guides every garment order through a sequential, state-controlled p
 ## 5. Detailed Functional Features by Module
 
 ### 5.1 Customer Relationship & Order Intake
-- **Customer Profiles**: Centralized customer records linked to sales pages, capturing names, verified contact numbers (E.164 standard), WhatsApp numbers, and delivery addresses.
+
+- **Customer Profiles**: Centralized customer records linked to sales pages, capturing names, verified contact numbers (E.164 standard), WhatsApp numbers, and structured delivery addresses.
+- **Granular Delivery Address Breakdown**: To ensure reliable courier dispatching, address accuracy, and seamless Cash on Delivery (COD) routing, delivery addresses are broken down into dedicated fields:
+  - **Address Line 1** (Building name, flat, house number)
+  - **Address Line 2** (Apartment, suite, unit - optional)
+  - **Street** (Street name / Road)
+  - **Main Town \*** (_Mandatory_ - Nearest commercial hub or postal city)
+  - **District \*** (_Mandatory_ - Selected from Sri Lanka's 25 official administrative districts)
 - **Duplicate Prevention**: Automatic duplicate detection on phone numbers prevents duplicate customer profiles while allowing legitimate repeat business.
 - **Structured Order Intake**: Fast, guided order entry capturing:
   - Associated Sales Page and Manufacturing Branch
@@ -104,21 +116,25 @@ The platform guides every garment order through a sequential, state-controlled p
 - **Strict Job Identification**: Upon submission, each order receives a permanent, gap-free, non-reusable Job Number (e.g., `COL-FB01-26-00124`) reflecting branch, page, year, and sequential order.
 
 ### 5.2 Financial Control & Advance Payment Management
+
 - **30% Advance Requirement**: Production cannot begin until at least 30% of the gross order total (including delivery fees and taxes) has been received and verified.
 - **Separation of Duties (Anti-Fraud)**: The staff member who records a payment (Sales/Page Owner) **cannot** verify it. An independent Second Admin (Accounts) must inspect and approve the payment evidence.
+- **Sri Lankan Bank Selection & Transaction Reference**: When recording bank transfers, online payments, or cheques, staff select the issuing/receiving bank directly from a standardized dropdown of major Sri Lankan licensed banks (Bank of Ceylon [BOC], People's Bank, Commercial Bank, National Savings Bank [NSB], HNB, Sampath Bank, Seylan Bank, etc.) alongside the transaction or deposit reference number.
 - **Payment Evidence Vault**: Secure attachment of bank deposit slips, online transfer receipts, or cheque scans.
 - **Payment Verification History**: Permanent audit trail of submitted, approved, or rejected payments with timestamps and reviewer remarks.
 - **Idempotency Protection**: Safeguards preventing duplicate payment entries during slow connections or multiple clicks.
 
 ### 5.3 Seven-Day Urgent Order Management & Dual-Approval System
+
 - **Automated Urgency Detection**: The system calculates the exact number of working days between order submission and the requested delivery date, accounting for business working calendars and official Sri Lankan holidays.
 - **The Urgent Order Boundary**: Orders required in fewer than 7 working days are automatically flagged as **Urgent**.
 - **Dual Mandatory Approvals**: To protect factory operations, urgent orders cannot be released until approved by **both**:
   1. **Second Admin** (Commercial / Financial viability)
   2. **Operation Admin** (Factory floor capacity & production feasibility)
-  Both approvals must come from two distinct individuals. If either manager rejects the request, the order remains blocked until the customer agrees to a realistic delivery date.
+     Both approvals must come from two distinct individuals. If either manager rejects the request, the order remains blocked until the customer agrees to a realistic delivery date.
 
 ### 5.4 Custom Design & Artwork Approval Workflow
+
 - **Post-Payment Job Specification**: Once the advance payment is verified, Page Owners enter detailed fabric choices, styling notes, and design guidelines.
 - **Automated Task Assignment**: Orders automatically route to the assigned Design Designer's queue, sorted by urgency and due date.
 - **Immutable Version History**: Every uploaded artwork revision is saved as a permanent, immutable version. Earlier design iterations are never overwritten.
@@ -127,21 +143,24 @@ The platform guides every garment order through a sequential, state-controlled p
 - **Page Owner Sign-Off**: Only the designated Page Owner can give the final commercial approval on behalf of the customer.
 
 ### 5.5 Player Name & Number List Management
+
 - **Category-Specific Customization Fields**: Dynamic roster forms tailored to each garment type:
-  - *Jerseys / T-Shirts*: Player Name, Player Number, Sleeve Type (Short/Long/Cut), Size, Adult/Kids fit.
-  - *Shorts / Bottoms*: Player Number, Logo Requirements, Pocket options.
+  - _Jerseys / T-Shirts_: Player Name, Player Number, Sleeve Type (Short/Long/Cut), Size, Adult/Kids fit.
+  - _Shorts / Bottoms_: Player Number, Logo Requirements, Pocket options.
 - **Flexible Data Input**: Direct manual entry, bulk multi-row paste, and complete CSV import/export.
 - **Data Validation & Duplicate Warnings**: Immediate detection of missing required sizes, mismatched totals against the order quantity, and automatic alerts for duplicate player jersey numbers.
 - **List Locking**: When finalized, the garment list is locked against further modification to ensure printing and cutting match the exact customer roster.
 - **Audited Administrative Correction**: If a customer requests a late roster change, unlocking the list requires a mandatory reason, logs an audit entry, alerts management, and invalidates any subsequent production steps that relied on the old version.
 
 ### 5.6 Automated Page Pricing & Invoicing
+
 - **Rule-Based Pricing Matrix**: Automated calculation based on product category, fabric type, quantity tiers (volume discounts), and optional add-ons (sleeves, collar types, special sizes).
 - **Price Freeze (Snapshotting)**: Agreed unit prices are locked into the order at confirmation time; future price catalog changes never alter active orders.
 - **Automated Invoice Generation**: When the garment list is locked, the system automatically creates an official invoice with a sequential, page-specific invoice number.
 - **Automatic Advance Recalculation**: If late quantity changes increase the order total, the system recalculates the required 30% advance. If the paid amount falls below 30%, production is automatically held until the balance is topped up.
 
 ### 5.7 Bulk Production & Job Card Generation
+
 - **Automated Bulk Job Creation**: Created automatically once the design is approved, the garment list is locked, the invoice is issued, and the advance payment is verified.
 - **Work Assignment**: Flexible dispatch to internal factory teams or external manufacturing contractors.
 - **Fabric Meterage & Measurement Tracking**: Precise recording of fabric requirements (Bulk Meter, Patch Meter, Collar Meter) with complete change history.
@@ -149,18 +168,21 @@ The platform guides every garment order through a sequential, state-controlled p
 - **Live Digital Job Card**: A consolidated, single-screen production blueprint pulling together the approved artwork preview, fabric details, meterage, and full size-by-size breakdown.
 
 ### 5.8 Fabric Printing & Sublimation Control
-- **Controlled Printing Pipeline**: Tracked transition through *Ready for Printing*, *Sent to Printer*, *Sample Review*, and *Physical Printing In Progress*.
+
+- **Controlled Printing Pipeline**: Tracked transition through _Ready for Printing_, _Sent to Printer_, _Sample Review_, and _Physical Printing In Progress_.
 - **Mandatory Physical Sample Sign-Off**: The printer uploads high-resolution photos of a physical printed fabric sample. Production cannot proceed until the Page Owner reviews and approves this physical sample.
 - **Document Printing Lock (Zero-Waste Safeguard)**: To prevent printing garments using unapproved colors or flawed designs, the system **physically locks** the printing of Job Cards and production lists until the physical sample is formally approved.
 - **Gate Pass Recording**: Movement of fabric to and from external printing facilities is logged with gate pass identifiers, dates, and handling notes.
 
 ### 5.9 Cutting, Tailoring & Production Quality Control
+
 - **Cutter Assignment**: Allocation of jobs to individual cutters with targeted completion deadlines.
 - **Cut Verification**: Recording actual cut quantities size-by-size against ordered targets, automatically highlighting shortages or missing items.
 - **Mandatory Cutting Quality Checks**: Inspection checklists covering fabric flaws, alignment, cutting accuracy, and bundle tagging.
 - **Sewing & Garment Assembly**: Tracking transfer from the cutting tables into the sewing lines, verifying that received pieces match finished sewn garments.
 
 ### 5.10 Centralized Production Issue & Defect Tracking
+
 - **Factory Floor Issue Register**: Centralized logging for any anomaly occurring on the production floor:
   - Fabric defects or damages
   - Printing or color sublimation errors
@@ -171,14 +193,15 @@ The platform guides every garment order through a sequential, state-controlled p
 - **Production Blockers**: Critical issues automatically halt subsequent production stages, notifying operation managers and assigned designers immediately. The job cannot be closed until the issue is investigated, resolved, and signed off.
 
 ### 5.11 Dispatch, Courier Management & Cash on Delivery (COD)
+
 - **Flexible Delivery Methods**:
   - Courier Service (tracking number, courier partner name)
   - Company Delivery Vehicle (driver name, vehicle route)
   - Customer Factory Pickup
 - **Mandatory Delivery Documentation**: Requirement of proof documents based on method:
-  - *Courier*: Courier waybill receipt
-  - *Company Vehicle*: Signed delivery sheet
-  - *Customer Pickup*: Photo of customer collection or signed receipt
+  - _Courier_: Courier waybill receipt
+  - _Company Vehicle_: Signed delivery sheet
+  - _Customer Pickup_: Photo of customer collection or signed receipt
 - **Cash on Delivery (COD) Automation**:
   - Outstanding balance is automatically calculated upon dispatch.
   - Delivery staff log collected cash directly into the system upon delivery.
@@ -191,11 +214,12 @@ The platform guides every garment order through a sequential, state-controlled p
   5. The **verified financial balance is exactly zero**
 
 ### 5.12 Role-Based Dashboards & Business Analytics
+
 - **Personalized Operational Views**: Every user lands on a dashboard customized to their specific daily duties:
-  - *Page Owners*: Orders awaiting customer feedback, pending advance payments, sample reviews.
-  - *Designers*: Active design queue ordered by urgency and delivery due dates.
-  - *Factory Managers*: Real-time status of bulk jobs, printing queues, cutting progress, and open factory issues.
-  - *Delivery Team*: Orders ready for packing, out for delivery, and pending COD collections.
+  - _Page Owners_: Orders awaiting customer feedback, pending advance payments, sample reviews.
+  - _Designers_: Active design queue ordered by urgency and delivery due dates.
+  - _Factory Managers_: Real-time status of bulk jobs, printing queues, cutting progress, and open factory issues.
+  - _Delivery Team_: Orders ready for packing, out for delivery, and pending COD collections.
 - **Executive Management Reports**:
   - Orders by Stage and Status
   - Branch and Sales Page Performance Comparison
@@ -205,6 +229,7 @@ The platform guides every garment order through a sequential, state-controlled p
   - Factory Defect & Quality Issue Summaries
 
 ### 5.13 In-App Notification & Alert Engine
+
 - Immediate in-system notification alerts keep teams synchronized across locations:
   - New orders submitted for payment verification
   - Urgent orders requiring executive review
@@ -232,6 +257,7 @@ The platform is built around strict operational rules that protect the business 
 ## 7. Out of Scope / Deliberate Non-Inclusions
 
 To maintain focus on core internal manufacturing efficiency, the following areas are intentionally outside the current platform scope:
+
 - **Customer Self-Service Portal**: Customers do not log into the application; internal sales staff manage all customer communication and approvals.
 - **Supplier Portal**: External contractors do not have independent portal logins; external jobs are managed by internal coordinators.
 - **Automated Bank Feeds**: Direct real-time bank account API integration is excluded; payments are verified through uploaded deposit slips and payment proofs.

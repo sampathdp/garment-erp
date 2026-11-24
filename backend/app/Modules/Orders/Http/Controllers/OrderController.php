@@ -32,9 +32,29 @@ final class OrderController
     private const SORTS = ['created_at' => 'created_at', 'due_date' => 'required_delivery_date', 'order_no' => 'order_no'];
 
     private const LIST_COLUMNS = [
-        'id', 'order_no', 'branch_id', 'page_id', 'customer_id', 'order_type_id', 'status', 'payment_status', 'required_delivery_date',
-        'submitted_at', 'is_urgent', 'urgent_status', 'currency', 'total_quantity', 'subtotal_minor', 'discount_minor', 'tax_minor',
-        'delivery_fee_minor', 'total_minor', 'advance_percent', 'advance_required_minor', 'verified_paid_minor', 'version', 'created_at',
+        'id',
+        'order_no',
+        'branch_id',
+        'page_id',
+        'customer_id',
+        'status',
+        'payment_status',
+        'required_delivery_date',
+        'submitted_at',
+        'is_urgent',
+        'urgent_status',
+        'currency',
+        'total_quantity',
+        'subtotal_minor',
+        'discount_minor',
+        'tax_minor',
+        'delivery_fee_minor',
+        'total_minor',
+        'advance_percent',
+        'advance_required_minor',
+        'verified_paid_minor',
+        'version',
+        'created_at',
     ];
 
     /** Screen presets: drafts & pending payment, urgent approvals, Approved Orders. */
@@ -67,7 +87,7 @@ final class OrderController
             $query->whereIn('status', $statuses);
         }
 
-        $query->when($request->input('filter.group'), fn (Builder $q, string $group) => $q->whereIn('status', array_map(fn (OrderStatus $s) => $s->value, match ($group) {
+        $query->when($request->input('filter.group'), fn(Builder $q, string $group) => $q->whereIn('status', array_map(fn(OrderStatus $s) => $s->value, match ($group) {
             'intake' => [OrderStatus::Draft, OrderStatus::PendingPaymentVerification, OrderStatus::PaymentRejected],
             'urgent' => [OrderStatus::UrgentApprovalPending, OrderStatus::UrgentApprovalRejected],
             default => OrderStatus::released(),
@@ -82,9 +102,9 @@ final class OrderController
         if ($search = trim((string) $request->input('filter.search'))) {
             $like = addcslashes($search, '%_\\');
             $phone = PhoneNumber::normalize($search);
-            $query->where(fn (Builder $q) => $q->where('order_no', 'like', "%{$like}%")
-                ->orWhereHas('customer', fn (Builder $c) => $c->where('name', 'like', "%{$like}%")
-                    ->when($phone !== null, fn (Builder $p) => $p->orWhere('phone_e164', $phone)->orWhere('whatsapp_e164', $phone))));
+            $query->where(fn(Builder $q) => $q->where('order_no', 'like', "%{$like}%")
+                ->orWhereHas('customer', fn(Builder $c) => $c->where('name', 'like', "%{$like}%")
+                    ->when($phone !== null, fn(Builder $p) => $p->orWhere('phone_e164', $phone)->orWhere('whatsapp_e164', $phone))));
         }
 
         ListQuery::applySort($query, $request, self::SORTS, '-created_at');
@@ -130,8 +150,13 @@ final class OrderController
     {
         /** @var User $actor */
         $actor = $request->user();
-        $order = $action->handle($actor, $order, UrgentApprovalSlot::from((string) $request->validated('slot')),
-            UrgentDecision::from((string) $request->validated('decision')), $request->validated('reason'));
+        $order = $action->handle(
+            $actor,
+            $order,
+            UrgentApprovalSlot::from((string) $request->validated('slot')),
+            UrgentDecision::from((string) $request->validated('decision')),
+            $request->validated('reason')
+        );
 
         return new OrderResource(self::loadDetail($order));
     }
@@ -140,9 +165,10 @@ final class OrderController
     private static function listRelations(): array
     {
         return [
-            'branch:id,code,name', 'page:id,code,name', 'orderType:id,name',
-            'customer:id,customer_code,name,phone_e164,whatsapp_e164,alt_phone_e164,address_line1',
-            'items' => fn ($q) => $q->select(['id', 'order_id', 'product_type_id', 'quantity', 'unit_price_minor', 'sort_order'])->orderBy('sort_order'),
+            'branch:id,code,name',
+            'page:id,code,name',
+            'customer:id,customer_code,name,phone_e164,whatsapp_e164,alt_phone_e164,address_line1,address_line2,street,city,district',
+            'items' => fn($q) => $q->select(['id', 'order_id', 'product_type_id', 'quantity', 'unit_price_minor', 'sort_order'])->orderBy('sort_order'),
             'items.productType:id,name',
             'currentUrgentApproval.decisions',
             'designTask:id,order_id,status,designer_id,correction_rounds',
@@ -154,7 +180,7 @@ final class OrderController
         return $order->load([
             ...self::listRelations(),
             'currentUrgentApproval.decisions.decider:id,name',
-            'statusHistories' => fn ($q) => $q->orderBy('id'),
+            'statusHistories' => fn($q) => $q->orderBy('id'),
             'statusHistories.actor:id,name',
             'material:id,code,name',
             'designAttachment:id,original_name,mime_type,size_bytes',

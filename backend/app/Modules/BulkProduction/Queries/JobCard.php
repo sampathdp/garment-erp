@@ -28,13 +28,15 @@ use Illuminate\Support\Facades\URL;
  */
 final class JobCard
 {
-    public function __construct(private readonly BulkMeasurementRules $rules, private readonly GarmentListReview $review) {}
+    public function __construct(private readonly BulkMeasurementRules $rules, private readonly GarmentListReview $review)
+    {
+    }
 
     /** @return array<string, mixed> */
     public function for(BulkJob $job): array
     {
-        $order = Order::query()->select(['id', 'order_no', 'branch_id', 'page_id', 'customer_id', 'material_id', 'order_type_id', 'required_delivery_date', 'is_urgent', 'total_quantity', 'material_details', 'status'])
-            ->with(['customer:id,name', 'material:id,name', 'branch:id,code,name', 'page:id,code,name', 'orderType:id,name'])->findOrFail($job->order_id);
+        $order = Order::query()->select(['id', 'order_no', 'branch_id', 'page_id', 'customer_id', 'material_id', 'required_delivery_date', 'is_urgent', 'total_quantity', 'material_details', 'status'])
+            ->with(['customer:id,name', 'material:id,name', 'branch:id,code,name', 'page:id,code,name'])->findOrFail($job->order_id);
         $item = OrderItem::query()->select(['id', 'order_id', 'product_type_id', 'quantity'])->with('productType:id,name')->where('order_id', $order->id)->orderBy('sort_order')->firstOrFail();
         $task = DesignTask::query()->select(['id', 'approved_version_id', 'final_version_id'])->with('finalVersion:id,version_no,external_url')->find($job->getAttribute('design_task_id'));
 
@@ -43,9 +45,12 @@ final class JobCard
         $ttl = now()->addMinutes((int) config('documents.download_url_ttl_minutes', 5));
 
         $values = BulkJobMeasurement::query()->where('bulk_job_id', $job->id)->get()->keyBy('bulk_measurement_field_id');
-        $measurements = $this->rules->fieldsFor($job)->filter(fn (BulkMeasurementField $f) => $f->show_on_job_card || $f->is_system)
-            ->map(fn (BulkMeasurementField $f): array => [
-                'key' => $f->key, 'label' => $f->label, 'unit' => $f->unit, 'is_required' => $f->is_required,
+        $measurements = $this->rules->fieldsFor($job)->filter(fn(BulkMeasurementField $f) => $f->show_on_job_card || $f->is_system)
+            ->map(fn(BulkMeasurementField $f): array => [
+                'key' => $f->key,
+                'label' => $f->label,
+                'unit' => $f->unit,
+                'is_required' => $f->is_required,
                 'value' => BulkMeasurementRules::display($values->get($f->id)?->value, $f->decimals),
             ])->values();
 
@@ -64,11 +69,11 @@ final class JobCard
             'final_design_link' => $task?->finalVersion?->getAttribute('external_url'),
             'material' => $order->material?->name,
             'material_details' => $order->material_details,
-            'product' => ['category' => $item->productType->name, 'order_type' => $order->orderType?->name],
+            'product' => ['category' => $item->productType->name],
             'quantity' => $order->total_quantity,
             'bulk_meter' => $measurements->firstWhere('key', BulkMeasurementField::BULK_METER),
             'patch_meter' => $measurements->firstWhere('key', BulkMeasurementField::PATCH_METER),
-            'other_measurements' => $measurements->reject(fn (array $m) => in_array($m['key'], [BulkMeasurementField::BULK_METER, BulkMeasurementField::PATCH_METER], true))->values()->all(),
+            'other_measurements' => $measurements->reject(fn(array $m) => in_array($m['key'], [BulkMeasurementField::BULK_METER, BulkMeasurementField::PATCH_METER], true))->values()->all(),
             'list' => $listVersion === null ? null : [
                 'version_no' => $listVersion->version_no,
                 'status' => $listVersion->status->value,
@@ -76,8 +81,8 @@ final class JobCard
                 'is_approved_reference' => $job->getAttribute('approved_list_version_id') === $listVersion->id,
                 'is_current' => app(BulkWorkflow::class)->listIsCurrentAndLocked($job),
                 'total_quantity' => $summary['total_quantity'] ?? 0,
-                'by_size' => array_map(fn (array $r) => ['size' => $r['size'], 'quantity' => $r['quantity']], $summary['by_size'] ?? []),
-                'groups' => array_map(fn (array $g) => ['label' => $g['label'], 'quantity' => $g['quantity']], $summary['price_groups'] ?? []),
+                'by_size' => array_map(fn(array $r) => ['size' => $r['size'], 'quantity' => $r['quantity']], $summary['by_size'] ?? []),
+                'groups' => array_map(fn(array $g) => ['label' => $g['label'], 'quantity' => $g['quantity']], $summary['price_groups'] ?? []),
             ],
             'bulk' => [
                 'status' => ['value' => $job->status->value, 'label' => $job->status->label()],

@@ -170,3 +170,67 @@ it('refuses payments on drafts', function () {
     $this->signedInAs($this->owner)->post("/api/v1/orders/{$draft->id}/payments", ['amount_minor' => 1000, 'method' => 'cash', 'payment_date' => '2026-11-09'], ['Accept' => 'application/json'])
         ->assertStatus(409);
 });
+
+/* Duplicate detection: same amount, bank, date and time as a payment on ANOTHER page. */
+function bankPayment(\Tests\TestCase $test, \App\Modules\Orders\Models\Order $order, \App\Modules\Identity\Models\User $as, string $time = '10:30', string $bank = 'Bank of Ceylon (BOC)'): Payment
+{
+    return recordPayment($test, $order, 300000, $as, ['bank_name' => $bank, 'payment_time' => $time]);
+}
+
+it('marks both payments as Duplicate when another page has the same amount, bank, date and time', function () {
+    Notification::fake();
+    $orderB = createOrder($this, ['page_id' => $this->pageB->id], $this->ownerB);
+    $first = bankPayment($this, $orderB, $this->ownerB);
+
+    $response = $this->signedInAs($this->owner)->post("/api/v1/orders/{$this->order->id}/payments", [
+        'amount_minor' => 300000, 'method' => 'bank_transfer', 'bank_name' => 'Bank of Ceylon (BOC)', 'reference_no' => 'BOC-1',
+        'payment_date' => '2026-11-09', 'payment_time' => '10:30', 'evidence' => slip(),
+    ], ['Accept' => 'application/json'])->assertCreated()
+        ->assertJsonPath('data.is_duplicate', true)
+        ->assertJsonPath('data.payment_time', '10:30')
+        // The other page is outside the Page A owner's scope: not named.
+        ->assertJsonPath('data.duplicate_matches.0.visible', false)
+        ->assertJsonPath('data.duplicate_matches.0.order_no', null);
+    $second = Payment::query()->findOrFail($response->json('data.id'));
+
+    // The person who entered the first payment sees "Duplicate" too, and is told about it.
+    $this->signedInAs($this->ownerB)->getJson("/api/v1/payments/{$first->id}")->assertOk()->assertJsonPath('data.is_duplicate', true);
+    $this->signedInAs($this->ownerB)->getJson('/api/v1/payments?filter[duplicate]=1')->assertOk()
+        ->assertJsonPath('data.0.id', $first->id)->assertJsonPath('data.0.is_duplicate', true);
+    $this->signedInAs($this->owner)->getJson("/api/v1/orders/{$this->order->id}/payments")->assertOk()->assertJsonPath('data.items.0.is_duplicate', true);
+    Notification::assertSentTo($this->ownerB, WorkflowNotification::class, fn (WorkflowNotification $n) => $n->event === 'payment.duplicate');
+    expect(AuditLog::query()->where('action', 'payments.duplicate_detected')->where('subject_id', $second->id)->exists())->toBeTrue();
+
+    // A user who sees both pages gets both jobs named.
+    $admin = $this->userWithRole(Roles::SUPER_ADMIN);
+    $this->signedInAs($admin)->getJson("/api/v1/payments/{$second->id}")->assertOk()
+        ->assertJsonPath('data.duplicate_matches.0.visible', true)->assertJsonPath('data.duplicate_matches.0.order_no', $orderB->order_no);
+});
+
+it('does not flag payments that differ in time or bank, are on the same page, or match a rejected payment', function () {
+    $orderB = createOrder($this, ['page_id' => $this->pageB->id], $this->ownerB);
+    $b = bankPayment($this, $orderB, $this->ownerB, '10:30');
+
+    expect($this->signedInAs($this->owner)->getJson('/api/v1/payments/'.bankPayment($this, $this->order, $this->owner, '10:31')->id)->json('data.is_duplicate'))->toBeFalse();
+    $sameTimeOtherBank = bankPayment($this, createOrder($this), $this->owner, '10:30', "People's Bank");
+    expect($this->signedInAs($this->owner)->getJson("/api/v1/payments/{$sameTimeOtherBank->id}")->json('data.is_duplicate'))->toBeFalse();
+
+    // Same page, same details: not a cross-page duplicate.
+    $sameA1 = bankPayment($this, createOrder($this), $this->owner, '11:00');
+    $sameA2 = bankPayment($this, createOrder($this), $this->owner, '11:00');
+    expect($this->signedInAs($this->owner)->getJson("/api/v1/payments/{$sameA2->id}")->json('data.is_duplicate'))->toBeFalse();
+
+    $this->signedInAs($this->secondB)->postJson("/api/v1/payments/{$b->id}/reject", ['reason' => 'Fake slip'])->assertOk();
+    $late = bankPayment($this, createOrder($this), $this->owner, '10:30');
+    expect($this->signedInAs($this->owner)->getJson("/api/v1/payments/{$late->id}")->json('data.is_duplicate'))->toBeFalse()
+        ->and($sameA1->id)->toBeInt();
+});
+
+it('requires the payment time when a bank is given', function () {
+    $this->signedInAs($this->owner)->post("/api/v1/orders/{$this->order->id}/payments", [
+        'amount_minor' => 1000, 'method' => 'bank_transfer', 'bank_name' => 'Bank of Ceylon (BOC)', 'reference_no' => 'R1', 'payment_date' => '2026-11-09', 'evidence' => slip(),
+    ], ['Accept' => 'application/json'])->assertStatus(422)->assertJsonValidationErrors('payment_time');
+    $this->signedInAs($this->owner)->post("/api/v1/orders/{$this->order->id}/payments", [
+        'amount_minor' => 1000, 'method' => 'bank_transfer', 'bank_name' => 'Bank of Ceylon (BOC)', 'reference_no' => 'R1', 'payment_date' => '2026-11-09', 'payment_time' => '9.30', 'evidence' => slip(),
+    ], ['Accept' => 'application/json'])->assertStatus(422)->assertJsonValidationErrors('payment_time');
+});

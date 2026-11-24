@@ -28,7 +28,7 @@ final class UpdateOrder
         private readonly AuditLogger $audit,
     ) {}
 
-    /** @param  array<string, mixed>  $input  validated: version + any of order_type_id, due_date, product_type_id, gross_quantity, unit_price_minor, delivery_fee_minor, discount_minor */
+    /** @param  array<string, mixed>  $input  validated: version + any of due_date, product_type_id, gross_quantity, unit_price_minor, delivery_fee_minor, discount_minor */
     public function handle(User $actor, Order $order, array $input): Order
     {
         return DB::transaction(function () use ($actor, $order, $input): Order {
@@ -40,7 +40,7 @@ final class UpdateOrder
             $item = OrderItem::query()->where('order_id', $order->id)->orderBy('sort_order')->lockForUpdate()->firstOrFail();
 
             $before = [
-                'order_type_id' => $order->order_type_id, 'due_date' => $order->required_delivery_date->format('Y-m-d'),
+                'due_date' => $order->required_delivery_date->format('Y-m-d'),
                 'product_type_id' => $item->product_type_id, 'gross_quantity' => $item->quantity, 'unit_price_minor' => $item->unit_price_minor,
                 'delivery_fee_minor' => $order->delivery_fee_minor, 'discount_minor' => $order->discount_minor,
             ];
@@ -54,7 +54,7 @@ final class UpdateOrder
                 throw new ApiException(422, 'validation_failed', 'The due date must be after today.', ['due_date' => ['The due date must be after today.']]);
             }
 
-            $order->fill(['order_type_id' => $after['order_type_id'], 'required_delivery_date' => $after['due_date']]);
+            $order->fill(['required_delivery_date' => $after['due_date']]);
             $item->product_type_id = (int) $after['product_type_id'];
             OrderPricing::apply($order, $item, (int) $after['gross_quantity'], (int) $after['unit_price_minor'], (int) $after['delivery_fee_minor'], (int) $after['discount_minor']);
             $order->forceFill(['version' => $order->version + 1])->save();

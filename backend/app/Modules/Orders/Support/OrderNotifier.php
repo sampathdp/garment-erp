@@ -11,6 +11,8 @@ use App\Modules\Notifications\Support\Recipients;
 use App\Modules\Notifications\WorkflowNotification;
 use App\Modules\Orders\Enums\UrgentApprovalSlot;
 use App\Modules\Orders\Models\Order;
+use App\Modules\Payments\Models\Payment;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Collection;
 
 /**
@@ -23,6 +25,7 @@ use Illuminate\Support\Collection;
  * | order.created                 | Page Owners of the page, payment verifiers in scope               |
  * | payment.pending               | Payment verifiers in scope (never the recorder)                   |
  * | payment.confirmed / rejected  | Recorder, Page Owners                                             |
+ * | payment.duplicate             | Recorders of the matching payments on other pages                 |
  * | advance.below_minimum         | Page Owners, sales owner; the Operation Admin only when they have |
  * |                               | already approved this order as urgent (they planned for it)       |
  * | urgent.approval_requested     | Holders of each urgent approval slot in scope                     |
@@ -98,6 +101,26 @@ final class OrderNotifier
                 ? new WorkflowNotification('payment.confirmed', 'Payment confirmed', "A payment for job {$order->order_no} was confirmed.", self::paymentLink($paymentId), [...self::context($order), 'payment_id' => $paymentId])
                 : new WorkflowNotification('payment.rejected', 'Payment rejected', "A payment for job {$order->order_no} was rejected: {$reason}", self::paymentLink($paymentId), [...self::context($order), 'payment_id' => $paymentId]),
         ));
+    }
+
+    /**
+     * A newly recorded payment matches existing payments on other pages (same amount, bank, date
+     * and time). Each earlier recorder is told about THEIR payment only: the other page's job is
+     * not named, because it may be outside their scope.
+     *
+     * @param  EloquentCollection<int, Payment>  $matches  loaded with order:id,order_no
+     */
+    public function paymentDuplicate(EloquentCollection $matches, User $actor): void
+    {
+        foreach ($matches as $match) {
+            $recorderId = (int) $match->getAttribute('recorded_by');
+            if ($recorderId === $actor->id) {
+                continue;
+            }
+            $this->send($this->recipients->users($recorderId), new WorkflowNotification('payment.duplicate', 'Duplicate payment warning',
+                "A payment just entered on another page has the same amount, bank, date and time as your payment for job {$match->order->order_no}.",
+                self::paymentLink($match->id), ['order_id' => $match->order_id, 'order_no' => $match->order->order_no, 'payment_id' => $match->id]));
+        }
     }
 
     /** @param  int|null  $operationsApproverId  the Operation Admin who already approved this urgent order */

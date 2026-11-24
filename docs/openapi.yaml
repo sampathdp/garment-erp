@@ -472,11 +472,6 @@ paths:
     get: { operationId: customers.show, tags: [Customers], responses: { "200": { description: Customer with abilities } } }
     patch: { operationId: customers.update, tags: [Customers], description: "page_id is prohibited.", responses: { "200": { description: Customer } } }
     delete: { operationId: customers.destroy, tags: [Customers], description: "Soft delete; 409 customer_has_orders.", responses: { "204": { description: Deleted } } }
-  /order-types:
-    get: { operationId: order-types.index, tags: [Catalog], description: "filter[active]=1", responses: { "200": { description: "{ data: { items: [{id, code, name, is_active}] } }" } } }
-    post: { operationId: order-types.store, tags: [Catalog], description: "pricing.manage. code (immutable), name, is_active.", responses: { "201": { description: Entry } } }
-  /order-types/{id}:
-    patch: { operationId: order-types.update, tags: [Catalog], description: "name, is_active (code prohibited).", responses: { "200": { description: Entry } } }
   /product-categories:
     get: { operationId: product-categories.index, tags: [Catalog], responses: { "200": { description: Categories } } }
     post: { operationId: product-categories.store, tags: [Catalog], responses: { "201": { description: Entry } } }
@@ -493,7 +488,7 @@ paths:
       tags: [Orders]
       description: >-
         branch_id, page_id, customer_id OR customer{name, phone, whatsapp, other_phone?, address?, confirm_distinct?},
-        order_type_id, due_date (Y-m-d, after today), product_type_id, gross_quantity, unit_price_minor, delivery_fee_minor?, discount_minor?, submit?.
+        due_date (Y-m-d, after today), product_type_id, gross_quantity, unit_price_minor, delivery_fee_minor?, discount_minor?, submit?.
         Server-owned fields (status, order_no, totals, advance, is_urgent, urgent_status, payment_status, ...) are prohibited (422).
         The job number, totals, 30% advance and urgency are calculated on the server.
       responses: { "201": { description: Order detail } }
@@ -502,7 +497,7 @@ paths:
     patch:
       operationId: orders.update
       tags: [Orders]
-      description: "version (required) + any of order_type_id, due_date, product_type_id, gross_quantity, unit_price_minor, delivery_fee_minor, discount_minor. Draft or pre-approval only (409 after approval); 409 version_conflict. A due-date change re-runs the seven-day rule."
+      description: "version (required) + any of due_date, product_type_id, gross_quantity, unit_price_minor, delivery_fee_minor, discount_minor. Draft or pre-approval only (409 after approval); 409 version_conflict. A due-date change re-runs the seven-day rule."
       responses: { "200": { description: Order } }
   /orders/{order}/submit:
     post: { operationId: orders.submit, tags: [Orders], description: "{ version }. Draft only.", responses: { "200": { description: Order } } }
@@ -517,10 +512,10 @@ paths:
     post:
       operationId: orders.payments.store
       tags: [Payments]
-      description: "multipart: amount_minor, method (bank_transfer|cash|card|online|cheque), reference_no (required for bank_transfer/online/cheque), payment_date (≤ today), notes?, evidence (required for bank_transfer/online/cheque). Header Idempotency-Key (UUID): a repeat returns the first payment (200). status/verified_by are prohibited."
-      responses: { "201": { description: Payment } }
+      description: "multipart: amount_minor, method (bank_transfer|cash|card|online|cheque), reference_no (required for bank_transfer/online/cheque), payment_date (≤ today), bank_name?, payment_time? (HH:MM, required with bank_name), notes?, evidence (required for bank_transfer/online/cheque). Header Idempotency-Key (UUID): a repeat returns the first payment (200). status/verified_by are prohibited."
+      responses: { "201": { description: "Payment, incl. is_duplicate and duplicate_matches (same amount, bank, date and time on another page)" } }
   /payments:
-    get: { operationId: payments.index, tags: [Payments], description: "Verification queue: filter[status]=pending_verification, filter[search], filter[order_id].", responses: { "200": { description: Paginated payments } } }
+    get: { operationId: payments.index, tags: [Payments], description: "Verification queue: filter[status]=pending_verification, filter[search], filter[order_id], filter[duplicate]=1. Each row has is_duplicate.", responses: { "200": { description: Paginated payments } } }
   /payments/{payment}:
     get: { operationId: payments.show, tags: [Payments], description: "Includes evidence.url (5-minute signed URL), verification history and abilities.", responses: { "200": { description: Payment } } }
   /payments/{payment}/verify:

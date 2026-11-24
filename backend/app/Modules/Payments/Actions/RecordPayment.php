@@ -17,6 +17,7 @@ use App\Modules\Payments\Enums\PaymentStatus;
 use App\Modules\Payments\Enums\PaymentVerificationAction;
 use App\Modules\Payments\Models\Payment;
 use App\Modules\Payments\Models\PaymentVerificationEvent;
+use App\Modules\Payments\Queries\DuplicatePayments;
 use App\Support\Exceptions\ApiException;
 use App\Support\Time\BusinessDate;
 use Illuminate\Database\UniqueConstraintViolationException;
@@ -38,7 +39,7 @@ final class RecordPayment
         private readonly AuditLogger $audit,
     ) {}
 
-    /** @param  array{amount_minor: int, method: PaymentMethod, reference_no: string|null, payment_date: string, notes: string|null}  $input */
+    /** @param  array{amount_minor: int, method: PaymentMethod, bank_name?: string|null, reference_no: string|null, payment_date: string, payment_time?: string|null, notes: string|null}  $input */
     public function handle(User $actor, Order $order, array $input, ?UploadedFile $evidence, ?string $idempotencyKey): Payment
     {
         if ($idempotencyKey !== null && ($existing = $this->replay($actor, $order, $idempotencyKey)) !== null) {
@@ -68,9 +69,11 @@ final class RecordPayment
                     'amount_minor' => $input['amount_minor'],
                     'currency' => $order->currency,
                     'method' => $input['method'],
+                    'bank_name' => $input['bank_name'] ?? null,
                     'reference_no' => $input['reference_no'],
                     // Business date (Asia/Colombo) stored as the start of that day in UTC.
                     'paid_at' => BusinessDate::parse($input['payment_date'])->utc(),
+                    'payment_time' => isset($input['payment_time']) ? $input['payment_time'].':00' : null,
                     'slip_document_id' => $document?->id,
                 ]);
                 $payment->forceFill([
@@ -85,7 +88,14 @@ final class RecordPayment
                 $this->audit->record('payments.recorded', $payment, ['after' => [
                     'order_id' => $order->id, 'amount_minor' => $payment->amount_minor, 'method' => $payment->method->value,
                     'reference_no' => $payment->reference_no, 'evidence_document_id' => $document?->id,
+                    'bank_name' => $payment->bank_name, 'payment_time' => $payment->payment_time,
                 ]], actor: $actor);
+
+                $duplicates = DuplicatePayments::matches($payment);
+                if ($duplicates->isNotEmpty()) {
+                    $this->audit->record('payments.duplicate_detected', $payment, ['after' => ['matching_payment_ids' => $duplicates->modelKeys()]], actor: $actor);
+                    $this->notifier->paymentDuplicate($duplicates, $actor);
+                }
 
                 $this->release->handle($order, $actor, 'Payment recorded, waiting for verification.');
                 $this->notifier->paymentPending($order, $payment->id, $payment->amount_minor, $actor);

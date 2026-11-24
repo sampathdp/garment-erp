@@ -25,7 +25,6 @@ import {
   CreditCardIcon,
   ExternalLinkIcon,
   FileTextIcon,
-  LayersIcon,
   PaletteIcon,
   PencilIcon,
   PhoneIcon,
@@ -55,7 +54,6 @@ import {
   type UrgentSlot,
   useOrder,
   useOrderMutations,
-  useOrderTypes,
   useProductCategories,
 } from "./api";
 import { OrderStatusBadge } from "./orders-screen";
@@ -104,11 +102,9 @@ function Detail({ label, children, icon: Icon }: { label: string; children: Reac
 
 function EditSpecForm({ order, onDone }: { order: Order; onDone: () => void }) {
   const { update } = useOrderMutations(order.id);
-  const types = useOrderTypes();
   const categories = useProductCategories();
   const { notify } = useToast();
   const [v, setV] = useState({
-    order_type_id: String(order.order_type?.id ?? ""),
     due_date: order.due_date,
     product_type_id: String(order.product_category?.id ?? ""),
     gross_quantity: String(order.gross_quantity),
@@ -124,7 +120,6 @@ function EditSpecForm({ order, onDone }: { order: Order; onDone: () => void }) {
     update.mutate(
       {
         version: order.version,
-        order_type_id: Number(v.order_type_id),
         due_date: v.due_date,
         product_type_id: Number(v.product_type_id),
         gross_quantity: Number(v.gross_quantity),
@@ -145,13 +140,6 @@ function EditSpecForm({ order, onDone }: { order: Order; onDone: () => void }) {
         }
       />
       <div className="grid gap-4 sm:grid-cols-2">
-        <SelectField
-          label="Order type"
-          options={opt(types.data)}
-          value={v.order_type_id}
-          error={fieldErrors.order_type_id?.[0]}
-          onChange={(e) => setV({ ...v, order_type_id: e.target.value })}
-        />
         <TextField
           label="Due date"
           type="date"
@@ -515,6 +503,7 @@ function PaymentsPanel({
                   <tr key={p.id} className="hover:bg-subtle/30 transition">
                     <td className="px-4 py-3 font-semibold text-ink">
                       {formatBusinessDate(p.payment_date)}
+                      {p.payment_time && <span className="ml-1.5 font-mono text-xs font-normal text-muted">{p.payment_time}</span>}
                     </td>
                     <td className="px-4 py-3 font-bold text-sm text-ink">
                       {formatMoney(p.amount_minor, p.currency)}
@@ -524,8 +513,9 @@ function PaymentsPanel({
                         {p.method.replace("_", " ")}
                       </span>
                     </td>
-                    <td className="px-4 py-3 font-mono text-xs text-muted">
-                      {p.reference_no ?? "—"}
+                    <td className="px-4 py-3 text-xs text-muted">
+                      {p.bank_name && <div className="font-semibold text-ink">{p.bank_name}</div>}
+                      <span className="font-mono">{p.reference_no ?? "—"}</span>
                     </td>
                     <td className="px-4 py-3">
                       <Badge
@@ -540,6 +530,11 @@ function PaymentsPanel({
                       >
                         {PAY_LABELS[p.status]}
                       </Badge>
+                      {p.is_duplicate && (
+                        <Badge tone="warning" dot className="ml-1.5">
+                          Duplicate
+                        </Badge>
+                      )}
                       {p.rejection_reason && (
                         <span className="block mt-0.5 text-xs text-danger">
                           {p.rejection_reason}
@@ -791,9 +786,6 @@ function OrderDetail({ id }: { id: number }) {
               <p className="text-sm font-bold text-ink truncate">
                 {order.gross_quantity} pcs · {order.product_category?.name ?? "Garment"}
               </p>
-              <span className="text-xs text-muted">
-                {order.order_type?.name ?? "Order"}
-              </span>
             </div>
           </div>
 
@@ -1057,9 +1049,6 @@ function OrderDetail({ id }: { id: number }) {
                   <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 mt-4">
                     <Detail label="Item Category" icon={ShirtIcon}>
                       {order.product_category?.name ?? "—"}
-                    </Detail>
-                    <Detail label="Order Type" icon={LayersIcon}>
-                      {order.order_type?.name ?? "—"}
                     </Detail>
                     <Detail label="Gross Quantity" icon={BoxesIcon}>
                       {order.gross_quantity} pieces

@@ -14,7 +14,6 @@ import {
 import {
   CheckCircleIcon,
   ChevronRightIcon,
-  LayersIcon,
   LockIcon,
   PencilIcon,
   PlusIcon,
@@ -35,12 +34,11 @@ import { useMaterials } from "@/features/setup/api";
 import { ApiError } from "@/lib/api-client";
 import {
   type CatalogItem,
-  useOrderTypes,
   useProductCategories,
   useSaveCatalogItem,
 } from "./api";
 
-type CatalogKind = "product-categories" | "order-types" | "materials";
+type CatalogKind = "product-categories" | "materials";
 
 interface KindConfig {
   kind: CatalogKind;
@@ -66,18 +64,6 @@ const KIND_CONFIGS: Record<CatalogKind, KindConfig> = {
     namePlaceholder: "e.g. Polo T-Shirt",
     icon: ShirtIcon,
     colorClass: "bg-brand/10 text-brand border-brand/20",
-  },
-  "order-types": {
-    kind: "order-types",
-    singular: "Order Type",
-    plural: "Order Types",
-    description:
-      "Classification of customer orders (Single, Bulk, Custom, Sublimation) dictating intake workflow routing and dual sign-off rules.",
-    usageHint: "Selected at initial order intake to determine single vs bulk processing rules",
-    codePlaceholder: "e.g. corporate_bulk",
-    namePlaceholder: "e.g. Corporate Bulk Order",
-    icon: LayersIcon,
-    colorClass: "bg-amber-500/10 text-amber-500 border-amber-500/20",
   },
   materials: {
     kind: "materials",
@@ -138,12 +124,10 @@ export function CatalogScreen() {
 
   // Queries
   const categoriesQuery = useProductCategories(false);
-  const typesQuery = useOrderTypes(false);
   const materialsQuery = useMaterials(false);
 
   // Mutations
   const saveCategory = useSaveCatalogItem("product-categories");
-  const saveType = useSaveCatalogItem("order-types");
   const saveMaterial = useSaveCatalogItem("materials");
 
   // State
@@ -166,20 +150,18 @@ export function CatalogScreen() {
   const [editForm, setEditForm] = useState({ name: "", is_active: true });
 
   const isPending =
-    categoriesQuery.isPending || typesQuery.isPending || materialsQuery.isPending;
-  const error = categoriesQuery.error || typesQuery.error || materialsQuery.error;
+    categoriesQuery.isPending || materialsQuery.isPending;
+  const error = categoriesQuery.error || materialsQuery.error;
 
   const categories = categoriesQuery.data ?? [];
-  const types = typesQuery.data ?? [];
   const materials = materialsQuery.data ?? [];
 
   // Active counts
   const catActive = categories.filter((c) => c.is_active).length;
-  const typesActive = types.filter((t) => t.is_active).length;
   const matActive = materials.filter((m) => m.is_active).length;
 
-  const totalItems = categories.length + types.length + materials.length;
-  const totalActive = catActive + typesActive + matActive;
+  const totalItems = categories.length + materials.length;
+  const totalActive = catActive + matActive;
   const healthPercent = totalItems > 0 ? Math.round((totalActive / totalItems) * 100) : 100;
 
   // Active items per current tab
@@ -187,14 +169,12 @@ export function CatalogScreen() {
     switch (activeTab) {
       case "product-categories":
         return categories;
-      case "order-types":
-        return types;
       case "materials":
         return materials;
       default:
         return [];
     }
-  }, [activeTab, categories, types, materials]);
+  }, [activeTab, categories, materials]);
 
   // Filtered items based on search and status
   const filteredItems = useMemo(() => {
@@ -219,8 +199,6 @@ export function CatalogScreen() {
     switch (kind) {
       case "product-categories":
         return saveCategory;
-      case "order-types":
-        return saveType;
       case "materials":
         return saveMaterial;
     }
@@ -324,7 +302,7 @@ export function CatalogScreen() {
         {/* Page Header */}
         <PageHeader
           title="Catalog & Taxonomy Settings"
-          description="Configure core garment categories, intake order types, and fabric materials used across intake pricing matrices and manufacturing."
+          description="Configure core garment categories and fabric materials used across intake pricing matrices and manufacturing."
           actions={
             canManage ? (
               <Button
@@ -339,20 +317,13 @@ export function CatalogScreen() {
         />
 
         {/* Executive Overview Ribbon */}
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 sm:grid-cols-3">
           <StatCard
             label="Garment Categories"
             value={categories.length}
             subtext={`${catActive} active categories`}
             icon={ShirtIcon}
             color="bg-brand/10 text-brand"
-          />
-          <StatCard
-            label="Order Types"
-            value={types.length}
-            subtext={`${typesActive} active types`}
-            icon={LayersIcon}
-            color="bg-amber-500/10 text-amber-500"
           />
           <StatCard
             label="Fabric Materials"
@@ -377,7 +348,6 @@ export function CatalogScreen() {
               {(
                 [
                   { key: "product-categories", label: "Garment Categories", count: categories.length, icon: ShirtIcon },
-                  { key: "order-types", label: "Order Types", count: types.length, icon: LayersIcon },
                   { key: "materials", label: "Fabric Materials", count: materials.length, icon: ScissorsIcon },
                 ] as const
               ).map((tab) => {
@@ -713,7 +683,6 @@ export function CatalogScreen() {
               label="Classification Type"
               options={[
                 { value: "product-categories", label: "Garment Category (Apparel Model)" },
-                { value: "order-types", label: "Order Type (Intake Routing)" },
                 { value: "materials", label: "Fabric Material (Manufacturing Textile)" },
               ]}
               value={createKind}

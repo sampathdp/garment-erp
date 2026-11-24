@@ -220,7 +220,6 @@ export function JobCardView({ id }: { id: number }) {
             <SpecCard
               label="Product Category"
               value={c.product.category}
-              subvalue={c.product.order_type ?? "Bulk Custom Order"}
               icon={<BoxesIcon size={18} className="text-amber-500" />}
             />
             <SpecCard
@@ -672,7 +671,7 @@ export function JobCardView({ id }: { id: number }) {
                     Product Model
                   </th>
                   <td className="p-1.5 font-semibold">
-                    {c.product.category} {c.product.order_type ? `(${c.product.order_type})` : ""}
+                    {c.product.category}
                   </td>
                 </tr>
                 <tr className="border-b border-gray-300">

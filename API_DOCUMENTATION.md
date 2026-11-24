@@ -152,9 +152,6 @@ All routes except `health`, `auth/login`, `auth/forgot-password` and `auth/reset
 | GET | `/notifications/unread-count` | `Notifications\NotificationController@unreadCount` | |
 | POST | `/notifications/{notification}/read` | `Notifications\NotificationController@markRead` | |
 | POST | `/notifications/{notification}/unread` | `Notifications\NotificationController@markUnread` | |
-| GET | `/order-types` | `Orders\OrderTypeController@index` | |
-| POST | `/order-types` | `Orders\OrderTypeController@store` | |
-| PATCH | `/order-types/{id}` | `Orders\OrderTypeController@update` | |
 | GET | `/orders` | `Orders\OrderController@index` | |
 | POST | `/orders` | `Orders\OrderController@store` | |
 | GET | `/orders/{order}` | `Orders\OrderController@show` | |

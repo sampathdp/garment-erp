@@ -12,13 +12,12 @@ use App\Modules\Garments\Enums\GarmentFieldType;
 use App\Modules\Garments\Models\GarmentFieldDefinition;
 use App\Modules\Garments\Models\GarmentOption;
 use App\Modules\Garments\Models\GarmentOptionSet;
-use App\Modules\Orders\Models\OrderType;
 use App\Modules\Pricing\Models\ProductType;
 use App\Modules\Pricing\Models\SizeChart;
 use Illuminate\Database\Seeder;
 
 /**
- * Initial order types, product categories and name/number list fields. Idempotent and safe in
+ * Initial product categories and name/number list fields. Idempotent and safe in
  * production (`php artisan db:seed --class=CatalogSeeder`): existing entries keep what
  * administrators changed.
  *
@@ -29,8 +28,6 @@ use Illuminate\Database\Seeder;
  */
 class CatalogSeeder extends Seeder
 {
-    public const ORDER_TYPES = ['single' => 'Single Order', 'bulk' => 'Bulk Order'];
-
     public const PRODUCT_CATEGORIES = ['jersey' => 'Jersey', 'arm_cut' => 'Arm Cut', 'short' => 'Short', 'bottom' => 'Bottom', 't_shirt' => 'T-Shirt'];
 
     private const UPPER = ['jersey', 'arm_cut', 't_shirt'];
@@ -39,11 +36,6 @@ class CatalogSeeder extends Seeder
 
     public function run(): void
     {
-        $order = 0;
-        foreach (self::ORDER_TYPES as $code => $name) {
-            OrderType::query()->firstOrCreate(['code' => $code], ['name' => $name, 'is_active' => true, 'sort_order' => ++$order]);
-        }
-
         $chart = SizeChart::query()->firstOrCreate(['name' => SizeChart::STANDARD]);
         foreach (self::PRODUCT_CATEGORIES as $code => $name) {
             ProductType::query()->withTrashed()->firstOrCreate(['code' => $code], ['name' => $name, 'size_chart_id' => $chart->id, 'is_active' => true]);

@@ -57,7 +57,6 @@ use App\Modules\Orders\Models\Order;
 use App\Modules\Orders\Models\OrderItem;
 use App\Modules\Orders\Models\OrderItemOption;
 use App\Modules\Orders\Models\OrderStatusHistory;
-use App\Modules\Orders\Models\OrderType;
 use App\Modules\Orders\Models\UrgentApproval;
 use App\Modules\Orders\Models\UrgentApprovalDecision;
 use App\Modules\Organizations\Models\AppSetting;
@@ -150,7 +149,6 @@ final class MorphMap
             'order_item' => OrderItem::class,
             'order_item_option' => OrderItemOption::class,
             'order_status_history' => OrderStatusHistory::class,
-            'order_type' => OrderType::class,
             'organization' => Organization::class,
             'page' => Page::class,
             'payment' => Payment::class,

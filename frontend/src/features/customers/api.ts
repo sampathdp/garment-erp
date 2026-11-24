@@ -9,6 +9,11 @@ export interface Customer {
   whatsapp: string | null;
   other_phone: string | null;
   address: string | null;
+  address_line1?: string | null;
+  address_line2?: string | null;
+  street?: string | null;
+  city?: string | null;
+  district?: string | null;
   email?: string | null;
   notes?: string | null;
   page: { id: number; code: string; name: string } | null;
@@ -25,7 +30,12 @@ export interface CustomerFormInput {
   phone: string;
   whatsapp: string;
   other_phone: string | null;
-  address: string | null;
+  address_line1?: string | null;
+  address_line2?: string | null;
+  street?: string | null;
+  city?: string | null;
+  district?: string | null;
+  address?: string | null;
   confirm_distinct?: boolean;
 }
 

@@ -42,9 +42,13 @@ export const orderFormSchema = z
     customer_phone: z.string().trim().max(20),
     customer_whatsapp: z.string().trim().max(20),
     customer_other_phone: z.string().trim().max(20).refine((v) => v === "" || PHONE.test(v), "Enter a valid phone number"),
+    customer_address_line1: z.string().trim().max(200),
+    customer_address_line2: z.string().trim().max(200),
+    customer_street: z.string().trim().max(200),
+    customer_city: z.string().trim().max(80),
+    customer_district: z.string().trim().max(80),
     customer_address: z.string().trim().max(200),
     confirm_distinct: z.boolean(),
-    order_type_id: z.string().min(1, "Select the order type"),
     due_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Select the due date"),
     product_type_id: z.string().min(1, "Select the product / item category"),
     gross_quantity: z.string().trim().regex(/^[1-9]\d{0,5}$/, "Enter the gross quantity (1 or more)"),
@@ -53,6 +57,7 @@ export const orderFormSchema = z
     discount: money("Discount", false),
     advance_amount: z.string().trim(),
     payment_method: z.string().min(1, "Select the payment method"),
+    payment_bank: z.string().trim().max(80),
     payment_reference: z.string().trim().max(80),
     payment_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Select the payment date"),
     payment_notes: z.string().trim().max(500),
@@ -72,6 +77,12 @@ export const orderFormSchema = z
           ctx.addIssue({ code: "custom", path: [key], message: result.error.issues[0]?.message ?? "Invalid" });
         }
       }
+      if (v.customer_city === "") {
+        ctx.addIssue({ code: "custom", path: ["customer_city"], message: "Main town is required" });
+      }
+      if (v.customer_district === "") {
+        ctx.addIssue({ code: "custom", path: ["customer_district"], message: "District is required" });
+      }
     }
 
     const advMinor = parseMoneyToMinor(v.advance_amount) ?? 0;
@@ -84,8 +95,11 @@ export const orderFormSchema = z
     }
 
     if (advMinor > 0 && EVIDENCE_REQUIRED_METHODS.has(v.payment_method)) {
+      if (v.payment_bank === "") {
+        ctx.addIssue({ code: "custom", path: ["payment_bank"], message: "Select the bank" });
+      }
       if (v.payment_reference === "") {
-        ctx.addIssue({ code: "custom", path: ["payment_reference"], message: "Enter the bank or transaction reference" });
+        ctx.addIssue({ code: "custom", path: ["payment_reference"], message: "Enter the transaction or deposit reference" });
       }
       if (v.payment_evidence === null) {
         ctx.addIssue({ code: "custom", path: ["payment_evidence"], message: "Attach the payment slip or screenshot" });
@@ -103,9 +117,13 @@ export const emptyOrderForm: OrderFormValues = {
   customer_phone: "",
   customer_whatsapp: "",
   customer_other_phone: "",
+  customer_address_line1: "",
+  customer_address_line2: "",
+  customer_street: "",
+  customer_city: "",
+  customer_district: "",
   customer_address: "",
   confirm_distinct: false,
-  order_type_id: "",
   due_date: "",
   product_type_id: "",
   gross_quantity: "",
@@ -114,6 +132,7 @@ export const emptyOrderForm: OrderFormValues = {
   discount: "",
   advance_amount: "",
   payment_method: "bank_transfer",
+  payment_bank: "",
   payment_reference: "",
   payment_date: todayColombo(),
   payment_notes: "",
@@ -135,7 +154,6 @@ export function toCreateOrderInput(v: OrderFormValues, submit: boolean): CreateO
   const base: CreateOrderInput = {
     branch_id: Number(v.branch_id),
     page_id: Number(v.page_id),
-    order_type_id: Number(v.order_type_id),
     due_date: v.due_date,
     product_type_id: Number(v.product_type_id),
     gross_quantity: Number(v.gross_quantity),
@@ -145,6 +163,7 @@ export function toCreateOrderInput(v: OrderFormValues, submit: boolean): CreateO
     submit,
   };
   if (v.customer_id !== "") return { ...base, customer_id: Number(v.customer_id) };
+  const formattedAddress = [v.customer_address_line1, v.customer_address_line2, v.customer_street, v.customer_city, v.customer_district].filter(Boolean).join(", ") || v.customer_address || null;
   return {
     ...base,
     customer: {
@@ -152,7 +171,12 @@ export function toCreateOrderInput(v: OrderFormValues, submit: boolean): CreateO
       phone: v.customer_phone,
       whatsapp: v.customer_whatsapp,
       other_phone: v.customer_other_phone || null,
-      address: v.customer_address || null,
+      address_line1: v.customer_address_line1 || null,
+      address_line2: v.customer_address_line2 || null,
+      street: v.customer_street || null,
+      city: v.customer_city || null,
+      district: v.customer_district || null,
+      address: formattedAddress,
       ...(v.confirm_distinct ? { confirm_distinct: true } : {}),
     },
   };
@@ -176,12 +200,17 @@ export const SERVER_FIELD_MAP: Record<string, keyof OrderFormValues> = {
   "customer.phone": "customer_phone",
   "customer.whatsapp": "customer_whatsapp",
   "customer.other_phone": "customer_other_phone",
+  "customer.address_line1": "customer_address_line1",
+  "customer.address_line2": "customer_address_line2",
+  "customer.street": "customer_street",
+  "customer.city": "customer_city",
+  "customer.district": "customer_district",
   "customer.address": "customer_address",
-  order_type_id: "order_type_id",
   due_date: "due_date",
   product_type_id: "product_type_id",
   gross_quantity: "gross_quantity",
   unit_price_minor: "unit_price",
   delivery_fee_minor: "delivery_fee",
   discount_minor: "discount",
+  bank_name: "payment_bank",
 };

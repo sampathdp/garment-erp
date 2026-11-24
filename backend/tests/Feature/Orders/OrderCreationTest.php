@@ -20,7 +20,7 @@ it('creates and submits a normal order with a new customer, calculating totals a
     $response = $this->signedInAs($this->owner)->postJson('/api/v1/orders', orderPayload($this, ['delivery_fee_minor' => 50000, 'discount_minor' => 20000]))
         ->assertCreated()
         ->assertJsonPath('data.status', ['value' => 'pending_payment_verification', 'label' => 'Pending Payment Verification'])
-        ->assertJsonPath('data.order_type.name', 'Single Order')
+        ->assertJsonMissingPath('data.order_type')
         ->assertJsonPath('data.product_category.name', 'Jersey')
         ->assertJsonPath('data.gross_quantity', 10)
         ->assertJsonPath('data.due_date', '2026-11-30')
@@ -67,16 +67,16 @@ it('refuses to submit an order without a price', function () {
 
 it('validates the order form', function () {
     $this->signedInAs($this->owner)->postJson('/api/v1/orders', [])
-        ->assertStatus(422)->assertJsonValidationErrors(['branch_id', 'page_id', 'order_type_id', 'due_date', 'product_type_id', 'gross_quantity', 'customer']);
+        ->assertStatus(422)->assertJsonValidationErrors(['branch_id', 'page_id', 'due_date', 'product_type_id', 'gross_quantity', 'customer']);
 
     $this->signedInAs($this->owner)->postJson('/api/v1/orders', orderPayload($this, [
         'customer' => ['name' => '', 'phone' => '12345', 'whatsapp' => 'abc'], 'gross_quantity' => 0, 'due_date' => '30/11/2026',
     ]))->assertStatus(422)->assertJsonValidationErrors(['customer.name', 'customer.phone', 'customer.whatsapp', 'gross_quantity', 'due_date']);
 });
 
-it('rejects inactive order types and product categories', function () {
-    $this->single->update(['is_active' => false]);
-    $this->signedInAs($this->owner)->postJson('/api/v1/orders', orderPayload($this))->assertStatus(422)->assertJsonValidationErrors('order_type_id');
+it('rejects inactive product categories', function () {
+    $this->jersey->update(['is_active' => false]);
+    $this->signedInAs($this->owner)->postJson('/api/v1/orders', orderPayload($this))->assertStatus(422)->assertJsonValidationErrors('product_type_id');
 });
 
 it('reuses an existing customer when name and phone match, without overwriting their details', function () {

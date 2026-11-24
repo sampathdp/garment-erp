@@ -28,12 +28,14 @@ import { RequirePermission } from "@/components/ui/record-page";
 import { useToast } from "@/components/ui/toast";
 import { type Customer, useCustomers } from "@/features/customers/api";
 import { useBranches, usePages } from "@/features/organizations/api";
-import { PAYMENT_METHODS } from "@/features/payments/api";
+import { EVIDENCE_REQUIRED_METHODS, PAYMENT_METHODS } from "@/features/payments/api";
 import { ApiError, apiRequest } from "@/lib/api-client";
+import { SRI_LANKA_BANKS } from "@/lib/banks";
 import { cn } from "@/lib/cn";
+import { SRI_LANKA_DISTRICTS } from "@/lib/districts";
 import { formatMoney, parseMoneyToMinor } from "@/lib/format";
 import { useDebounced } from "@/lib/use-debounced";
-import { useCreateOrder, useOrderTypes, useProductCategories } from "./api";
+import { useCreateOrder, useProductCategories } from "./api";
 import { daysUntil, emptyOrderForm, type OrderFormValues, orderFormSchema, SERVER_FIELD_MAP, toCreateOrderInput } from "./order-form-schema";
 
 const URGENT_DAYS = 7;
@@ -112,7 +114,6 @@ export function OrderForm() {
   const create = useCreateOrder();
   const branches = useBranches({ per_page: 100, sort: "name" });
   const pages = usePages({ per_page: 100, sort: "name" });
-  const orderTypes = useOrderTypes();
   const categories = useProductCategories();
   const [formError, setFormError] = useState<string | null>(null);
   const [duplicate, setDuplicate] = useState(false);
@@ -134,7 +135,6 @@ export function OrderForm() {
   // Real-time watchers for dynamic summary & calculations
   const pageId = useWatch({ control: form.control, name: "page_id" });
   const branchId = useWatch({ control: form.control, name: "branch_id" });
-  const orderTypeId = useWatch({ control: form.control, name: "order_type_id" });
   const productTypeId = useWatch({ control: form.control, name: "product_type_id" });
   const dueDate = useWatch({ control: form.control, name: "due_date" });
   const grossQuantity = useWatch({ control: form.control, name: "gross_quantity" });
@@ -149,7 +149,6 @@ export function OrderForm() {
 
   // Selected object metadata for summary card
   const selectedPage = pages.data?.data.find((p) => String(p.id) === pageId);
-  const selectedOrderType = orderTypes.data?.find((t) => String(t.id) === orderTypeId);
   const selectedCategory = categories.data?.find((c) => String(c.id) === productTypeId);
 
   // Financial calculations
@@ -195,6 +194,7 @@ export function OrderForm() {
             formData.set("amount_minor", String(advMinor));
             formData.set("method", values.payment_method);
             formData.set("payment_date", values.payment_date);
+            if (values.payment_bank) formData.set("bank_name", values.payment_bank);
             if (values.payment_reference) formData.set("reference_no", values.payment_reference);
             if (values.payment_notes) formData.set("notes", values.payment_notes);
             if (values.payment_evidence) formData.set("evidence", values.payment_evidence);
@@ -411,13 +411,54 @@ export function OrderForm() {
                       />
                     </div>
 
-                    <TextAreaField
-                      label="Delivery / Customer address"
-                      maxLength={200}
-                      placeholder="Street address, city, postal code"
-                      error={errors.customer_address?.message}
-                      {...register("customer_address")}
-                    />
+                    {/* Structured Delivery Address */}
+                    <div className="rounded-xl border border-line bg-subtle/30 p-4">
+                      <div className="mb-3">
+                        <p className="text-xs font-bold uppercase tracking-wider text-ink">Delivery Address</p>
+                        <p className="text-[11px] text-muted">Courier delivery destination details</p>
+                      </div>
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <TextField
+                          label="Address Line 1"
+                          placeholder="Building name, flat, house no."
+                          maxLength={200}
+                          error={errors.customer_address_line1?.message}
+                          {...register("customer_address_line1")}
+                        />
+                        <TextField
+                          label="Address Line 2"
+                          placeholder="Apartment, suite, unit (optional)"
+                          maxLength={200}
+                          error={errors.customer_address_line2?.message}
+                          {...register("customer_address_line2")}
+                        />
+                        <TextField
+                          label="Street"
+                          placeholder="Street name / Road"
+                          maxLength={200}
+                          error={errors.customer_street?.message}
+                          {...register("customer_street")}
+                        />
+                        <TextField
+                          label="Main Town *"
+                          placeholder="Nearest main town / city"
+                          maxLength={80}
+                          error={errors.customer_city?.message}
+                          {...register("customer_city")}
+                        />
+                        <div className="sm:col-span-2">
+                          <SelectField
+                            label="District *"
+                            options={[
+                              { value: "", label: "-- Select District --" },
+                              ...SRI_LANKA_DISTRICTS.map((d) => ({ value: d, label: d })),
+                            ]}
+                            error={errors.customer_district?.message}
+                            {...register("customer_district")}
+                          />
+                        </div>
+                      </div>
+                    </div>
 
                     {duplicate && (
                       <div className="rounded-xl border border-warning/40 bg-warning-soft/60 p-3.5">
@@ -445,12 +486,6 @@ export function OrderForm() {
                   options={options(categories.data, "Select garment category")}
                   error={errors.product_type_id?.message}
                   {...register("product_type_id")}
-                />
-                <SelectField
-                  label="Order type / Technique *"
-                  options={options(orderTypes.data, "Select order type")}
-                  error={errors.order_type_id?.message}
-                  {...register("order_type_id")}
                 />
                 <TextField
                   label="Gross quantity (pcs) *"
@@ -504,10 +539,21 @@ export function OrderForm() {
                   error={errors.payment_method?.message}
                   {...register("payment_method")}
                 />
+                {EVIDENCE_REQUIRED_METHODS.has(paymentMethod) && (
+                  <SelectField
+                    label="Bank *"
+                    options={[
+                      { value: "", label: "-- Select Bank in Sri Lanka --" },
+                      ...SRI_LANKA_BANKS.map((b) => ({ value: b, label: b })),
+                    ]}
+                    error={errors.payment_bank?.message}
+                    {...register("payment_bank")}
+                  />
+                )}
                 <TextField
-                  label="Bank / Transaction reference"
+                  label={EVIDENCE_REQUIRED_METHODS.has(paymentMethod) ? "Transaction / Slip reference *" : "Bank / Transaction reference"}
                   maxLength={80}
-                  placeholder="e.g. BOC-TX-998231"
+                  placeholder={EVIDENCE_REQUIRED_METHODS.has(paymentMethod) ? "e.g. TX-998231 or Slip No." : "e.g. BOC-TX-998231"}
                   error={errors.payment_reference?.message}
                   {...register("payment_reference")}
                 />
@@ -620,12 +666,6 @@ export function OrderForm() {
                   <span className="text-muted">Garment:</span>
                   <span className="font-semibold text-ink text-right truncate max-w-[170px]">
                     {selectedCategory?.name ?? "—"}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-muted">Technique:</span>
-                  <span className="font-semibold text-ink text-right truncate max-w-[170px]">
-                    {selectedOrderType?.name ?? "—"}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">

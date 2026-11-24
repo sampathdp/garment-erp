@@ -25,7 +25,6 @@ final class OrderRules
         $required = $partial ? 'sometimes' : 'required';
 
         return [
-            'order_type_id' => [$required, 'integer', Rule::exists('order_types', 'id')->where('is_active', true)],
             'due_date' => [$required, 'date_format:Y-m-d', 'before_or_equal:'.now()->addYears(2)->toDateString()],
             'product_type_id' => [$required, 'integer', Rule::exists('product_types', 'id')->where('is_active', true)->whereNull('deleted_at')],
             'gross_quantity' => [$required, 'integer', 'min:1', 'max:100000'],
@@ -51,7 +50,6 @@ final class OrderRules
     {
         return [
             '*.prohibited' => 'This field is set by the system and cannot be sent.',
-            'order_type_id.exists' => 'Select an active order type.',
             'product_type_id.exists' => 'Select an active product category.',
         ];
     }

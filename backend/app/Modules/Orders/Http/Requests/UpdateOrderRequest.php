@@ -39,7 +39,7 @@ final class UpdateOrderRequest extends FormRequest
     public function toInput(): array
     {
         $v = $this->validated();
-        $ints = ['version', 'order_type_id', 'product_type_id', 'gross_quantity', 'unit_price_minor', 'delivery_fee_minor', 'discount_minor'];
+        $ints = ['version', 'product_type_id', 'gross_quantity', 'unit_price_minor', 'delivery_fee_minor', 'discount_minor'];
         foreach ($ints as $key) {
             if (array_key_exists($key, $v)) {
                 $v[$key] = (int) $v[$key];

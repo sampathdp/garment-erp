@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { TextField } from "@/components/ui/field";
 import { Badge, FormError, PageHeader, Section, SelectField, TextAreaField } from "@/components/ui/form-controls";
-import { CheckCircleIcon, ChevronRightIcon, CreditCardIcon, ExternalLinkIcon, SearchIcon, XIcon } from "@/components/ui/icons";
+import { AlertTriangleIcon, CheckCircleIcon, ChevronRightIcon, CreditCardIcon, ExternalLinkIcon, SearchIcon, XIcon } from "@/components/ui/icons";
 import { Modal } from "@/components/ui/modal";
 import { RequirePermission, WithIdParam } from "@/components/ui/record-page";
 import { EmptyState, ErrorState, LoadingState } from "@/components/ui/states";
@@ -26,12 +26,53 @@ export function PaymentStatusBadge({ status }: { status: PaymentStatusValue }) {
   );
 }
 
+/** Same amount, bank, date and time as a payment on another page. Shown to everyone who sees either payment. */
+export function DuplicateBadge() {
+  return (
+    <Badge tone="warning" dot>
+      Duplicate
+    </Badge>
+  );
+}
+
+function DuplicateWarning({ payment }: { payment: Payment }) {
+  const matches = payment.duplicate_matches ?? [];
+  return (
+    <div role="alert" className="flex items-start gap-3 rounded-xl border border-warning/40 bg-warning-soft p-4 text-sm text-ink">
+      <AlertTriangleIcon size={20} className="mt-0.5 shrink-0 text-warning" />
+      <div className="flex flex-col gap-1.5">
+        <p className="font-bold text-warning">Duplicate payment</p>
+        <p>A payment on another page has the same amount, bank, date and time. Check both slips before verifying.</p>
+        {matches.length > 0 && (
+          <ul className="flex flex-col gap-1 text-xs">
+            {matches.map((m, i) =>
+              m.visible && m.id !== null ? (
+                <li key={m.id}>
+                  <Link className="font-mono font-bold text-brand hover:underline" href={`/payments/view/?id=${m.id}`}>
+                    {m.order_no}
+                  </Link>{" "}
+                  · {m.page?.name ?? "—"} {m.status ? `· ${PAYMENT_STATUS_LABELS[m.status]}` : ""}
+                </li>
+              ) : (
+                <li key={`hidden-${i}`} className="text-muted">
+                  A payment on a page you do not have access to
+                </li>
+              ),
+            )}
+          </ul>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function PaymentsScreen() {
-  const [params, setParams] = useState<{ page: number; status: PaymentStatusValue | ""; search: string; sort: string }>({
+  const [params, setParams] = useState<{ page: number; status: PaymentStatusValue | ""; search: string; sort: string; duplicate: boolean }>({
     page: 1,
     status: "pending_verification",
     search: "",
     sort: "created_at",
+    duplicate: false,
   });
   const query = usePayments(useDebounced(params));
 
@@ -57,9 +98,28 @@ export function PaymentsScreen() {
         </span>
       ),
     },
-    { key: "reference", header: "Reference", cell: (p) => <span className="font-mono text-xs text-muted">{p.reference_no ?? "—"}</span> },
+    {
+      key: "reference",
+      header: "Reference",
+      cell: (p) => (
+        <div className="flex flex-col">
+          {p.bank_name && <span className="text-xs font-semibold text-ink">{p.bank_name}</span>}
+          <span className="font-mono text-xs text-muted">{p.reference_no ?? "—"}</span>
+          {p.payment_time && <span className="text-[11px] text-muted">{formatBusinessDate(p.payment_date)} · {p.payment_time}</span>}
+        </div>
+      ),
+    },
     { key: "by", header: "Submitted by", cell: (p) => <span className="text-xs text-muted">{p.recorded_by?.name ?? "—"}</span> },
-    { key: "status", header: "Verification Status", cell: (p) => <PaymentStatusBadge status={p.status} /> },
+    {
+      key: "status",
+      header: "Verification Status",
+      cell: (p) => (
+        <div className="flex flex-wrap items-center gap-1.5">
+          <PaymentStatusBadge status={p.status} />
+          {p.is_duplicate && <DuplicateBadge />}
+        </div>
+      ),
+    },
     {
       key: "actions",
       header: "Actions",
@@ -94,6 +154,10 @@ export function PaymentsScreen() {
               onChange={(e) => setParams((p) => ({ ...p, page: 1, status: e.target.value as PaymentStatusValue | "" }))}
             />
           </div>
+          <label className="flex items-center gap-2 text-xs font-semibold text-ink sm:mt-5">
+            <input type="checkbox" className="size-4 accent-brand" checked={params.duplicate} onChange={(e) => setParams((p) => ({ ...p, page: 1, duplicate: e.target.checked }))} />
+            Duplicates only
+          </label>
           <div className="flex-1">
             <TextField
               label="Search"
@@ -190,6 +254,7 @@ function PaymentDetail({ id }: { id: number }) {
         actions={
           <div className="flex items-center gap-2.5">
             <PaymentStatusBadge status={p.status} />
+            {p.is_duplicate && <DuplicateBadge />}
             {p.abilities?.verify && (
               <Button onClick={() => setMode("verify")}>Confirm payment</Button>
             )}
@@ -201,6 +266,8 @@ function PaymentDetail({ id }: { id: number }) {
           </div>
         }
       />
+
+      {p.is_duplicate && <DuplicateWarning payment={p} />}
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Section title="Payment Details">
@@ -214,12 +281,18 @@ function PaymentDetail({ id }: { id: number }) {
               <dd className="text-sm font-semibold capitalize text-ink">{methodLabel(p.method)}</dd>
             </div>
             <div className="flex flex-col gap-1 rounded-lg bg-subtle/50 p-3">
-              <dt className="text-[11px] font-bold uppercase tracking-wider text-muted">Reference / Slip No.</dt>
-              <dd className="text-sm font-mono font-medium text-ink">{p.reference_no ?? "—"}</dd>
+              <dt className="text-[11px] font-bold uppercase tracking-wider text-muted">Bank & Reference</dt>
+              <dd className="text-sm font-medium text-ink">
+                {p.bank_name && <div className="font-semibold text-brand">{p.bank_name}</div>}
+                <span className="font-mono text-xs text-muted">{p.reference_no ?? "—"}</span>
+              </dd>
             </div>
             <div className="flex flex-col gap-1 rounded-lg bg-subtle/50 p-3">
               <dt className="text-[11px] font-bold uppercase tracking-wider text-muted">Payment Date</dt>
-              <dd className="text-sm font-semibold text-ink">{formatBusinessDate(p.payment_date)}</dd>
+              <dd className="text-sm font-semibold text-ink">
+                {formatBusinessDate(p.payment_date)}
+                {p.payment_time && <span className="ml-1.5 font-mono text-xs text-muted">{p.payment_time}</span>}
+              </dd>
             </div>
             <div className="sm:col-span-2 flex flex-col gap-1 rounded-lg bg-subtle/50 p-3">
               <dt className="text-[11px] font-bold uppercase tracking-wider text-muted">Submitted By</dt>

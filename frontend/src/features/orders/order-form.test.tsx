@@ -15,7 +15,8 @@ const valid = {
   customer_name: "Nimal Perera",
   customer_phone: "077 123 4567",
   customer_whatsapp: "0771234567",
-  order_type_id: "1",
+  customer_city: "Colombo",
+  customer_district: "Colombo",
   due_date: "2026-11-30",
   product_type_id: "3",
   gross_quantity: "10",
@@ -27,7 +28,7 @@ describe("orderFormSchema", () => {
     const result = orderFormSchema.safeParse(emptyOrderForm);
     expect(result.success).toBe(false);
     const fields = result.error?.issues.map((i) => i.path[0]);
-    expect(fields).toEqual(expect.arrayContaining(["branch_id", "page_id", "customer_name", "customer_phone", "customer_whatsapp", "order_type_id", "due_date", "product_type_id", "gross_quantity", "unit_price"]));
+    expect(fields).toEqual(expect.arrayContaining(["branch_id", "page_id", "customer_name", "customer_phone", "customer_whatsapp", "customer_city", "customer_district", "due_date", "product_type_id", "gross_quantity", "unit_price"]));
   });
 
   it("rejects invalid phone numbers and quantities", () => {
@@ -36,7 +37,7 @@ describe("orderFormSchema", () => {
   });
 
   it("does not require new-customer fields when an existing customer is selected", () => {
-    expect(orderFormSchema.safeParse({ ...valid, customer_id: "9", customer_name: "", customer_phone: "", customer_whatsapp: "" }).success).toBe(true);
+    expect(orderFormSchema.safeParse({ ...valid, customer_id: "9", customer_name: "", customer_phone: "", customer_whatsapp: "", customer_city: "", customer_district: "" }).success).toBe(true);
   });
 });
 
@@ -44,7 +45,18 @@ describe("toCreateOrderInput", () => {
   it("sends minor units and never sends totals, status or job numbers", () => {
     const input = toCreateOrderInput(valid, true);
     expect(input).toMatchObject({ branch_id: 1, page_id: 2, gross_quantity: 10, unit_price_minor: 100050, delivery_fee_minor: null, discount_minor: 0, submit: true });
-    expect(input.customer).toEqual({ name: "Nimal Perera", phone: "077 123 4567", whatsapp: "0771234567", other_phone: null, address: null });
+    expect(input.customer).toEqual({
+      name: "Nimal Perera",
+      phone: "077 123 4567",
+      whatsapp: "0771234567",
+      other_phone: null,
+      address_line1: null,
+      address_line2: null,
+      street: null,
+      city: "Colombo",
+      district: "Colombo",
+      address: "Colombo, Colombo",
+    });
     expect(Object.keys(input)).not.toEqual(expect.arrayContaining(["status"]));
     expect(input).not.toHaveProperty("total_minor");
     expect(input).not.toHaveProperty("order_no");
@@ -73,7 +85,7 @@ describe("OrderForm", () => {
   it("shows validation errors without calling the create endpoint", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
       const url = String(input);
-      const body = url.includes("order-types") || url.includes("product-categories") ? { data: { items: [] } } : { data: [], meta: { page: 1, per_page: 100, total: 0, last_page: 1 }, links: { next: null, prev: null } };
+      const body = url.includes("product-categories") ? { data: { items: [] } } : { data: [], meta: { page: 1, per_page: 100, total: 0, last_page: 1 }, links: { next: null, prev: null } };
       return new Response(JSON.stringify(body), { status: 200, headers: { "Content-Type": "application/json" } });
     });
     const { OrderForm } = await import("./order-form");

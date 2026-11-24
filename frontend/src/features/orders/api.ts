@@ -26,6 +26,11 @@ export interface OrderCustomer {
   whatsapp: string | null;
   other_phone: string | null;
   address: string | null;
+  address_line1?: string | null;
+  address_line2?: string | null;
+  street?: string | null;
+  city?: string | null;
+  district?: string | null;
 }
 
 export interface UrgentSlotState {
@@ -44,7 +49,6 @@ export interface Order {
   branch: Ref;
   page: Ref;
   customer: OrderCustomer;
-  order_type: Ref | null;
   product_category: Ref | null;
   gross_quantity: number;
   due_date: string;
@@ -117,6 +121,11 @@ export interface CustomerInput {
   whatsapp: string;
   other_phone: string | null;
   address: string | null;
+  address_line1?: string | null;
+  address_line2?: string | null;
+  street?: string | null;
+  city?: string | null;
+  district?: string | null;
   confirm_distinct?: boolean;
 }
 
@@ -125,7 +134,6 @@ export interface CreateOrderInput {
   page_id: number;
   customer_id?: number;
   customer?: CustomerInput;
-  order_type_id: number;
   due_date: string;
   product_type_id: number;
   gross_quantity: number;
@@ -135,7 +143,7 @@ export interface CreateOrderInput {
   submit: boolean;
 }
 
-export type UpdateOrderInput = Partial<Pick<CreateOrderInput, "order_type_id" | "due_date" | "product_type_id" | "gross_quantity" | "unit_price_minor" | "delivery_fee_minor" | "discount_minor">> & { version: number };
+export type UpdateOrderInput = Partial<Pick<CreateOrderInput, "due_date" | "product_type_id" | "gross_quantity" | "unit_price_minor" | "delivery_fee_minor" | "discount_minor">> & { version: number };
 
 export const PAYMENT_STATUS_LABELS: Record<Order["payment_status"], string> = {
   unpaid: "Unpaid",
@@ -149,7 +157,6 @@ export const orderKeys = {
   all: ["orders"] as const,
   list: (params: OrderListParams) => ["orders", "list", params] as const,
   detail: (id: number) => ["orders", "detail", id] as const,
-  orderTypes: (active: boolean) => ["catalog", "order-types", active] as const,
   categories: (active: boolean) => ["catalog", "product-categories", active] as const,
 };
 
@@ -179,14 +186,6 @@ export function useOrder(id: number | null) {
     queryKey: orderKeys.detail(id ?? 0),
     queryFn: ({ signal }) => api.get<{ data: Order }>(`orders/${id}`, undefined, signal).then((r) => r.data),
     enabled: id !== null,
-  });
-}
-
-export function useOrderTypes(activeOnly = true) {
-  return useQuery({
-    queryKey: orderKeys.orderTypes(activeOnly),
-    queryFn: ({ signal }) => api.get<{ data: { items: CatalogItem[] } }>("order-types", activeOnly ? { "filter[active]": 1 } : undefined, signal).then((r) => r.data.items),
-    staleTime: 5 * 60_000,
   });
 }
 
@@ -255,7 +254,7 @@ export function useJobDetailsMutations(orderId: number) {
   };
 }
 
-export function useSaveCatalogItem(kind: "order-types" | "product-categories" | "materials") {
+export function useSaveCatalogItem(kind: "product-categories" | "materials") {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ id, ...input }: { id?: number; code?: string; name?: string; is_active?: boolean }) =>
