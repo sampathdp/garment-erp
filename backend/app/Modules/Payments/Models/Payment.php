@@ -21,7 +21,7 @@ use Illuminate\Support\Carbon;
  * @property PaymentStatus $status
  * @property PaymentMethod $method
  * @property Carbon $paid_at
- * @property string|null $payment_time  HH:MM:SS, Asia/Colombo wall-clock time of the transfer
+ * @property string|null $payment_time HH:MM:SS, Asia/Colombo wall-clock time of the transfer
  * @property Carbon|null $verified_at
  * @property Carbon|null $created_at
  */

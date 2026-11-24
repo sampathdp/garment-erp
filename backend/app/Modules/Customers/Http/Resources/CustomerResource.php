@@ -30,13 +30,13 @@ final class CustomerResource extends JsonResource
             'street' => $this->street,
             'city' => $this->city,
             'district' => $this->district,
-            'email' => $this->when($detail, fn() => $this->email),
-            'notes' => $this->when($detail, fn() => $this->notes),
-            'page' => $this->whenLoaded('page', fn() => $this->page ? ['id' => $this->page->id, 'code' => $this->page->code, 'name' => $this->page->name] : null),
-            'branch' => $this->whenLoaded('branch', fn() => $this->branch ? ['id' => $this->branch->id, 'code' => $this->branch->code, 'name' => $this->branch->name] : null),
+            'email' => $this->when($detail, fn () => $this->email),
+            'notes' => $this->when($detail, fn () => $this->notes),
+            'page' => $this->whenLoaded('page', fn () => $this->page ? ['id' => $this->page->id, 'code' => $this->page->code, 'name' => $this->page->name] : null),
+            'branch' => $this->whenLoaded('branch', fn () => $this->branch ? ['id' => $this->branch->id, 'code' => $this->branch->code, 'name' => $this->branch->name] : null),
             'orders_count' => $this->whenCounted('orders'),
             'created_at' => $this->created_at?->toIso8601ZuluString(),
-            'abilities' => $this->when($detail, fn(): array => [
+            'abilities' => $this->when($detail, fn (): array => [
                 'update' => Gate::allows('update', $this->resource),
                 'delete' => Gate::allows('delete', $this->resource),
             ]),

@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Modules\Identity\Support\Roles;
+use Illuminate\Support\Facades\Schema;
 
 beforeEach(fn () => intakeWorld($this));
 
@@ -27,6 +28,6 @@ it('lets catalogue managers add and deactivate entries, never rename codes', fun
 
 it('no longer exposes order types', function () {
     $this->signedInAs($this->owner)->getJson('/api/v1/order-types')->assertNotFound();
-    expect(\Illuminate\Support\Facades\Schema::hasTable('order_types'))->toBeFalse()
-        ->and(\Illuminate\Support\Facades\Schema::hasColumn('orders', 'order_type_id'))->toBeFalse();
+    expect(Schema::hasTable('order_types'))->toBeFalse()
+        ->and(Schema::hasColumn('orders', 'order_type_id'))->toBeFalse();
 });

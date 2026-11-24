@@ -87,7 +87,7 @@ final class OrderController
             $query->whereIn('status', $statuses);
         }
 
-        $query->when($request->input('filter.group'), fn(Builder $q, string $group) => $q->whereIn('status', array_map(fn(OrderStatus $s) => $s->value, match ($group) {
+        $query->when($request->input('filter.group'), fn (Builder $q, string $group) => $q->whereIn('status', array_map(fn (OrderStatus $s) => $s->value, match ($group) {
             'intake' => [OrderStatus::Draft, OrderStatus::PendingPaymentVerification, OrderStatus::PaymentRejected],
             'urgent' => [OrderStatus::UrgentApprovalPending, OrderStatus::UrgentApprovalRejected],
             default => OrderStatus::released(),
@@ -102,9 +102,9 @@ final class OrderController
         if ($search = trim((string) $request->input('filter.search'))) {
             $like = addcslashes($search, '%_\\');
             $phone = PhoneNumber::normalize($search);
-            $query->where(fn(Builder $q) => $q->where('order_no', 'like', "%{$like}%")
-                ->orWhereHas('customer', fn(Builder $c) => $c->where('name', 'like', "%{$like}%")
-                    ->when($phone !== null, fn(Builder $p) => $p->orWhere('phone_e164', $phone)->orWhere('whatsapp_e164', $phone))));
+            $query->where(fn (Builder $q) => $q->where('order_no', 'like', "%{$like}%")
+                ->orWhereHas('customer', fn (Builder $c) => $c->where('name', 'like', "%{$like}%")
+                    ->when($phone !== null, fn (Builder $p) => $p->orWhere('phone_e164', $phone)->orWhere('whatsapp_e164', $phone))));
         }
 
         ListQuery::applySort($query, $request, self::SORTS, '-created_at');
@@ -168,7 +168,7 @@ final class OrderController
             'branch:id,code,name',
             'page:id,code,name',
             'customer:id,customer_code,name,phone_e164,whatsapp_e164,alt_phone_e164,address_line1,address_line2,street,city,district',
-            'items' => fn($q) => $q->select(['id', 'order_id', 'product_type_id', 'quantity', 'unit_price_minor', 'sort_order'])->orderBy('sort_order'),
+            'items' => fn ($q) => $q->select(['id', 'order_id', 'product_type_id', 'quantity', 'unit_price_minor', 'sort_order'])->orderBy('sort_order'),
             'items.productType:id,name',
             'currentUrgentApproval.decisions',
             'designTask:id,order_id,status,designer_id,correction_rounds',
@@ -180,7 +180,7 @@ final class OrderController
         return $order->load([
             ...self::listRelations(),
             'currentUrgentApproval.decisions.decider:id,name',
-            'statusHistories' => fn($q) => $q->orderBy('id'),
+            'statusHistories' => fn ($q) => $q->orderBy('id'),
             'statusHistories.actor:id,name',
             'material:id,code,name',
             'designAttachment:id,original_name,mime_type,size_bytes',

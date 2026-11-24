@@ -3,10 +3,12 @@
 declare(strict_types=1);
 
 use App\Modules\Audit\Models\AuditLog;
+use App\Modules\Identity\Models\User;
 use App\Modules\Identity\Support\Roles;
 use App\Modules\Notifications\WorkflowNotification;
 use App\Modules\Orders\Enums\OrderPaymentStatus;
 use App\Modules\Orders\Enums\OrderStatus;
+use App\Modules\Orders\Models\Order;
 use App\Modules\Payments\Enums\PaymentStatus;
 use App\Modules\Payments\Models\Payment;
 use App\Modules\Payments\Models\PaymentVerificationEvent;
@@ -14,6 +16,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Tests\TestCase;
 
 /* Total LKR 10,000.00 → required advance LKR 3,000.00 (300000 minor). */
 beforeEach(function () {
@@ -172,7 +175,7 @@ it('refuses payments on drafts', function () {
 });
 
 /* Duplicate detection: same amount, bank, date and time as a payment on ANOTHER page. */
-function bankPayment(\Tests\TestCase $test, \App\Modules\Orders\Models\Order $order, \App\Modules\Identity\Models\User $as, string $time = '10:30', string $bank = 'Bank of Ceylon (BOC)'): Payment
+function bankPayment(TestCase $test, Order $order, User $as, string $time = '10:30', string $bank = 'Bank of Ceylon (BOC)'): Payment
 {
     return recordPayment($test, $order, 300000, $as, ['bank_name' => $bank, 'payment_time' => $time]);
 }

@@ -280,7 +280,6 @@ export function CatalogScreen() {
         error={error}
         onRetry={() => {
           void categoriesQuery.refetch();
-          void typesQuery.refetch();
           void materialsQuery.refetch();
         }}
       />

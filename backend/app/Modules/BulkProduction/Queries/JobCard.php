@@ -28,9 +28,7 @@ use Illuminate\Support\Facades\URL;
  */
 final class JobCard
 {
-    public function __construct(private readonly BulkMeasurementRules $rules, private readonly GarmentListReview $review)
-    {
-    }
+    public function __construct(private readonly BulkMeasurementRules $rules, private readonly GarmentListReview $review) {}
 
     /** @return array<string, mixed> */
     public function for(BulkJob $job): array
@@ -45,8 +43,8 @@ final class JobCard
         $ttl = now()->addMinutes((int) config('documents.download_url_ttl_minutes', 5));
 
         $values = BulkJobMeasurement::query()->where('bulk_job_id', $job->id)->get()->keyBy('bulk_measurement_field_id');
-        $measurements = $this->rules->fieldsFor($job)->filter(fn(BulkMeasurementField $f) => $f->show_on_job_card || $f->is_system)
-            ->map(fn(BulkMeasurementField $f): array => [
+        $measurements = $this->rules->fieldsFor($job)->filter(fn (BulkMeasurementField $f) => $f->show_on_job_card || $f->is_system)
+            ->map(fn (BulkMeasurementField $f): array => [
                 'key' => $f->key,
                 'label' => $f->label,
                 'unit' => $f->unit,
@@ -73,7 +71,7 @@ final class JobCard
             'quantity' => $order->total_quantity,
             'bulk_meter' => $measurements->firstWhere('key', BulkMeasurementField::BULK_METER),
             'patch_meter' => $measurements->firstWhere('key', BulkMeasurementField::PATCH_METER),
-            'other_measurements' => $measurements->reject(fn(array $m) => in_array($m['key'], [BulkMeasurementField::BULK_METER, BulkMeasurementField::PATCH_METER], true))->values()->all(),
+            'other_measurements' => $measurements->reject(fn (array $m) => in_array($m['key'], [BulkMeasurementField::BULK_METER, BulkMeasurementField::PATCH_METER], true))->values()->all(),
             'list' => $listVersion === null ? null : [
                 'version_no' => $listVersion->version_no,
                 'status' => $listVersion->status->value,
@@ -81,8 +79,8 @@ final class JobCard
                 'is_approved_reference' => $job->getAttribute('approved_list_version_id') === $listVersion->id,
                 'is_current' => app(BulkWorkflow::class)->listIsCurrentAndLocked($job),
                 'total_quantity' => $summary['total_quantity'] ?? 0,
-                'by_size' => array_map(fn(array $r) => ['size' => $r['size'], 'quantity' => $r['quantity']], $summary['by_size'] ?? []),
-                'groups' => array_map(fn(array $g) => ['label' => $g['label'], 'quantity' => $g['quantity']], $summary['price_groups'] ?? []),
+                'by_size' => array_map(fn (array $r) => ['size' => $r['size'], 'quantity' => $r['quantity']], $summary['by_size'] ?? []),
+                'groups' => array_map(fn (array $g) => ['label' => $g['label'], 'quantity' => $g['quantity']], $summary['price_groups'] ?? []),
             ],
             'bulk' => [
                 'status' => ['value' => $job->status->value, 'label' => $job->status->label()],

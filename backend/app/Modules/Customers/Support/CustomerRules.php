@@ -15,20 +15,20 @@ final class CustomerRules
         $required = $partial ? 'sometimes' : 'required';
 
         return [
-            $prefix . 'name' => [$required, 'string', 'min:2', 'max:150'],
-            $prefix . 'phone' => [$required, 'string', 'max:20', PhoneNumber::rule()],
-            $prefix . 'whatsapp' => [$required, 'string', 'max:20', PhoneNumber::rule()],
-            $prefix . 'other_phone' => ['sometimes', 'nullable', 'string', 'max:20', PhoneNumber::rule()],
-            $prefix . 'address_line1' => ['sometimes', 'nullable', 'string', 'max:200'],
-            $prefix . 'address_line2' => ['sometimes', 'nullable', 'string', 'max:200'],
-            $prefix . 'street' => ['sometimes', 'nullable', 'string', 'max:200'],
-            $prefix . 'city' => ['sometimes', 'nullable', 'string', 'max:80'],
-            $prefix . 'district' => ['sometimes', 'nullable', 'string', 'max:80'],
-            $prefix . 'address' => ['sometimes', 'nullable', 'string', 'max:200'],
-            $prefix . 'email' => ['sometimes', 'nullable', 'string', 'email:rfc', 'max:191'],
-            $prefix . 'notes' => ['sometimes', 'nullable', 'string', 'max:1000'],
+            $prefix.'name' => [$required, 'string', 'min:2', 'max:150'],
+            $prefix.'phone' => [$required, 'string', 'max:20', PhoneNumber::rule()],
+            $prefix.'whatsapp' => [$required, 'string', 'max:20', PhoneNumber::rule()],
+            $prefix.'other_phone' => ['sometimes', 'nullable', 'string', 'max:20', PhoneNumber::rule()],
+            $prefix.'address_line1' => ['sometimes', 'nullable', 'string', 'max:200'],
+            $prefix.'address_line2' => ['sometimes', 'nullable', 'string', 'max:200'],
+            $prefix.'street' => ['sometimes', 'nullable', 'string', 'max:200'],
+            $prefix.'city' => ['sometimes', 'nullable', 'string', 'max:80'],
+            $prefix.'district' => ['sometimes', 'nullable', 'string', 'max:80'],
+            $prefix.'address' => ['sometimes', 'nullable', 'string', 'max:200'],
+            $prefix.'email' => ['sometimes', 'nullable', 'string', 'email:rfc', 'max:191'],
+            $prefix.'notes' => ['sometimes', 'nullable', 'string', 'max:1000'],
             // Set when staff confirm that a customer sharing this phone number is a different person.
-            $prefix . 'confirm_distinct' => ['sometimes', 'boolean'],
+            $prefix.'confirm_distinct' => ['sometimes', 'boolean'],
         ];
     }
 
