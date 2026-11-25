@@ -43,7 +43,7 @@ function intakeWorld(TestCase $test): void
     $test->jersey = ProductType::query()->where('code', 'jersey')->firstOrFail();
 }
 
-/** Order form payload: 10 jerseys × LKR 1,000.00 = LKR 10,000.00 total → 30% advance LKR 3,000.00. */
+/** Order form payload: 10 jerseys, fixed advance LKR 3,000.00 (priced after printing). */
 function orderPayload(TestCase $test, array $overrides = []): array
 {
     return array_replace_recursive([
@@ -53,7 +53,7 @@ function orderPayload(TestCase $test, array $overrides = []): array
         'due_date' => '2026-11-30',
         'product_type_id' => $test->jersey->id,
         'gross_quantity' => 10,
-        'unit_price_minor' => 100000,
+        'advance_amount_minor' => 300000,
         'submit' => true,
     ], $overrides);
 }

@@ -32,6 +32,7 @@ final class PageResource extends JsonResource
                 'currency' => $this->currency,
                 'default_advance_percent' => $this->default_advance_percent,
                 'default_delivery_fee_minor' => $this->default_delivery_fee_minor,
+                'min_advance_minor' => $this->min_advance_minor,
             ],
             'invoice_prefix' => $this->invoice_prefix,
             'invoice_header_name' => $this->invoice_header_name,

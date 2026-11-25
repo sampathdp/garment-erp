@@ -38,6 +38,7 @@ final class StorePageRequest extends FormRequest
             'currency' => ['sometimes', 'string', Rule::in(['LKR'])],
             'default_advance_percent' => ['sometimes', 'integer', 'between:30,100'],
             'default_delivery_fee_minor' => ['sometimes', 'integer', 'min:0', 'max:100000000'],
+            'min_advance_minor' => ['sometimes', 'integer', 'min:0', 'max:100000000000'],
             'invoice_header_name' => [$required, 'string', 'min:2', 'max:150'],
             'invoice_address' => ['sometimes', 'nullable', 'string', 'max:500'],
             'invoice_phone' => ['sometimes', 'nullable', 'string', 'max:20', PhoneNumber::rule()],
@@ -69,7 +70,7 @@ final class StorePageRequest extends FormRequest
     {
         $data = array_intersect_key($this->validated(), array_flip([
             'code', 'invoice_prefix', 'name', 'platform', 'external_url', 'contact_email', 'address',
-            'currency', 'default_advance_percent', 'default_delivery_fee_minor', 'invoice_header_name', 'invoice_address', 'is_active',
+            'currency', 'default_advance_percent', 'default_delivery_fee_minor', 'min_advance_minor', 'invoice_header_name', 'invoice_address', 'is_active',
         ]));
         foreach (['contact_phone' => 'contact_phone_e164', 'invoice_phone' => 'invoice_phone_e164'] as $input => $column) {
             if ($this->has($input)) {

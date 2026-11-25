@@ -120,9 +120,9 @@ final class GarmentListController
         $data = $request->validate(['version' => ['required', 'integer'], 'acknowledge_warnings' => ['sometimes', 'boolean']]);
         /** @var User $actor */
         $actor = $request->user();
-        $invoice = $action->confirm($actor, $list, (int) $data['version'], (bool) ($data['acknowledge_warnings'] ?? false));
+        $action->confirm($actor, $list, (int) $data['version'], (bool) ($data['acknowledge_warnings'] ?? false));
 
-        return ApiResponse::data(['invoice_id' => $invoice->id, 'invoice_no' => $invoice->invoice_no, ...$this->fresh($list)->getData(true)['data']]);
+        return $this->fresh($list);
     }
 
     /** Administrative correction after confirmation (garment_lists.unlock, audited, reason required). */

@@ -28,7 +28,7 @@ use Illuminate\Database\Seeder;
  */
 class CatalogSeeder extends Seeder
 {
-    public const PRODUCT_CATEGORIES = ['jersey' => 'Jersey', 'arm_cut' => 'Arm Cut', 'short' => 'Short', 'bottom' => 'Bottom', 't_shirt' => 'T-Shirt'];
+    public const PRODUCT_CATEGORIES = ['jersey' => 'Jersey', 'arm_cut' => 'Arm Cut', 'short' => 'Short', 'bottom' => 'Bottom', 't_shirt' => 'T-Shirt', 'other' => 'Other'];
 
     private const UPPER = ['jersey', 'arm_cut', 't_shirt'];
 

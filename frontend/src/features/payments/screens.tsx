@@ -340,7 +340,7 @@ function PaymentDetail({ id }: { id: number }) {
                 <dd className="text-sm font-bold text-ink">{formatMoney(o.total_minor, p.currency)}</dd>
               </div>
               <div className="flex flex-col gap-1 rounded-lg bg-subtle/50 p-3">
-                <dt className="text-[11px] font-bold uppercase tracking-wider text-muted">30% Advance Required</dt>
+                <dt className="text-[11px] font-bold uppercase tracking-wider text-muted">Advance Required</dt>
                 <dd className="text-sm font-bold text-ink">{formatMoney(o.advance_required_minor, p.currency)}</dd>
               </div>
               <div className="flex flex-col gap-1 rounded-lg bg-subtle/50 p-3">
@@ -355,7 +355,7 @@ function PaymentDetail({ id }: { id: number }) {
               </div>
             </dl>
             <p className="mt-4 text-xs text-muted leading-relaxed">
-              <strong>Workflow Rule:</strong> Verifying a payment records it into confirmed balances. The overall order moves forward only when total confirmed payments satisfy the 30% advance requirement.
+              <strong>Workflow Rule:</strong> Verifying a payment records it into confirmed balances. The overall order moves forward only when total confirmed payments cover the agreed advance.
             </p>
           </Section>
         )}

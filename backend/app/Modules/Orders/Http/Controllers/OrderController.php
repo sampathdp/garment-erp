@@ -168,8 +168,8 @@ final class OrderController
             'branch:id,code,name',
             'page:id,code,name',
             'customer:id,customer_code,name,phone_e164,whatsapp_e164,alt_phone_e164,address_line1,address_line2,street,city,district',
-            'items' => fn ($q) => $q->select(['id', 'order_id', 'product_type_id', 'quantity', 'unit_price_minor', 'sort_order'])->orderBy('sort_order'),
-            'items.productType:id,name',
+            'items' => fn ($q) => $q->select(['id', 'order_id', 'product_type_id', 'product_type_other', 'quantity', 'unit_price_minor', 'sort_order'])->orderBy('sort_order'),
+            'items.productType:id,code,name',
             'currentUrgentApproval.decisions',
             'designTask:id,order_id,status,designer_id,correction_rounds',
         ];

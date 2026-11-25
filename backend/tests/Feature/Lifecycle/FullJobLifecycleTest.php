@@ -21,7 +21,7 @@ use App\Modules\Sewing\Models\SewingJob;
 | End-to-end lifecycle through the public API only, as the screens drive it, for both bulk paths:
 |
 |   Create Order → Verify Payment → Approve Order → Add Design Instructions → Complete Design →
-|   Approve Name/Number List → Generate Invoice → Assign Bulk → Complete Bulk → Approve Bulk →
+|   Approve Name/Number List → Assign Bulk → Complete Bulk → Approve Bulk →
 |   Send Printing → Approve Sample → Complete Printing → Complete Cutting → Upload Delivery
 |   Documents → Complete Job
 |
@@ -63,18 +63,13 @@ it('runs a job from order intake to completion', function (string $path) {
     expect(DesignTask::query()->findOrFail($task->id)->status->value)->toBe('completed')
         ->and(BulkJob::query()->where('order_id', $order->id)->exists())->toBeFalse(); // list not confirmed yet
 
-    // 6–7. Name/number list → confirmation locks it and issues the invoice from the price list.
+    // 6–7. Name/number list → confirmation locks it. No invoice yet: the price is set after printing.
     fillList($this, $order);
     confirmList($this, $order)->assertOk();
-    $invoice = Invoice::query()->where('order_id', $order->id)->sole();
-    $lines = InvoiceItem::query()->where('invoice_id', $invoice->id)->orderBy('sort_order')->get(['description', 'quantity', 'unit_price_minor', 'line_total_minor'])->toArray();
-    // 6 short-sleeve adult × 1,000.00 + 4 long-sleeve kids × 950.00 = 9,800.00
-    expect($invoice->total_minor)->toBe(980000)
-        ->and(collect($lines)->sum('line_total_minor'))->toBe(980000)
-        ->and(Order::query()->findOrFail($order->id)->total_minor)->toBe(980000)
-        ->and(Order::query()->findOrFail($order->id)->advance_required_minor)->toBe(294000);
+    expect(Invoice::query()->where('order_id', $order->id)->exists())->toBeFalse()
+        ->and(Order::query()->findOrFail($order->id)->total_minor)->toBe(0);
 
-    // The bulk job opens automatically once design, list, invoice and advance are all in place.
+    // The bulk job opens automatically once design, list and advance are all in place.
     $bulk = BulkJob::query()->where('order_id', $order->id)->sole();
     expect($bulk->status->value)->toBe('pending_assignment');
 
@@ -113,6 +108,15 @@ it('runs a job from order intake to completion', function (string $path) {
     expect(statusOf($order->id))->toBe(OrderStatus::Printing);
     startPrinting($this, $print)->assertOk();
     completePrinting($this, $print)->assertOk();
+
+    // Printing Completed issues the invoice on the printed quantities (all 10 printed as listed):
+    // 6 short-sleeve adult × 1,000.00 + 4 long-sleeve kids × 950.00 = 9,800.00
+    $invoice = Invoice::query()->where('order_id', $order->id)->sole();
+    $lines = InvoiceItem::query()->where('invoice_id', $invoice->id)->orderBy('sort_order')->get(['description', 'quantity', 'unit_price_minor', 'line_total_minor'])->toArray();
+    expect($invoice->total_minor)->toBe(980000)
+        ->and(collect($lines)->sum('line_total_minor'))->toBe(980000)
+        ->and(Order::query()->findOrFail($order->id)->total_minor)->toBe(980000)
+        ->and(Order::query()->findOrFail($order->id)->advance_required_minor)->toBe(300000); // fixed advance
     recordGatePass($this, $print)->assertOk();
     expect(statusOf($order->id))->toBe(OrderStatus::Cutting);
 

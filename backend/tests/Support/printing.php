@@ -104,3 +104,24 @@ function approvedSampleJob(TestCase $test): PrintJob
 
     return $job;
 }
+
+/** Printing Completed with the printed quantity per price group of the list (label => quantity). */
+function completePrintingByGroup(TestCase $test, PrintJob $job, array $groups, ?User $as = null): TestResponse
+{
+    return $test->signedInAs($as ?? $test->ops)->postJson("/api/v1/print-jobs/{$job->id}/physical-printing/complete", [
+        'version' => printVersion($job), 'notes' => 'Printed',
+        'groups' => array_map(fn (string $label, int $quantity) => ['label' => $label, 'quantity' => $quantity], array_keys($groups), array_values($groups)),
+    ]);
+}
+
+/** Sample approved and physical printing started (ready for Printing Completed). */
+function printingInProgress(TestCase $test, array $overrides = []): PrintJob
+{
+    $job = printReadyJob($test, $overrides);
+    sendForPrinting($test, $job)->assertOk();
+    uploadSample($test, $job)->assertOk();
+    approveSample($test, $job)->assertOk();
+    startPrinting($test, $job)->assertOk();
+
+    return $job;
+}

@@ -42,7 +42,7 @@ export function PagesScreen() {
     },
     { key: "platform", header: "Platform", cell: (p) => <span className="text-xs font-medium capitalize text-muted">{PAGE_PLATFORMS.find((x) => x.value === p.platform)?.label ?? p.platform}</span> },
     { key: "owners", header: "Page Owners", cell: (p) => <span className="text-xs font-medium text-ink">{p.owners?.map((o) => o.name).join(", ") || "—"}</span> },
-    { key: "advance", header: "Default Advance", cell: (p) => <Badge tone="brand">{p.pricing.default_advance_percent}%</Badge> },
+    { key: "advance", header: "Minimum Advance", cell: (p) => <Badge tone="brand">{formatMoney(p.pricing.min_advance_minor)}</Badge> },
     { key: "status", header: "Status", cell: (p) => <StatusBadge active={p.is_active} /> },
     {
       key: "actions",
@@ -108,7 +108,7 @@ export function PagesScreen() {
   );
 }
 
-type PageFormValues = Omit<PageInput, "default_delivery_fee_minor"> & { code: string; invoice_prefix: string; delivery_fee: string };
+type PageFormValues = Omit<PageInput, "default_delivery_fee_minor" | "min_advance_minor"> & { code: string; invoice_prefix: string; delivery_fee: string; min_advance: string };
 
 function PageForm({ page }: { page: Page | null }) {
   const router = useRouter();
@@ -126,12 +126,14 @@ function PageForm({ page }: { page: Page | null }) {
     address: page?.address ?? "",
     default_advance_percent: page?.pricing.default_advance_percent ?? 30,
     delivery_fee: minorToInput(page?.pricing.default_delivery_fee_minor ?? 0),
+    min_advance: minorToInput(page?.pricing.min_advance_minor ?? 0),
     invoice_header_name: page?.invoice_header_name ?? "",
     invoice_address: page?.invoice_address ?? "",
     invoice_phone: page?.invoice_phone ?? "",
     is_active: page?.is_active ?? true,
   });
   const [feeError, setFeeError] = useState<string | null>(null);
+  const [minAdvanceError, setMinAdvanceError] = useState<string | null>(null);
   const errors = save.error instanceof ApiError ? save.error.fieldErrors : {};
   const formError = save.error instanceof ApiError && !save.error.isValidation ? save.error.message : null;
   const set = <K extends keyof PageFormValues>(key: K, value: PageFormValues[K]) => setValues((v) => ({ ...v, [key]: value }));
@@ -139,13 +141,20 @@ function PageForm({ page }: { page: Page | null }) {
 
   const submit = () => {
     const fee = parseMoneyToMinor(values.delivery_fee);
+    const minAdvance = parseMoneyToMinor(values.min_advance);
     if (fee === null) {
       setFeeError("Enter an amount such as 350 or 350.00");
       return;
     }
+    if (minAdvance === null) {
+      setMinAdvanceError("Enter an amount such as 5000 or 5,000.00");
+      return;
+    }
     setFeeError(null);
-    const { code, invoice_prefix, ...withFee } = values;
-    const rest: Omit<typeof withFee, "delivery_fee"> = Object.fromEntries(Object.entries(withFee).filter(([k]) => k !== "delivery_fee")) as Omit<typeof withFee, "delivery_fee">;
+    setMinAdvanceError(null);
+    const { code, invoice_prefix, delivery_fee: _fee, min_advance: _min, ...rest } = values;
+    void _fee;
+    void _min;
     const payload: PageInput = {
       ...rest,
       external_url: orNull(rest.external_url),
@@ -155,6 +164,7 @@ function PageForm({ page }: { page: Page | null }) {
       invoice_address: orNull(rest.invoice_address),
       invoice_phone: orNull(rest.invoice_phone),
       default_delivery_fee_minor: fee,
+      min_advance_minor: minAdvance,
       ...(page ? {} : { code, invoice_prefix }),
     };
     save.mutate(payload, {
@@ -199,14 +209,13 @@ function PageForm({ page }: { page: Page | null }) {
           <div className="grid gap-4 md:grid-cols-3">
             <TextField label="Currency" value="LKR" disabled readOnly />
             <TextField
-              label="Default advance (%)"
-              type="number"
-              min={30}
-              max={100}
-              value={values.default_advance_percent}
-              hint="At least 30% of total including delivery and tax."
-              error={errors.default_advance_percent?.[0]}
-              onChange={(e) => set("default_advance_percent", Number(e.target.value))}
+              label="Minimum advance (LKR)"
+              inputMode="decimal"
+              value={values.min_advance}
+              maxLength={16}
+              hint="Smallest advance a new order may have. The price is set after printing."
+              error={minAdvanceError ?? errors.min_advance_minor?.[0]}
+              onChange={(e) => set("min_advance", e.target.value)}
             />
             <TextField label="Default delivery fee (LKR)" inputMode="decimal" value={values.delivery_fee} maxLength={16} error={feeError ?? errors.default_delivery_fee_minor?.[0]} onChange={(e) => set("delivery_fee", e.target.value)} />
           </div>

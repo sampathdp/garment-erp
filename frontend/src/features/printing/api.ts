@@ -2,6 +2,17 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tansta
 import { api, apiBlob, apiRequest, type Paginated } from "@/lib/api-client";
 import type { BulkGarmentList, BulkMode, JobCard } from "@/features/bulk/api";
 
+/** A price group of the locked name/number list (sleeve type, kids/adult ...) with its listed quantity. */
+export type PrintPriceGroup = { label: string; quantity: number };
+
+/**
+ * Printing Completed: the printed quantity per price group (the invoice is priced on it), or only
+ * the total when everything was printed exactly as listed.
+ */
+export type CompletePrintingInput =
+  | { groups: PrintPriceGroup[]; notes: string }
+  | { printed_quantity: number; notes: string };
+
 export type PrintStatus =
   | "ready_for_printing"
   | "sent_for_printing"
@@ -81,7 +92,7 @@ export interface PrintJob {
   created_at: string | null;
   sending?: { sent_by: string | null; sent_at: string | null; printing_company: string | null; recipient_name: string | null; notes: string | null };
   samples?: PrintSampleVersion[];
-  printing?: { started_by: string | null; started_at: string | null; completed_by: string | null; completed_at: string | null; printed_quantity: number | null; notes: string | null };
+  printing?: { started_by: string | null; started_at: string | null; completed_by: string | null; completed_at: string | null; printed_quantity: number | null; notes: string | null; price_groups: PrintPriceGroup[] };
   gate_passes?: { id: number; gate_pass_no: string; gate_pass_date: string; notes: string | null; document: { name: string; url: string } | null; uploaded_by: string; uploaded_at: string | null }[];
   history?: { from: string | null; to: string; note: string | null; by: string; at: string | null }[];
   documents?: { job_card: PrintDocumentAccess; name_list: PrintDocumentAccess };
@@ -244,7 +255,7 @@ export function usePrintMutations(id: number) {
     approve: useMutation({ mutationFn: (input: { comment: string; channel: string }) => post("samples/approve", { comment: input.comment || null, channel: input.channel || null, version: current() }), onSuccess: done }),
     reject: useMutation({ mutationFn: (input: { reason: string; channel: string }) => post("samples/reject", { reason: input.reason, channel: input.channel || null, version: current() }), onSuccess: done }),
     start: useMutation({ mutationFn: (notes: string) => post("physical-printing/start", { notes: notes || null, version: current() }), onSuccess: done }),
-    complete: useMutation({ mutationFn: (input: { printed_quantity: number; notes: string }) => post("physical-printing/complete", { ...input, notes: input.notes || null, version: current() }), onSuccess: done }),
+    complete: useMutation({ mutationFn: (input: CompletePrintingInput) => post("physical-printing/complete", { ...input, notes: input.notes || null, version: current() }), onSuccess: done }),
     gatePass: useMutation({ mutationFn: (input: GatePassInput) => multipart("gate-passes", gatePassBody(input)), onSuccess: done }),
   };
 }

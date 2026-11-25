@@ -12,7 +12,7 @@ use App\Support\Exceptions\ApiException;
  * The mandatory production data a bulk job needs before it can be completed — the same for
  * internal and external jobs (WORKFLOW_REQUIREMENTS.md §3.7b):
  *
- *   - the verified advance still covers the required percentage of the invoice;
+ *   - the verified payments still cover the agreed advance;
  *   - the job refers to the order's current, confirmed (locked) name/number list; for internal
  *     jobs that is also the list version the approved bulk was prepared from;
  *   - every required measurement (bulk meter, patch meter, ...) is entered;
@@ -34,7 +34,7 @@ final class BulkCompletion
     {
         $problems = [];
         if (! $order->meetsAdvanceRequirement()) {
-            $problems['advance'] = ['The verified advance no longer covers the required percentage of the invoice.'];
+            $problems['advance'] = ['The verified payments no longer cover the agreed advance.'];
         }
         if (! $this->workflow->listIsCurrentAndLocked($job)) {
             $problems['list'] = ['The name/number list is being corrected; confirm it again first.'];

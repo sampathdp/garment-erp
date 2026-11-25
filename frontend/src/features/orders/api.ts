@@ -50,10 +50,11 @@ export interface Order {
   page: Ref;
   customer: OrderCustomer;
   product_category: Ref | null;
+  product_type_other: string | null;
   gross_quantity: number;
   due_date: string;
   currency: string;
-  pricing: { unit_price_minor: number | null; subtotal_minor: number; discount_minor: number; tax_minor: number; delivery_fee_minor: number; total_minor: number };
+  pricing: { unit_price_minor: number | null; subtotal_minor: number; discount_minor: number; tax_minor: number; delivery_fee_minor: number; total_minor: number; price_pending: boolean };
   advance: { percent: number; required_minor: number; verified_minor: number; shortfall_minor: number; meets_requirement: boolean };
   payment_status: "unpaid" | "advance_pending" | "advance_paid" | "paid" | "refunded";
   production_eligible: boolean;
@@ -136,14 +137,16 @@ export interface CreateOrderInput {
   customer?: CustomerInput;
   due_date: string;
   product_type_id: number;
+  product_type_other?: string | null;
   gross_quantity: number;
-  unit_price_minor: number;
+  /** Fixed advance agreed with the customer (minor units); the price is set after printing. */
+  advance_amount_minor: number;
   delivery_fee_minor?: number | null;
   discount_minor?: number;
   submit: boolean;
 }
 
-export type UpdateOrderInput = Partial<Pick<CreateOrderInput, "due_date" | "product_type_id" | "gross_quantity" | "unit_price_minor" | "delivery_fee_minor" | "discount_minor">> & { version: number };
+export type UpdateOrderInput = Partial<Pick<CreateOrderInput, "due_date" | "product_type_id" | "product_type_other" | "gross_quantity" | "advance_amount_minor" | "delivery_fee_minor" | "discount_minor">> & { version: number };
 
 export const PAYMENT_STATUS_LABELS: Record<Order["payment_status"], string> = {
   unpaid: "Unpaid",

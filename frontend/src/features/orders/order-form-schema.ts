@@ -51,8 +51,9 @@ export const orderFormSchema = z
     confirm_distinct: z.boolean(),
     due_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Select the due date"),
     product_type_id: z.string().min(1, "Select the product / item category"),
+    product_type_is_other: z.boolean(),
+    product_type_other: z.string().trim().max(100, "Use 100 characters or fewer"),
     gross_quantity: z.string().trim().regex(/^[1-9]\d{0,5}$/, "Enter the gross quantity (1 or more)"),
-    unit_price: z.string().trim(),
     delivery_fee: money("Delivery fee", false),
     discount: money("Discount", false),
     advance_amount: z.string().trim(),
@@ -68,6 +69,10 @@ export const orderFormSchema = z
       .refine((f) => f === null || ALLOWED_MIME.includes(f.type), "Use a JPG, PNG, WebP or PDF file"),
   })
   .superRefine((v, ctx) => {
+    if (v.product_type_is_other && v.product_type_other === "") {
+      ctx.addIssue({ code: "custom", path: ["product_type_other"], message: "Specify the garment type" });
+    }
+
     if (v.customer_id === "") {
       if (v.customer_name.length < 2) {
         ctx.addIssue({ code: "custom", path: ["customer_name"], message: "Customer name is required" });
@@ -88,10 +93,10 @@ export const orderFormSchema = z
 
     const advMinor = parseMoneyToMinor(v.advance_amount) ?? 0;
 
-    if (v.unit_price === "" && advMinor <= 0) {
-      ctx.addIssue({ code: "custom", path: ["unit_price"], message: "Enter the unit price" });
+    // The price is set after printing (from the printed quantity), so the advance is a fixed amount.
+    if (v.advance_amount === "") {
       ctx.addIssue({ code: "custom", path: ["advance_amount"], message: "Enter the advance payment amount" });
-    } else if (v.advance_amount !== "" && advMinor <= 0) {
+    } else if (advMinor <= 0) {
       ctx.addIssue({ code: "custom", path: ["advance_amount"], message: "Enter a valid advance amount" });
     }
 
@@ -130,8 +135,9 @@ export const emptyOrderForm: OrderFormValues = {
   confirm_distinct: false,
   due_date: "",
   product_type_id: "",
+  product_type_is_other: false,
+  product_type_other: "",
   gross_quantity: "",
-  unit_price: "",
   delivery_fee: "",
   discount: "",
   advance_amount: "",
@@ -144,25 +150,19 @@ export const emptyOrderForm: OrderFormValues = {
   payment_evidence: null,
 };
 
-/** Maps the form to the API body. Totals and the advance are NOT sent: the server calculates them. */
+/**
+ * Maps the form to the API body. No price is sent: the job is priced from the printed quantity
+ * when printing is completed. The advance is the fixed amount agreed with the customer.
+ */
 export function toCreateOrderInput(v: OrderFormValues, submit: boolean): CreateOrderInput {
-  const qty = Number(v.gross_quantity) || 1;
-  const advMinor = parseMoneyToMinor(v.advance_amount) ?? 0;
-  let unitPriceMinor = parseMoneyToMinor(v.unit_price) ?? 0;
-
-  if (unitPriceMinor <= 0 && advMinor > 0) {
-    // 30% advance rule: advance_required = ceil(total * 0.30)
-    // To satisfy advance requirement exactly: total = advance / 0.30
-    unitPriceMinor = Math.max(1, Math.round(advMinor / (qty * 0.30)));
-  }
-
   const base: CreateOrderInput = {
     branch_id: Number(v.branch_id),
     page_id: Number(v.page_id),
     due_date: v.due_date,
     product_type_id: Number(v.product_type_id),
+    product_type_other: v.product_type_is_other ? v.product_type_other.trim() : null,
     gross_quantity: Number(v.gross_quantity),
-    unit_price_minor: unitPriceMinor,
+    advance_amount_minor: parseMoneyToMinor(v.advance_amount) ?? 0,
     delivery_fee_minor: v.delivery_fee === "" ? null : parseMoneyToMinor(v.delivery_fee),
     discount_minor: v.discount === "" ? 0 : (parseMoneyToMinor(v.discount) ?? 0),
     submit,
@@ -213,8 +213,9 @@ export const SERVER_FIELD_MAP: Record<string, keyof OrderFormValues> = {
   "customer.address": "customer_address",
   due_date: "due_date",
   product_type_id: "product_type_id",
+  product_type_other: "product_type_other",
   gross_quantity: "gross_quantity",
-  unit_price_minor: "unit_price",
+  advance_amount_minor: "advance_amount",
   delivery_fee_minor: "delivery_fee",
   discount_minor: "discount",
   bank_name: "payment_bank",

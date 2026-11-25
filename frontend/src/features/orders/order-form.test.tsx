@@ -19,8 +19,11 @@ const valid = {
   customer_district: "Colombo",
   due_date: "2026-11-30",
   product_type_id: "3",
+  product_type_is_other: false,
+  product_type_other: "",
   gross_quantity: "10",
-  unit_price: "1,000.50",
+  advance_amount: "3,000.50",
+  payment_method: "cash",
 };
 
 describe("orderFormSchema", () => {
@@ -28,7 +31,7 @@ describe("orderFormSchema", () => {
     const result = orderFormSchema.safeParse(emptyOrderForm);
     expect(result.success).toBe(false);
     const fields = result.error?.issues.map((i) => i.path[0]);
-    expect(fields).toEqual(expect.arrayContaining(["branch_id", "page_id", "customer_name", "customer_phone", "customer_whatsapp", "customer_city", "customer_district", "due_date", "product_type_id", "gross_quantity", "unit_price"]));
+    expect(fields).toEqual(expect.arrayContaining(["branch_id", "page_id", "customer_name", "customer_phone", "customer_whatsapp", "customer_city", "customer_district", "due_date", "product_type_id", "gross_quantity", "advance_amount"]));
   });
 
   it("rejects invalid phone numbers and quantities", () => {
@@ -39,12 +42,19 @@ describe("orderFormSchema", () => {
   it("does not require new-customer fields when an existing customer is selected", () => {
     expect(orderFormSchema.safeParse({ ...valid, customer_id: "9", customer_name: "", customer_phone: "", customer_whatsapp: "", customer_city: "", customer_district: "" }).success).toBe(true);
   });
+
+  it("requires the garment description only when Other is selected", () => {
+    expect(orderFormSchema.safeParse({ ...valid, product_type_is_other: true }).success).toBe(false);
+    expect(orderFormSchema.safeParse({ ...valid, product_type_is_other: true, product_type_other: "Hoodie" }).success).toBe(true);
+    expect(orderFormSchema.safeParse({ ...valid, product_type_is_other: true, product_type_other: "x".repeat(101) }).success).toBe(false);
+    expect(orderFormSchema.safeParse({ ...valid, product_type_other: "Ignored" }).success).toBe(true);
+  });
 });
 
 describe("toCreateOrderInput", () => {
   it("sends minor units and never sends totals, status or job numbers", () => {
     const input = toCreateOrderInput(valid, true);
-    expect(input).toMatchObject({ branch_id: 1, page_id: 2, gross_quantity: 10, unit_price_minor: 100050, delivery_fee_minor: null, discount_minor: 0, submit: true });
+    expect(input).toMatchObject({ branch_id: 1, page_id: 2, gross_quantity: 10, advance_amount_minor: 300050, delivery_fee_minor: null, discount_minor: 0, submit: true });
     expect(input.customer).toEqual({
       name: "Nimal Perera",
       phone: "077 123 4567",
@@ -60,6 +70,7 @@ describe("toCreateOrderInput", () => {
     expect(Object.keys(input)).not.toEqual(expect.arrayContaining(["status"]));
     expect(input).not.toHaveProperty("total_minor");
     expect(input).not.toHaveProperty("order_no");
+    expect(input).not.toHaveProperty("unit_price_minor"); // priced after printing
   });
 
   it("sends only the customer id for an existing customer", () => {
@@ -67,6 +78,11 @@ describe("toCreateOrderInput", () => {
     expect(input.customer_id).toBe(9);
     expect(input.customer).toBeUndefined();
     expect(input.submit).toBe(false);
+  });
+
+  it("sends the Other category description and clears it for other categories", () => {
+    expect(toCreateOrderInput({ ...valid, product_type_is_other: true, product_type_other: "Hoodie" }, false).product_type_other).toBe("Hoodie");
+    expect(toCreateOrderInput({ ...valid, product_type_other: "Ignored" }, false).product_type_other).toBeNull();
   });
 });
 
@@ -99,6 +115,34 @@ describe("defaultPageId", () => {
 });
 
 describe("OrderForm", () => {
+  it("shows the garment description field only for the Other category", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
+      const body = url.includes("product-categories")
+        ? { data: { items: [{ id: 3, code: "other", name: "Other", is_active: true }, { id: 4, code: "jersey", name: "Jersey", is_active: true }] } }
+        : { data: [], meta: { page: 1, per_page: 100, total: 0, last_page: 1 }, links: { next: null, prev: null } };
+      return new Response(JSON.stringify(body), { status: 200, headers: { "Content-Type": "application/json" } });
+    });
+    const { OrderForm } = await import("./order-form");
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <ToastProvider>
+          <OrderForm />
+        </ToastProvider>
+      </QueryClientProvider>,
+    );
+
+    const category = await screen.findByLabelText("Product / Item category *");
+    await screen.findByRole("option", { name: "Other (other)" });
+    expect(screen.queryByLabelText("Specify garment type *")).toBeNull();
+
+    await userEvent.selectOptions(category, "3");
+    expect(await screen.findByLabelText("Specify garment type *")).toBeInTheDocument();
+
+    await userEvent.selectOptions(category, "4");
+    expect(screen.queryByLabelText("Specify garment type *")).toBeNull();
+  }, 20_000);
+
   it("shows validation errors without calling the create endpoint", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
       const url = String(input);

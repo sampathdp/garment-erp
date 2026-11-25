@@ -42,7 +42,7 @@ final class IssueOrderInvoice
         $previous = Invoice::query()->where('order_id', $order->id)->where('type', InvoiceType::Final->value)
             ->where('status', InvoiceStatus::Issued->value)->lockForUpdate()->get();
         foreach ($previous as $old) {
-            $old->forceFill(['status' => InvoiceStatus::Void, 'void_reason' => 'Replaced after the name/number list was corrected.', 'voided_at' => now(), 'voided_by' => $actor->id])->save();
+            $old->forceFill(['status' => InvoiceStatus::Void, 'void_reason' => 'Replaced by a new invoice.', 'voided_at' => now(), 'voided_by' => $actor->id])->save();
             $this->audit->record('invoices.voided', $old, ['after' => ['reason' => $old->void_reason]], actor: $actor);
         }
 

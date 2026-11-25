@@ -118,7 +118,7 @@ export function WelcomePanel() {
             </div>
             <div className="mt-4">
               <h3 className="text-sm font-bold text-ink">Payment Queue</h3>
-              <p className="mt-0.5 text-xs text-muted">Verify receipts & bank slips to meet the 30% advance rule.</p>
+              <p className="mt-0.5 text-xs text-muted">Verify receipts & bank slips to cover the agreed advance.</p>
             </div>
           </Link>
 
@@ -153,7 +153,7 @@ export function WelcomePanel() {
           </div>
           <div className="flex flex-col items-center gap-2 rounded-xl bg-subtle/50 p-4 border border-line/60">
             <span className="flex size-8 items-center justify-center rounded-full bg-brand/10 text-xs font-bold text-brand">2</span>
-            <span className="text-xs font-semibold text-ink">30% Advance</span>
+            <span className="text-xs font-semibold text-ink">Advance</span>
             <span className="text-[11px] text-muted">Payment verified by 2nd staff</span>
           </div>
           <div className="flex flex-col items-center gap-2 rounded-xl bg-subtle/50 p-4 border border-line/60">

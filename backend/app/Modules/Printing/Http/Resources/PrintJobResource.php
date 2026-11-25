@@ -11,12 +11,14 @@ use App\Modules\BulkProduction\Support\BulkMeasurementRules;
 use App\Modules\Design\Enums\DesignFileKind;
 use App\Modules\Design\Models\DesignVersionFile;
 use App\Modules\Printing\Enums\PrintDocument;
+use App\Modules\Printing\Enums\PrintJobStatus;
 use App\Modules\Printing\Enums\SampleFileKind;
 use App\Modules\Printing\Models\PrintJob;
 use App\Modules\Printing\Models\PrintJobEvent;
 use App\Modules\Printing\Models\PrintJobGatePass;
 use App\Modules\Printing\Models\PrintSample;
 use App\Modules\Printing\Models\PrintSampleDocument;
+use App\Modules\Printing\Support\PrintPricing;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Facades\Gate;
@@ -124,6 +126,10 @@ final class PrintJobResource extends JsonResource
                 'completed_at' => $this->printing_completed_at?->toIso8601ZuluString(),
                 'printed_quantity' => $this->printing_completed_at === null ? null : $this->printed_quantity,
                 'notes' => $this->getAttribute('completion_notes'),
+                // Groups of the locked list, pre-filled on the completion form (printed quantity per group → invoice).
+                'price_groups' => $this->status === PrintJobStatus::PhysicalPrinting
+                    ? array_map(fn (array $g): array => ['label' => $g['label'], 'quantity' => $g['quantity']], app(PrintPricing::class)->listGroups($this->resource))
+                    : [],
             ]),
             'gate_passes' => $this->when($detail, fn (): array => $this->gatePasses->sortByDesc('id')->values()->map(fn (PrintJobGatePass $g): array => [
                 'id' => $g->id,

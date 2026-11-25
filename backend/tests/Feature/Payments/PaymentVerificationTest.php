@@ -85,11 +85,12 @@ it('approves the order when the verified advance is exactly 30%', function () {
         ->and($order->advanceShortfallMinor())->toBe(0);
 });
 
-it('approves the order when the verified advance is above 30%, and marks full payment', function () {
+it('approves the order when the verified payment is above the advance; full payment is known only once priced', function () {
     verifyPayment($this, recordPayment($this, $this->order, 1000000));
 
+    // The price is set at Printing Completed, so before that a large payment counts as the advance.
     expect($this->order->fresh()->status)->toBe(OrderStatus::Confirmed)
-        ->and($this->order->fresh()->payment_status)->toBe(OrderPaymentStatus::Paid);
+        ->and($this->order->fresh()->payment_status)->toBe(OrderPaymentStatus::AdvancePaid);
 });
 
 it('adds up several verified advance payments', function () {

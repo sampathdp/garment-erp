@@ -6,6 +6,7 @@ namespace App\Modules\Orders\Http\Requests;
 
 use App\Modules\Identity\Models\User;
 use App\Modules\Identity\Support\Permissions;
+use App\Modules\Pricing\Models\ProductType;
 use Closure;
 use Illuminate\Validation\Rule;
 
@@ -17,18 +18,30 @@ final class OrderRules
         'status', 'order_no', 'payment_status', 'is_urgent', 'urgent_status', 'submitted_at', 'advance_percent',
         'advance_required_minor', 'verified_paid_minor', 'subtotal_minor', 'total_minor', 'tax_minor', 'total_quantity',
         'sales_owner_id', 'created_by',
+        // Priced after printing (invoice at Printing Completed): no unit price at intake.
+        'unit_price_minor',
     ];
 
     /** @return array<string, list<mixed>> */
-    public static function specification(bool $partial, ?User $user = null): array
-    {
+    public static function specification(
+        bool $partial,
+        ?User $user = null,
+        ?int $productTypeId = null,
+        ?int $existingProductTypeId = null,
+        bool $requireProductTypeOther = true,
+    ): array {
         $required = $partial ? 'sometimes' : 'required';
+        $effectiveProductTypeId = $productTypeId ?? $existingProductTypeId;
+        $isOtherProductType = $effectiveProductTypeId !== null
+            && ProductType::query()->withTrashed()->whereKey($effectiveProductTypeId)->where('code', 'other')->exists();
 
         return [
             'due_date' => [$required, 'date_format:Y-m-d', 'before_or_equal:'.now()->addYears(2)->toDateString()],
             'product_type_id' => [$required, 'integer', Rule::exists('product_types', 'id')->where('is_active', true)->whereNull('deleted_at')],
+            'product_type_other' => ['nullable', 'string', 'max:100', Rule::requiredIf($isOtherProductType && $requireProductTypeOther)],
             'gross_quantity' => [$required, 'integer', 'min:1', 'max:100000'],
-            'unit_price_minor' => [$required, 'integer', 'min:0', 'max:100000000000'],
+            // Fixed advance agreed with the customer; the page minimum is checked in OrderPricing.
+            'advance_amount_minor' => [$required, 'integer', 'min:1', 'max:100000000000'],
             'delivery_fee_minor' => ['sometimes', 'nullable', 'integer', 'min:0', 'max:10000000000'],
             // Discounts only when authorised (orders.discount).
             'discount_minor' => ['sometimes', 'integer', 'min:0', 'max:100000000000000', static function (string $a, mixed $value, Closure $fail) use ($user): void {
@@ -51,6 +64,7 @@ final class OrderRules
         return [
             '*.prohibited' => 'This field is set by the system and cannot be sent.',
             'product_type_id.exists' => 'Select an active product category.',
+            'product_type_other.required' => 'Specify the garment type when Other is selected.',
         ];
     }
 }

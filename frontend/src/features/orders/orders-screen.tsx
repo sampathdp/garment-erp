@@ -50,7 +50,7 @@ const PRESETS: Record<"all" | OrderGroup, { title: string; description: string; 
   all: { title: "All Orders", description: "All garment jobs across your authorized sales channels and shops." },
   intake: {
     title: "Drafts and Pending Payment",
-    description: "Jobs waiting to be finalized or awaiting verified 30% advance deposit.",
+    description: "Jobs waiting to be finalized or awaiting the verified advance deposit.",
     statuses: [
       { value: "", label: "All intake statuses" },
       { value: "draft", label: "Draft" },

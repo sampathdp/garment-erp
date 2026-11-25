@@ -44,8 +44,8 @@ final class SubmitOrder
             throw ApiException::conflict('invalid_transition', 'Only draft orders can be submitted.');
         }
 
-        if ($order->total_minor <= 0) {
-            throw new ApiException(422, 'validation_failed', 'Enter the unit price before submitting the order.', ['unit_price_minor' => ['A price is required to calculate the 30% advance.']]);
+        if ($order->advance_required_minor <= 0) {
+            throw new ApiException(422, 'validation_failed', 'Enter the advance amount before submitting the order.', ['advance_amount_minor' => ['An advance amount is required.']]);
         }
 
         if ($order->required_delivery_date->format('Y-m-d') <= BusinessDate::today()->toDateString()) {

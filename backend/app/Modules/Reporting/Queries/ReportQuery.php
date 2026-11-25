@@ -171,7 +171,7 @@ final class ReportQuery
     private function paymentStatus(User $user, array $filters): array
     {
         $bucket = 'CASE WHEN orders.verified_paid_minor <= 0 THEN \'no_verified_payment\' WHEN orders.verified_paid_minor < orders.advance_required_minor THEN \'advance_short\' '
-            .'WHEN orders.verified_paid_minor < orders.total_minor THEN \'advance_met\' ELSE \'paid_in_full\' END';
+            .'WHEN orders.total_minor = 0 OR orders.verified_paid_minor < orders.total_minor THEN \'advance_met\' ELSE \'paid_in_full\' END';
         $rows = $this->orders($user, $filters)->whereNotIn('orders.status', [OrderStatus::Draft->value, OrderStatus::Cancelled->value])
             ->selectRaw("{$bucket} AS bucket, COUNT(*) AS jobs, SUM(orders.total_minor) AS total_minor, SUM(orders.verified_paid_minor) AS paid_minor")
             ->groupByRaw($bucket)->get()->keyBy('bucket');

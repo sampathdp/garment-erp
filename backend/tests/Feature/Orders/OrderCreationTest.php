@@ -9,12 +9,13 @@ use App\Modules\Notifications\WorkflowNotification;
 use App\Modules\Orders\Enums\OrderStatus;
 use App\Modules\Orders\Models\Order;
 use App\Modules\Orders\Models\OrderStatusHistory;
+use App\Modules\Pricing\Models\ProductType;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 
 beforeEach(fn () => intakeWorld($this));
 
-it('creates and submits a normal order with a new customer, calculating totals and the advance on the server', function () {
+it('creates and submits a normal order with a new customer, with the price pending until printing', function () {
     Notification::fake();
 
     $response = $this->signedInAs($this->owner)->postJson('/api/v1/orders', orderPayload($this, ['delivery_fee_minor' => 50000, 'discount_minor' => 20000]))
@@ -26,11 +27,13 @@ it('creates and submits a normal order with a new customer, calculating totals a
         ->assertJsonPath('data.due_date', '2026-11-30')
         ->assertJsonPath('data.customer.phone', '+94771234567')
         ->assertJsonPath('data.customer.whatsapp', '+94771234567')
-        ->assertJsonPath('data.pricing.subtotal_minor', 1000000)
-        ->assertJsonPath('data.pricing.total_minor', 1030000) // 10,000 − 200 + 500
-        ->assertJsonPath('data.advance.percent', 30)
-        ->assertJsonPath('data.advance.required_minor', 309000)
-        ->assertJsonPath('data.advance.shortfall_minor', 309000)
+        ->assertJsonPath('data.pricing.subtotal_minor', 0)
+        ->assertJsonPath('data.pricing.total_minor', 0) // priced at Printing Completed
+        ->assertJsonPath('data.pricing.price_pending', true)
+        ->assertJsonPath('data.pricing.delivery_fee_minor', 50000)
+        ->assertJsonPath('data.pricing.discount_minor', 20000)
+        ->assertJsonPath('data.advance.required_minor', 300000) // the fixed advance from the form
+        ->assertJsonPath('data.advance.shortfall_minor', 300000)
         ->assertJsonPath('data.production_eligible', false)
         ->assertJsonPath('data.urgent.is_urgent', false)
         ->assertJsonPath('data.approval_status', 'Not required')
@@ -59,10 +62,26 @@ it('saves a draft without submitting, and submits it later with the current vers
     $this->signedInAs($this->owner)->postJson("/api/v1/orders/{$order->id}/submit", ['version' => $order->fresh()->version])->assertStatus(409);
 });
 
-it('refuses to submit an order without a price', function () {
-    $this->signedInAs($this->owner)->postJson('/api/v1/orders', orderPayload($this, ['unit_price_minor' => 0]))
-        ->assertStatus(422)->assertJsonValidationErrors('unit_price_minor');
+it('refuses an order without an advance amount', function () {
+    $this->signedInAs($this->owner)->postJson('/api/v1/orders', orderPayload($this, ['advance_amount_minor' => 0]))
+        ->assertStatus(422)->assertJsonValidationErrors('advance_amount_minor');
+    expect(Order::query()->count())->toBe(0);
+});
+
+it('refuses an advance below the page minimum, and rolls back the job number', function () {
+    $this->pageA->forceFill(['min_advance_minor' => 500000])->save();
+
+    $this->signedInAs($this->owner)->postJson('/api/v1/orders', orderPayload($this, ['advance_amount_minor' => 499999]))
+        ->assertStatus(422)->assertJsonValidationErrors('advance_amount_minor');
     expect(Order::query()->count())->toBe(0); // rolled back with its job number
+
+    $this->signedInAs($this->owner)->postJson('/api/v1/orders', orderPayload($this, ['advance_amount_minor' => 500000]))
+        ->assertCreated()->assertJsonPath('data.advance.required_minor', 500000);
+});
+
+it('rejects a unit price: the price is set after printing', function () {
+    $this->signedInAs($this->owner)->postJson('/api/v1/orders', orderPayload($this, ['unit_price_minor' => 100000]))
+        ->assertStatus(422)->assertJsonValidationErrors('unit_price_minor');
 });
 
 it('validates the order form', function () {
@@ -77,6 +96,56 @@ it('validates the order form', function () {
 it('rejects inactive product categories', function () {
     $this->jersey->update(['is_active' => false]);
     $this->signedInAs($this->owner)->postJson('/api/v1/orders', orderPayload($this))->assertStatus(422)->assertJsonValidationErrors('product_type_id');
+});
+
+it('requires a garment description for the Other category and stores it in the audit trail', function () {
+    $other = ProductType::query()->where('code', 'other')->firstOrFail();
+    $payload = orderPayload($this, ['product_type_id' => $other->id]);
+
+    $this->signedInAs($this->owner)->postJson('/api/v1/orders', $payload)
+        ->assertStatus(422)->assertJsonValidationErrors('product_type_other');
+    $this->signedInAs($this->owner)->postJson('/api/v1/orders', [...$payload, 'product_type_other' => str_repeat('x', 101)])
+        ->assertStatus(422)->assertJsonValidationErrors('product_type_other');
+
+    $response = $this->signedInAs($this->owner)->postJson('/api/v1/orders', [...$payload, 'product_type_other' => 'Hoodie'])
+        ->assertCreated()
+        ->assertJsonPath('data.product_category.code', 'other')
+        ->assertJsonPath('data.product_type_other', 'Hoodie');
+
+    $order = Order::query()->findOrFail($response->json('data.id'));
+    $created = AuditLog::query()->where('action', 'orders.created')->where('subject_id', $order->id)->sole();
+
+    expect($order->items()->value('product_type_other'))->toBe('Hoodie')
+        ->and(data_get($created->getAttribute('changes'), 'after.product_type_other'))->toBe('Hoodie');
+});
+
+it('requires Other details when changing categories and clears them for standard categories', function () {
+    $other = ProductType::query()->where('code', 'other')->firstOrFail();
+    $order = createOrder($this);
+
+    $this->signedInAs($this->owner)->patchJson("/api/v1/orders/{$order->id}", [
+        'version' => $order->version,
+        'product_type_id' => $other->id,
+    ])->assertStatus(422)->assertJsonValidationErrors('product_type_other');
+
+    $updated = $this->signedInAs($this->owner)->patchJson("/api/v1/orders/{$order->id}", [
+        'version' => $order->version,
+        'product_type_id' => $other->id,
+        'product_type_other' => 'Hoodie',
+    ])->assertOk()->assertJsonPath('data.product_type_other', 'Hoodie');
+    $updatedAudit = AuditLog::query()->where('action', 'orders.updated')->where('subject_id', $order->id)->latest('id')->firstOrFail();
+
+    expect(data_get($updatedAudit->getAttribute('changes'), 'after.product_type_other'))->toBe('Hoodie');
+
+    $this->signedInAs($this->owner)->patchJson("/api/v1/orders/{$order->id}", [
+        'version' => $updated->json('data.version'),
+        'product_type_id' => $this->jersey->id,
+        'product_type_other' => 'Must be cleared',
+    ])->assertOk()
+        ->assertJsonPath('data.product_type_other', null)
+        ->assertJsonPath('data.product_category.code', 'jersey');
+
+    expect($order->items()->value('product_type_other'))->toBeNull();
 });
 
 it('reuses an existing customer when name and phone match, without overwriting their details', function () {

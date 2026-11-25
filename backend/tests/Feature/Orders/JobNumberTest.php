@@ -21,7 +21,7 @@ it('never reuses a number and keeps issued numbers unchanged', function () {
     $first = createOrder($this);
 
     // A failed order (validation inside the transaction) returns nothing to the sequence and creates no row.
-    $this->signedInAs($this->owner)->postJson('/api/v1/orders', orderPayload($this, ['unit_price_minor' => 0]))->assertStatus(422);
+    $this->signedInAs($this->owner)->postJson('/api/v1/orders', orderPayload($this, ['advance_amount_minor' => 0]))->assertStatus(422);
     $next = createOrder($this);
 
     expect($next->order_no)->toBe('CMB-JRSY-26-00002');

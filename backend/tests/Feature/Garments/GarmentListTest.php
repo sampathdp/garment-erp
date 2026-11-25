@@ -148,7 +148,6 @@ describe('confirmation and locking', function () {
     it('allows only an audited administrative correction after confirmation', function () {
         fillList($this, $this->order);
         $confirmed = confirmList($this, $this->order)->assertOk()->json('data');
-        $firstInvoice = $confirmed['invoice_id'];
 
         $this->signedInAs($this->owner)->postJson("/api/v1/garment-lists/{$confirmed['id']}/corrections", ['reason' => 'Player 3 name misspelled'])->assertForbidden();
         $this->signedInAs($this->admin)->postJson("/api/v1/garment-lists/{$confirmed['id']}/corrections", [])->assertStatus(422)->assertJsonValidationErrors('reason');
@@ -163,9 +162,8 @@ describe('confirmation and locking', function () {
         $draft = $this->signedInAs($this->owner)->patchJson("/api/v1/garment-lists/{$draft['id']}/rows/{$row['id']}", ['version' => $draft['version'], 'row' => [...$row, 'player_name' => 'Player Three']])->assertOk()->json('data');
         $reconfirmed = confirmList($this, $this->order)->assertOk()->json('data');
 
-        expect($reconfirmed['invoice_id'])->not->toBe($firstInvoice)
-            ->and(GarmentListVersion::query()->where('version_no', 1)->value('status'))->toBe(GarmentListVersionStatus::Superseded)
-            ->and(Invoice::query()->find($firstInvoice)->status->value)->toBe('void')
+        expect(GarmentListVersion::query()->where('version_no', 1)->value('status'))->toBe(GarmentListVersionStatus::Superseded)
+            ->and(Invoice::query()->count())->toBe(0) // invoiced only at Printing Completed
             ->and(collect($reconfirmed['history'])->pluck('status')->all())->toBe(['locked', 'superseded']);
     });
 

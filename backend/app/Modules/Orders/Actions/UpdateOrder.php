@@ -10,6 +10,8 @@ use App\Modules\Orders\Models\Order;
 use App\Modules\Orders\Models\OrderItem;
 use App\Modules\Orders\Support\OrderNotifier;
 use App\Modules\Orders\Support\OrderPricing;
+use App\Modules\Organizations\Models\Page;
+use App\Modules\Pricing\Models\ProductType;
 use App\Support\Exceptions\ApiException;
 use App\Support\Time\BusinessDate;
 use Illuminate\Support\Facades\DB;
@@ -28,7 +30,7 @@ final class UpdateOrder
         private readonly AuditLogger $audit,
     ) {}
 
-    /** @param  array<string, mixed>  $input  validated: version + any of due_date, product_type_id, gross_quantity, unit_price_minor, delivery_fee_minor, discount_minor */
+    /** @param  array<string, mixed>  $input  validated: version + any of due_date, product_type_id, product_type_other, gross_quantity, advance_amount_minor, delivery_fee_minor, discount_minor */
     public function handle(User $actor, Order $order, array $input): Order
     {
         return DB::transaction(function () use ($actor, $order, $input): Order {
@@ -41,10 +43,19 @@ final class UpdateOrder
 
             $before = [
                 'due_date' => $order->required_delivery_date->format('Y-m-d'),
-                'product_type_id' => $item->product_type_id, 'gross_quantity' => $item->quantity, 'unit_price_minor' => $item->unit_price_minor,
+                'product_type_id' => $item->product_type_id, 'product_type_other' => $item->product_type_other,
+                'gross_quantity' => $item->quantity, 'advance_amount_minor' => $order->advance_required_minor,
                 'delivery_fee_minor' => $order->delivery_fee_minor, 'discount_minor' => $order->discount_minor,
             ];
             $after = array_merge($before, array_intersect_key($input, $before));
+            if (array_key_exists('product_type_id', $input) || array_key_exists('product_type_other', $input)) {
+                $productType = ProductType::query()->withTrashed()->findOrFail((int) $after['product_type_id']);
+                if ($productType->code !== 'other') {
+                    $after['product_type_other'] = null;
+                } elseif (array_key_exists('product_type_other', $input)) {
+                    $after['product_type_other'] = trim((string) $input['product_type_other']);
+                }
+            }
             $changes = array_diff_assoc($after, $before);
             if ($changes === []) {
                 return $order;
@@ -56,7 +67,9 @@ final class UpdateOrder
 
             $order->fill(['required_delivery_date' => $after['due_date']]);
             $item->product_type_id = (int) $after['product_type_id'];
-            OrderPricing::apply($order, $item, (int) $after['gross_quantity'], (int) $after['unit_price_minor'], (int) $after['delivery_fee_minor'], (int) $after['discount_minor']);
+            $item->product_type_other = $after['product_type_other'];
+            $minimum = (int) Page::query()->whereKey($order->page_id)->value('min_advance_minor');
+            OrderPricing::apply($order, $item, (int) $after['gross_quantity'], (int) $after['delivery_fee_minor'], (int) $after['discount_minor'], (int) $after['advance_amount_minor'], $minimum);
             $order->forceFill(['version' => $order->version + 1])->save();
             $item->save();
 

@@ -346,7 +346,7 @@ function ListEditor({ orderId }: { orderId: number }) {
               </h1>
 
               <Badge tone={locked ? "success" : "brand"} dot>
-                {locked ? "Locked & Invoiced" : "Draft (Editable)"}
+                {locked ? "Locked" : "Draft (Editable)"}
               </Badge>
 
               {isAllocationExact ? (
@@ -365,7 +365,7 @@ function ListEditor({ orderId }: { orderId: number }) {
             </div>
 
             <p className="text-xs text-muted">
-              Configure player roster names, sleeve numbers, and size distribution. Confirming locks the roster and issues the official sales invoice.
+              Configure player roster names, sleeve numbers, and size distribution. Confirming locks the roster. The invoice is issued after printing, from the printed quantities.
             </p>
           </div>
 
@@ -456,7 +456,7 @@ function ListEditor({ orderId }: { orderId: number }) {
               {formatDateTime(list.current_version.locked_at)}
             </strong>
             <p>
-              This garment specification list is locked and tied to the active sales invoice. Any subsequent adjustments require an Administrative Correction, which records an auditable revision.
+              This garment specification list is locked and is used for bulk, printing and the invoice after printing. Any subsequent adjustments require an Administrative Correction, which records an auditable revision.
             </p>
           </div>
         </div>
@@ -691,7 +691,7 @@ function ListEditor({ orderId }: { orderId: number }) {
             <div>
               <div className="flex items-center justify-between border-b border-line pb-3 mb-3">
                 <span className="text-[11px] font-bold uppercase tracking-wider text-muted">
-                  Commercial Pricing Preview
+                  Price Estimate (invoiced after printing)
                 </span>
                 {list.pricing_preview.price_list && (
                   <Badge tone="brand">{list.pricing_preview.price_list}</Badge>
@@ -1170,7 +1170,7 @@ function ListEditor({ orderId }: { orderId: number }) {
               <strong className="text-ink">{review.rows} rows</strong>.
             </p>
             <p className="text-muted mt-1">
-              Confirming permanently locks this version and generates the official commercial sales invoice for billing and production release.
+              Confirming permanently locks this version for production release. The price shown is an estimate; the invoice is issued after printing.
             </p>
           </div>
 
@@ -1197,8 +1197,8 @@ function ListEditor({ orderId }: { orderId: number }) {
                 m.confirm.mutate(
                   { list, acknowledge: ack },
                   {
-                    onSuccess: (r) => {
-                      notify(`List confirmed. Invoice ${r.invoice_no} issued.`, "success");
+                    onSuccess: () => {
+                      notify("List confirmed and locked.", "success");
                       setConfirmOpen(false);
                     },
                   },
@@ -1215,7 +1215,7 @@ function ListEditor({ orderId }: { orderId: number }) {
       <Modal open={correctOpen} title="Open Administrative Correction Version" onClose={() => setCorrectOpen(false)}>
         <div className="flex flex-col gap-4 text-xs leading-relaxed">
           <p className="text-muted">
-            This opens an auditable draft revision (v{list.current_version.version_no + 1}) of the confirmed list for required adjustments. The active invoice remains valid until the revised version is confirmed.
+            This opens an auditable draft revision (v{list.current_version.version_no + 1}) of the confirmed list for required adjustments. The confirmed version remains valid until the revised version is confirmed.
           </p>
 
           <TextAreaField

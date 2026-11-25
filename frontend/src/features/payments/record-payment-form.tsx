@@ -113,7 +113,7 @@ export function RecordPaymentForm({ orderId, currency, suggestedMinor, onDone }:
     <form noValidate onSubmit={onSubmit} className="flex flex-col gap-4">
       <FormError message={formError} />
       <div className="flex items-center justify-between rounded-xl border border-brand/20 bg-brand/5 px-4 py-3 text-xs text-brand">
-        <span className="font-medium">Remaining requirement for 30% advance deposit:</span>
+        <span className="font-medium">Remaining advance deposit:</span>
         <span className="font-mono text-sm font-bold text-ink">{formatMoney(suggestedMinor, currency)}</span>
       </div>
       <div className="grid gap-4 sm:grid-cols-2">

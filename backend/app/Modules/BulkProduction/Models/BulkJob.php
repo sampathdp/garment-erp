@@ -21,7 +21,7 @@ use Illuminate\Support\Carbon;
 
 /**
  * The bulk task of an order, created once (UNIQUE order_id) when the final design, the locked
- * list, the invoice and the advance are all in place (CreateBulkJobIfEligible). The Operation
+ * list and the advance are all in place (CreateBulkJobIfEligible). The Operation
  * Admin then assigns it to an internal Bulk Designer or to an external producer (Phase 05).
  *
  * Status, assignment, review pointers and completion are written only by the BulkProduction

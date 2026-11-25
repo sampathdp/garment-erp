@@ -103,10 +103,18 @@ final class PrintWorkController
         Gate::authorize('completePrinting', $job);
         $data = $request->validate([
             'version' => ['required', 'integer'],
-            'printed_quantity' => ['required', 'integer', 'min:1', 'max:1000000'],
+            // Either the printed quantity per price group of the list, or — when everything was
+            // printed exactly as listed — the total only (must equal the list total).
+            'groups' => ['required_without:printed_quantity', 'array', 'min:1', 'max:200'],
+            'groups.*.label' => ['required', 'string', 'max:500', 'distinct'],
+            'groups.*.quantity' => ['required', 'integer', 'min:0', 'max:1000000'],
+            'printed_quantity' => ['required_without:groups', 'prohibits:groups', 'integer', 'min:1', 'max:1000000'],
             'notes' => ['sometimes', 'nullable', 'string', 'max:1000'],
         ]);
-        $action->complete($this->actor($request), $job, (int) $data['version'], (int) $data['printed_quantity'], $this->text($data['notes'] ?? null));
+        $groups = isset($data['groups'])
+            ? array_column(array_map(fn (array $g) => ['label' => (string) $g['label'], 'quantity' => (int) $g['quantity']], $data['groups']), 'quantity', 'label')
+            : null;
+        $action->complete($this->actor($request), $job, (int) $data['version'], $groups, isset($data['printed_quantity']) ? (int) $data['printed_quantity'] : null, $this->text($data['notes'] ?? null));
 
         return $this->fresh($job);
     }

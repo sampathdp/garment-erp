@@ -93,6 +93,7 @@ erDiagram
     order_items { bigint id PK
         bigint order_id FK
         bigint product_type_id FK
+        string product_type_other "when category is Other"
         bigint material_id FK
         int quantity
         bigint unit_price_minor "snapshot" }

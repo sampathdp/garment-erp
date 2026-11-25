@@ -22,7 +22,7 @@ export interface Page {
   contact_email: string | null;
   contact_phone: string | null;
   address: string | null;
-  pricing: { currency: string; default_advance_percent: number; default_delivery_fee_minor: number };
+  pricing: { currency: string; default_advance_percent: number; default_delivery_fee_minor: number; min_advance_minor: number };
   invoice_prefix: string;
   invoice_header_name: string;
   invoice_address?: string | null;
@@ -69,6 +69,8 @@ export interface PageInput {
   address: string | null;
   default_advance_percent: number;
   default_delivery_fee_minor: number;
+  /** Smallest advance an order of this page may be created with (minor units, 0 = any amount above 0). */
+  min_advance_minor: number;
   invoice_header_name: string;
   invoice_address: string | null;
   invoice_phone: string | null;

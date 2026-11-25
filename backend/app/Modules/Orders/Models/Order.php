@@ -143,7 +143,7 @@ class Order extends Model
      */
     public function meetsAdvanceRequirement(): bool
     {
-        return $this->total_minor > 0 && $this->verified_paid_minor >= $this->advance_required_minor;
+        return $this->advance_required_minor > 0 && $this->verified_paid_minor >= $this->advance_required_minor;
     }
 
     /** Released (Approved Order or later) AND the advance is still covered. */

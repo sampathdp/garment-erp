@@ -36,18 +36,16 @@ it('waits for every prerequisite and then creates the bulk job once, notifying t
         ->assertJsonPath('data.bulk.checklist.0.met', true)->assertJsonPath('data.bulk.checklist.3.met', true);
 });
 
-it('waits for the payment top-up when the invoice raised the advance', function () {
-    $rows = array_map(fn (array $r) => [...$r, 'values' => ['sleeve_type' => 'long', 'age_group' => 'adult']], jerseyRows($this)); // 12,000 → 3,600 advance
-    fillList($this, $this->order, $rows);
+it('creates the bulk job without an invoice: the price is set after printing', function () {
+    fillList($this, $this->order);
     confirmList($this, $this->order)->assertOk();
     completeDesign($this, $this->task);
 
-    expect(BulkJob::query()->count())->toBe(0);
+    $job = BulkJob::query()->sole();
+    expect($job->getAttribute('invoice_id'))->toBeNull()
+        ->and(\App\Modules\Invoices\Models\Invoice::query()->count())->toBe(0);
     $checklist = collect($this->signedInAs($this->owner)->getJson("/api/v1/orders/{$this->order->id}")->json('data.bulk.checklist'))->pluck('met', 'key');
-    expect($checklist->all())->toMatchArray(['final_design' => true, 'list_locked' => true, 'invoice' => true, 'advance' => false]);
-
-    verifyPayment($this, recordPayment($this, $this->order->fresh(), 60000));
-    expect(BulkJob::query()->count())->toBe(1);
+    expect($checklist->keys()->all())->toBe(['final_design', 'list_locked', 'advance', 'stage']);
 });
 
 it('never creates a duplicate bulk job', function () {

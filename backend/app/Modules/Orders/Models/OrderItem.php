@@ -21,7 +21,7 @@ class OrderItem extends Model
      *
      * @var list<string>
      */
-    protected $fillable = ['order_id', 'product_type_id', 'material_id', 'description', 'quantity', 'sort_order'];
+    protected $fillable = ['order_id', 'product_type_id', 'product_type_other', 'material_id', 'description', 'quantity', 'sort_order'];
 
     protected function casts(): array
     {

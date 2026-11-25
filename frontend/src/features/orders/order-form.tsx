@@ -136,16 +136,23 @@ export function OrderForm() {
   // Default the page to the signed-in user's own page: the page they own first, else their first
   // assigned page. Users with all-page access get a default only when there is a single active page.
   const { user } = useAuth();
+  // Company / Shop is hidden once a default page is picked; shown only when the user must choose.
+  const [pageAutoSelected, setPageAutoSelected] = useState(false);
   useEffect(() => {
     if (form.getValues("page_id") || !pages.data || !user) return;
     const choice = defaultPageId(user.scope.pages, pages.data.data);
-    if (choice !== null) setValue("page_id", String(choice), { shouldValidate: false });
+    if (choice !== null) {
+      setValue("page_id", String(choice), { shouldValidate: false });
+      setPageAutoSelected(true);
+    }
   }, [pages.data, user, setValue, form]);
 
   // Real-time watchers for dynamic summary & calculations
   const pageId = useWatch({ control: form.control, name: "page_id" });
   const branchId = useWatch({ control: form.control, name: "branch_id" });
   const productTypeId = useWatch({ control: form.control, name: "product_type_id" });
+  const productTypeIsOther = useWatch({ control: form.control, name: "product_type_is_other" });
+  const productTypeOther = useWatch({ control: form.control, name: "product_type_other" });
   const dueDate = useWatch({ control: form.control, name: "due_date" });
   const grossQuantity = useWatch({ control: form.control, name: "gross_quantity" });
   const advanceAmount = useWatch({ control: form.control, name: "advance_amount" });
@@ -160,6 +167,7 @@ export function OrderForm() {
   // Selected object metadata for summary card
   const selectedPage = pages.data?.data.find((p) => String(p.id) === pageId);
   const selectedCategory = categories.data?.find((c) => String(c.id) === productTypeId);
+  const productTypeRegistration = register("product_type_id");
 
   // Financial calculations
   const qty = Math.max(0, parseInt(grossQuantity || "0", 10) || 0);
@@ -296,7 +304,8 @@ export function OrderForm() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           {/* Main Intake Form Column */}
           <div className="lg:col-span-8 flex flex-col gap-6 min-w-0">
-            {/* Section 1: Company / Shop */}
+            {/* Section 1: Company / Shop (hidden when a default page was auto-selected) */}
+            {!pageAutoSelected && (
             <Section
               title="Company / Shop"
               description="Select the company or retail store receiving this customer order."
@@ -325,6 +334,7 @@ export function OrderForm() {
                 </div>
               )}
             </Section>
+            )}
 
             {/* Section 2: Customer Information */}
             <Section
@@ -496,8 +506,22 @@ export function OrderForm() {
                   label="Product / Item category *"
                   options={options(categories.data, "Select garment category")}
                   error={errors.product_type_id?.message}
-                  {...register("product_type_id")}
+                  {...productTypeRegistration}
+                  onChange={(event) => {
+                    productTypeRegistration.onChange(event);
+                    const isOther = categories.data?.find((category) => String(category.id) === event.target.value)?.code === "other";
+                    setValue("product_type_is_other", isOther, { shouldValidate: true });
+                    if (!isOther) setValue("product_type_other", "", { shouldValidate: true });
+                  }}
                 />
+                {productTypeIsOther && (
+                  <TextField
+                    label="Specify garment type *"
+                    maxLength={100}
+                    error={errors.product_type_other?.message}
+                    {...register("product_type_other")}
+                  />
+                )}
                 <TextField
                   label="Gross quantity (pcs) *"
                   inputMode="numeric"
@@ -534,7 +558,7 @@ export function OrderForm() {
             {/* Section 4: Advance Payment */}
             <Section
               title="Advance Payment"
-              description="Record customer advance payment deposit. An advance payment is required to release the job to production."
+              description="Record the fixed advance agreed with the customer. The job price is calculated from the printed quantity after printing; the advance is required to release the job to production."
             >
               <div className="grid gap-4 sm:grid-cols-2">
                 <TextField
@@ -682,12 +706,18 @@ export function OrderForm() {
                 <div className="flex items-center justify-between">
                   <span className="text-muted">Garment:</span>
                   <span className="font-semibold text-ink text-right truncate max-w-[170px]">
-                    {selectedCategory?.name ?? "—"}
+                    {selectedCategory?.code === "other" && productTypeOther.trim()
+                      ? productTypeOther.trim()
+                      : selectedCategory?.name ?? "—"}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-muted">Quantity:</span>
                   <span className="font-bold text-ink">{qty > 0 ? `${qty} pcs` : "—"}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted">Price:</span>
+                  <span className="font-semibold text-ink text-right">Set after printing</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-muted">Due date:</span>

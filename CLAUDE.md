@@ -13,7 +13,7 @@ ARCHITECTURE.md · DATABASE_DESIGN.md · API_STANDARDS.md · SECURITY_STANDARDS.
 - **Phase 09** (audit and hardening, 2026-11-13) is complete: security audit with bypass-attempt tests, workflow-invariant and API lifecycle tests (internal + external), multi-process race tests, EXPLAIN-based index work, health scheduler heartbeat, new docs (API_DOCUMENTATION.md, DEPLOYMENT_GUIDE.md — moved from docs/DEPLOYMENT.md, BACKUP_AND_RECOVERY.md, TESTING_GUIDE.md, KNOWN_LIMITATIONS.md). Findings and open production blockers: SECURITY_STANDARDS.md §14, KNOWN_LIMITATIONS.md §1. **Not production-ready** until the blockers there are closed.
 - Notifications: always go through `Notify::send()` (never `Notification::send()`), so they are written to the outbox inside the business transaction.
 - Phase 03 scope came from the user's Phase 03 brief, which differs from the original roadmap order (documents/pricing moved later; see IMPLEMENTATION_ROADMAP.md).
-- Open items: client questions Q22 and Q25–Q29 (WORKFLOW_REQUIREMENTS.md §6.2), Playwright E2E, the Laravel 13 upgrade (needs PHP 8.3+), holiday calendar screen, price lists (unit price is entered on the order form for now).
+- Open items: client questions Q22 and Q25–Q29 (WORKFLOW_REQUIREMENTS.md §6.2), Playwright E2E, the Laravel 13 upgrade (needs PHP 8.3+), holiday calendar screen.
 - Do not start a phase unless the user explicitly asks for it. Check IMPLEMENTATION_ROADMAP.md for the phase scope and its blocking client questions.
 
 ## Pinned versions (Phase 01)
@@ -37,7 +37,8 @@ Horizon and Reverb are **not** installed (shared hosting).
 
 ## Confirmed client decisions (2026-11-08)
 - Page = Facebook page. Single company with several branches (no multi-tenancy).
-- 30% advance is calculated on the total including delivery and tax.
+- 30% advance is calculated on the total including delivery and tax. **Superseded 2026-11-25:** see below.
+- **Price after printing (2026-11-25):** the order form has no unit price. Staff enter a fixed advance amount (at least the page minimum, `pages.min_advance_minor`; order creator and admins with `orders.update` can change it before approval). The invoice is issued at Printing Completed, priced with the page price rules on the printed quantity per price group of the locked list (tier from the printed total). List confirmation no longer issues an invoice; the bulk job is created without one (`bulk_jobs.invoice_id` nullable).
 - Urgent = fewer than 7 **working days** (exactly 7 is normal); urgent orders need **both** a Second Admin approval and an Operation Admin approval from two different people (Phase 03 instruction, supersedes the earlier shop-manager rule).
 - Customers do not log in. Staff record all customer approvals with evidence.
 - Sewing is a production stage.
@@ -123,8 +124,8 @@ Horizon and Reverb are **not** installed (shared hosting).
 
 ## Business invariants (must always hold — test them)
 1. Totals, prices, advance, urgency and quantities are calculated on the backend only.
-2. Unit prices are snapshotted on order items when the order is submitted.
-3. An order cannot reach `confirmed` ("Approved Order") until verified payments ≥ `ceil(total × advance_percent / 100)` (`AdvanceRule`), where `total` includes delivery and tax, with `advance_percent ≥ 30` unless an audited exception exists. Verifying a payment and being eligible for production are separate conditions (`Order::meetsAdvanceRequirement()`, `isProductionEligible()`).
+2. Prices are snapshotted on the invoice issued at Printing Completed (printed quantities). Order totals are 0 (`price_pending`) until then.
+3. An order cannot reach `confirmed` ("Approved Order") until verified payments ≥ the fixed advance entered at intake (`advance_required_minor`, ≥ max(1, page minimum); 2026-11-25 decision, replaces the 30% rule). The advance does not change when the invoice is issued. Verifying a payment and being eligible for production are separate conditions (`Order::meetsAdvanceRequirement()`, `isProductionEligible()`).
 4. Urgent orders (fewer than 7 **working days** after the submission date up to and including `required_delivery_date`, Asia/Colombo, `UrgencyRule`) need the Second Admin AND the Operation Admin approval (two different users) before confirmation.
 5. Status changes only through `TransitionOrder`, with a row lock, version check, history row and audit entry. Pre-approval states are derived by `EvaluateOrderRelease`; no endpoint accepts a status.
 6. Design versions are immutable. Printing uses only the approved version.

@@ -31,7 +31,7 @@ final class PageController
         $query = Page::query()
             ->visibleTo($request->user())
             ->select(['id', 'code', 'name', 'platform', 'external_url', 'contact_email', 'contact_phone_e164', 'address',
-                'currency', 'default_advance_percent', 'default_delivery_fee_minor', 'invoice_prefix', 'invoice_header_name', 'is_active', 'created_at'])
+                'currency', 'default_advance_percent', 'default_delivery_fee_minor', 'min_advance_minor', 'invoice_prefix', 'invoice_header_name', 'is_active', 'created_at'])
             ->with(['users' => fn ($q) => $q->select(['users.id', 'users.name'])->wherePivot('is_owner', true)])
             ->withCount('users');
 

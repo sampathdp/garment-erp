@@ -107,14 +107,18 @@ function EditSpecForm({ order, onDone }: { order: Order; onDone: () => void }) {
   const [v, setV] = useState({
     due_date: order.due_date,
     product_type_id: String(order.product_category?.id ?? ""),
+    product_type_other: order.product_type_other ?? "",
     gross_quantity: String(order.gross_quantity),
-    unit_price: minorToInput(order.pricing.unit_price_minor ?? 0),
+    advance: minorToInput(order.advance.required_minor),
     delivery_fee: minorToInput(order.pricing.delivery_fee_minor),
     discount: minorToInput(order.pricing.discount_minor),
   });
   const fieldErrors = update.error instanceof ApiError ? update.error.fieldErrors : {};
   const opt = (items: { id: number; name: string }[] | undefined) =>
     (items ?? []).map((i) => ({ value: String(i.id), label: i.name }));
+  const selectedCategory = categories.data?.find((category) => String(category.id) === v.product_type_id);
+  const isOtherProductType = selectedCategory?.code === "other"
+    || (order.product_category?.id === Number(v.product_type_id) && order.product_category.code === "other");
 
   const save = () =>
     update.mutate(
@@ -122,8 +126,9 @@ function EditSpecForm({ order, onDone }: { order: Order; onDone: () => void }) {
         version: order.version,
         due_date: v.due_date,
         product_type_id: Number(v.product_type_id),
+        product_type_other: isOtherProductType ? v.product_type_other.trim() : null,
         gross_quantity: Number(v.gross_quantity),
-        unit_price_minor: parseMoneyToMinor(v.unit_price) ?? -1,
+        advance_amount_minor: parseMoneyToMinor(v.advance) ?? -1,
         delivery_fee_minor: parseMoneyToMinor(v.delivery_fee) ?? -1,
         discount_minor: parseMoneyToMinor(v.discount) ?? -1,
       },
@@ -153,8 +158,24 @@ function EditSpecForm({ order, onDone }: { order: Order; onDone: () => void }) {
           options={opt(categories.data)}
           value={v.product_type_id}
           error={fieldErrors.product_type_id?.[0]}
-          onChange={(e) => setV({ ...v, product_type_id: e.target.value })}
+          onChange={(e) => {
+            const category = categories.data?.find((item) => String(item.id) === e.target.value);
+            setV({
+              ...v,
+              product_type_id: e.target.value,
+              product_type_other: category?.code === "other" ? v.product_type_other : "",
+            });
+          }}
         />
+        {isOtherProductType && (
+          <TextField
+            label="Specify garment type *"
+            maxLength={100}
+            value={v.product_type_other}
+            error={fieldErrors.product_type_other?.[0]}
+            onChange={(e) => setV({ ...v, product_type_other: e.target.value })}
+          />
+        )}
         <TextField
           label="Gross quantity"
           inputMode="numeric"
@@ -163,11 +184,12 @@ function EditSpecForm({ order, onDone }: { order: Order; onDone: () => void }) {
           onChange={(e) => setV({ ...v, gross_quantity: e.target.value })}
         />
         <TextField
-          label="Unit price"
+          label="Advance amount"
           inputMode="decimal"
-          value={v.unit_price}
-          error={fieldErrors.unit_price_minor?.[0]}
-          onChange={(e) => setV({ ...v, unit_price: e.target.value })}
+          value={v.advance}
+          error={fieldErrors.advance_amount_minor?.[0]}
+          hint="The price is set after printing."
+          onChange={(e) => setV({ ...v, advance: e.target.value })}
         />
         <TextField
           label="Delivery fee"
@@ -333,7 +355,7 @@ function PaymentsPanel({
             Invoice Total
           </span>
           <span className="text-xl font-extrabold text-ink tracking-tight">
-            {formatMoney(order.pricing.total_minor, order.currency)}
+            {order.pricing.price_pending ? "Set after printing" : formatMoney(order.pricing.total_minor, order.currency)}
           </span>
           <span className="text-xs text-muted">
             {PAYMENT_STATUS_LABELS[order.payment_status]}
@@ -342,7 +364,7 @@ function PaymentsPanel({
 
         <div className="flex flex-col gap-1 rounded-2xl border border-line bg-surface p-4 shadow-xs">
           <span className="text-[11px] font-bold uppercase tracking-wider text-muted">
-            30% Advance Deposit Required
+            Advance Deposit Required
           </span>
           <span className="text-xl font-extrabold text-ink tracking-tight">
             {formatMoney(a.required_minor, order.currency)}
@@ -378,7 +400,7 @@ function PaymentsPanel({
             {a.shortfall_minor > 0 ? formatMoney(a.shortfall_minor, order.currency) : "Fully Covered"}
           </span>
           <span className="text-xs text-muted">
-            {a.shortfall_minor > 0 ? "Deposit shortfall remaining" : "30% deposit requirement met"}
+            {a.shortfall_minor > 0 ? "Deposit shortfall remaining" : "Advance deposit requirement met"}
           </span>
         </div>
       </div>
@@ -400,7 +422,7 @@ function PaymentsPanel({
                 ? "Eligible for production release"
                 : a.meets_requirement
                   ? "Awaiting dual urgent approval"
-                  : "Blocked — advance deposit below 30%"}
+                  : "Blocked — advance deposit not yet covered"}
             </Badge>
           </div>
         </div>
@@ -424,14 +446,14 @@ function PaymentsPanel({
             <div className="flex flex-col gap-0.5">
               <span className="font-bold text-ink text-sm">
                 Partial Advance Received — {formatMoney(a.verified_minor, order.currency)} of{" "}
-                {formatMoney(a.required_minor, order.currency)} (30%)
+                {formatMoney(a.required_minor, order.currency)}
               </span>
               <p className="text-muted leading-relaxed">
                 The Second Admin confirmed payment of{" "}
                 <strong className="text-ink font-semibold">
                   {formatMoney(a.verified_minor, order.currency)}
                 </strong>
-                . However, the order requires the full 30% deposit ({formatMoney(a.required_minor, order.currency)}) before release.
+                . However, the order requires the full advance deposit ({formatMoney(a.required_minor, order.currency)}) before release.
               </p>
               <p className="font-semibold text-amber-500">
                 Remaining advance shortfall: {formatMoney(a.shortfall_minor, order.currency)}.
@@ -799,7 +821,7 @@ function OrderDetail({ id }: { id: number }) {
                 Total Invoice
               </span>
               <p className="text-sm font-bold text-ink truncate">
-                {formatMoney(order.pricing.total_minor, order.currency)}
+                {order.pricing.price_pending ? "Set after printing" : formatMoney(order.pricing.total_minor, order.currency)}
               </p>
               <span className="text-xs text-muted">
                 {PAYMENT_STATUS_LABELS[order.payment_status]}
@@ -821,7 +843,7 @@ function OrderDetail({ id }: { id: number }) {
             <div className="min-w-0 flex-1">
               <div className="flex items-center justify-between gap-1">
                 <span className="text-[11px] font-bold uppercase tracking-wider text-muted">
-                  30% Advance
+                  Advance
                 </span>
                 <span className="text-xs font-bold text-ink">{depositPercent}%</span>
               </div>
@@ -840,7 +862,7 @@ function OrderDetail({ id }: { id: number }) {
               >
                 {a.shortfall_minor > 0
                   ? `Shortfall: ${formatMoney(a.shortfall_minor, order.currency)}`
-                  : "30% Advance Verified"}
+                  : "Advance Verified"}
               </span>
             </div>
           </div>
@@ -1049,6 +1071,9 @@ function OrderDetail({ id }: { id: number }) {
                   <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 mt-4">
                     <Detail label="Item Category" icon={ShirtIcon}>
                       {order.product_category?.name ?? "—"}
+                      {order.product_category?.code === "other" && order.product_type_other && (
+                        <span className="mt-1 block text-xs font-medium text-muted">{order.product_type_other}</span>
+                      )}
                     </Detail>
                     <Detail label="Gross Quantity" icon={BoxesIcon}>
                       {order.gross_quantity} pieces
@@ -1076,9 +1101,9 @@ function OrderDetail({ id }: { id: number }) {
                     </span>
                     <div className="grid gap-2 sm:grid-cols-4 text-xs">
                       <div>
-                        <span className="text-muted">Unit Price</span>
+                        <span className="text-muted">Subtotal</span>
                         <p className="font-semibold text-ink mt-0.5">
-                          {formatMoney(order.pricing.unit_price_minor ?? 0, order.currency)}
+                          {order.pricing.price_pending ? "Set after printing" : formatMoney(order.pricing.subtotal_minor, order.currency)}
                         </p>
                       </div>
                       <div>
@@ -1096,7 +1121,7 @@ function OrderDetail({ id }: { id: number }) {
                       <div>
                         <span className="text-muted font-bold">Total Invoice</span>
                         <p className="font-extrabold text-sm text-ink mt-0.5">
-                          {formatMoney(order.pricing.total_minor, order.currency)}
+                          {order.pricing.price_pending ? "Set after printing" : formatMoney(order.pricing.total_minor, order.currency)}
                         </p>
                       </div>
                     </div>
@@ -1159,7 +1184,7 @@ function OrderDetail({ id }: { id: number }) {
                   Job Specifications & Artwork Pipeline Locked
                 </h3>
                 <p className="text-xs text-muted max-w-md mx-auto mt-1 leading-relaxed">
-                  Detailed fabric selection, design instructions, vector attachments, and factory cutting release unlock once the initial 30% advance deposit is verified.
+                  Detailed fabric selection, design instructions, vector attachments, and factory cutting release unlock once the agreed advance deposit is verified.
                 </p>
                 {!a.meets_requirement && (
                   <div className="mt-4">

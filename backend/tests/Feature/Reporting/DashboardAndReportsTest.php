@@ -91,8 +91,12 @@ describe('reports', function () {
 
     it('reports job, payment and advance figures accurately and only within scope', function () {
         Cache::flush();
-        approvedOrder($this);                                  // 30% verified
-        createOrder($this, ['due_date' => '2026-11-25']);      // no verified payment
+        $priced = approvedOrder($this);                        // advance verified
+        $unpaid = createOrder($this, ['due_date' => '2026-11-25']); // no verified payment
+        // Both priced as if their invoices were issued at Printing Completed (LKR 10,000 each).
+        foreach ([$priced, $unpaid] as $o) {
+            $o->forceFill(['subtotal_minor' => 1000000, 'total_minor' => 1000000])->save();
+        }
 
         $status = $this->signedInAs($this->owner)->getJson('/api/v1/reports/jobs-by-status')->assertOk()->json('data');
         expect($status['total'])->toBe(2)->and(collect($status['rows'])->pluck('total', 'status')->all())

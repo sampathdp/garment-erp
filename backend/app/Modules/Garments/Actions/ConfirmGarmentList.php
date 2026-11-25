@@ -15,48 +15,40 @@ use App\Modules\Garments\Models\GarmentListVersion;
 use App\Modules\Garments\Support\GarmentListReview;
 use App\Modules\Garments\Support\GarmentSchema;
 use App\Modules\Identity\Models\User;
-use App\Modules\Invoices\Actions\IssueOrderInvoice;
-use App\Modules\Invoices\Models\Invoice;
 use App\Modules\Notifications\Support\Notify;
 use App\Modules\Notifications\Support\Recipients;
 use App\Modules\Notifications\WorkflowNotification;
-use App\Modules\Orders\Actions\ApplyInvoiceTotals;
 use App\Modules\Orders\Models\Order;
 use App\Modules\Orders\Models\OrderItem;
-use App\Modules\Pricing\Queries\PriceQuote;
 use App\Support\Exceptions\ApiException;
-use App\Support\Time\BusinessDate;
 use Illuminate\Support\Facades\DB;
 
 /**
  * Confirmation and administrative correction of the name/number list.
  *
  * confirm(): the Page Owner confirms the reviewed list. Errors block; warnings must be
- * acknowledged; the list must be fully priced. Then, in ONE transaction: the version is locked
- * (who/when, total), a previous confirmed version is superseded, the invoice is issued from the
- * page's price list (snapshot) and becomes the order's invoice total, and the bulk job is created
- * if everything else is ready.
+ * acknowledged. Then, in ONE transaction: the version is locked (who/when, total), a previous
+ * confirmed version is superseded, and the bulk job is created if everything else is ready.
+ * No invoice is issued here: the price depends on the printed quantity, so the invoice is
+ * issued at Printing Completed (RunPhysicalPrinting::complete, client decision 2026-11-25).
  *
  * correct(): exceptional post-confirmation change (garment_lists.unlock, reason required): a new
- * draft version is opened as a copy; the confirmed version and its invoice stay valid until the
- * corrected list is confirmed again (which voids and replaces the invoice).
+ * draft version is opened as a copy; the confirmed version stays valid until the corrected list
+ * is confirmed again.
  */
 final class ConfirmGarmentList
 {
     public function __construct(
         private readonly GarmentListReview $review,
-        private readonly PriceQuote $pricing,
-        private readonly IssueOrderInvoice $invoices,
-        private readonly ApplyInvoiceTotals $totals,
         private readonly CreateBulkJobIfEligible $bulk,
         private readonly SyncBulkWithGarmentList $bulkSync,
         private readonly Notify $notify,
         private readonly AuditLogger $audit,
     ) {}
 
-    public function confirm(User $actor, GarmentList $list, int $expectedVersion, bool $acknowledgeWarnings): Invoice
+    public function confirm(User $actor, GarmentList $list, int $expectedVersion, bool $acknowledgeWarnings): GarmentListVersion
     {
-        return DB::transaction(function () use ($actor, $list, $expectedVersion, $acknowledgeWarnings): Invoice {
+        return DB::transaction(function () use ($actor, $list, $expectedVersion, $acknowledgeWarnings): GarmentListVersion {
             $list = GarmentList::query()->lockForUpdate()->findOrFail($list->id);
             if ($list->version !== $expectedVersion) {
                 throw ApiException::conflict('version_conflict', 'The list was changed by someone else. Reload it and try again.');
@@ -84,28 +76,19 @@ final class ConfirmGarmentList
                 ]);
             }
 
-            $pricingDate = BusinessDate::today();
-            $quote = $this->pricing->quote($order->page_id, $order->branch_id, $item->product_type_id, $order->material_id, $pricingDate, $summary['price_groups']);
-
             GarmentListVersion::query()->where('garment_list_id', $list->id)->where('status', GarmentListVersionStatus::Locked->value)
                 ->update(['status' => GarmentListVersionStatus::Superseded->value, 'updated_at' => now()]);
             $version->forceFill(['status' => GarmentListVersionStatus::Locked, 'locked_by' => $actor->id, 'locked_at' => now(), 'total_quantity' => $summary['total_quantity']])->save();
             $list->forceFill(['version' => $list->version + 1])->save();
 
-            $invoice = $this->invoices->handle($actor, $order, $item->product_type_id, $quote['price_list']->id, $version->id, $pricingDate, $quote['lines']);
-            $this->totals->handle($actor, $order, $invoice->only(['subtotal_minor', 'discount_minor', 'tax_minor', 'delivery_fee_minor', 'total_minor']));
-
             $this->audit->record('garment_lists.confirmed', $version, ['after' => [
-                'version_no' => $version->version_no, 'total_quantity' => $summary['total_quantity'], 'warnings_acknowledged' => count($summary['warnings']), 'invoice_id' => $invoice->id,
+                'version_no' => $version->version_no, 'total_quantity' => $summary['total_quantity'], 'warnings_acknowledged' => count($summary['warnings']),
             ]], actor: $actor, branchId: $order->branch_id);
-
-            $this->notify->send(fn (Recipients $r) => $r->pageOwners($order->page_id)->merge($r->withPermission('payments.verify', $order->branch_id, $order->page_id)),
-                new WorkflowNotification('invoice.issued', 'Invoice issued', "Invoice {$invoice->invoice_no} was issued for job {$order->order_no} after the name/number list was confirmed.", "/orders/view/?id={$order->id}", ['order_id' => $order->id, 'invoice_id' => $invoice->id]), $actor);
 
             $this->bulkSync->listConfirmed($actor, $order->id, $version->id);
             $this->bulk->handle($order, $actor);
 
-            return $invoice;
+            return $version;
         });
     }
 

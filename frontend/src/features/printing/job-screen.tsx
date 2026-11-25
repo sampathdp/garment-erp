@@ -186,15 +186,37 @@ function PrintingForm({ job, kind, onDone }: { job: PrintJob; kind: "start" | "c
   const m = usePrintMutations(job.id);
   const { notify } = useToast();
   const [notes, setNotes] = useState("");
-  const [quantity, setQuantity] = useState(String(job.quantity));
-  const qty = Number(quantity);
-  const invalid = kind === "complete" && (!Number.isInteger(qty) || qty < 1);
+  // Printed quantity per price group of the list, pre-filled with the listed quantity.
+  const groups = job.printing?.price_groups ?? [];
+  const [quantities, setQuantities] = useState<string[]>(() => groups.map((g) => String(g.quantity)));
+  const parsed = quantities.map((q) => (/^\d{1,7}$/.test(q.trim()) ? Number(q) : NaN));
+  const total = parsed.reduce((sum, q) => sum + (Number.isNaN(q) ? 0 : q), 0);
+  const invalid = kind === "complete" && (groups.length === 0 || parsed.some(Number.isNaN) || total < 1);
   const mutation = kind === "start" ? m.start : m.complete;
 
   return (
     <div className="flex flex-col gap-4">
       <FormError message={errorMessage(mutation.error)} />
-      {kind === "complete" && <TextField label="Printed quantity *" type="number" min={1} inputMode="numeric" value={quantity} onChange={(e) => setQuantity(e.target.value)} hint={`Ordered quantity: ${job.quantity}`} />}
+      {kind === "complete" && (
+        <div className="flex flex-col gap-3">
+          <p className="text-xs text-muted">
+            Enter how many pieces were printed in each group. The invoice is priced on these quantities with the page price list.
+          </p>
+          {groups.length === 0 && <p className="text-xs text-danger">No confirmed name/number list is linked to this job.</p>}
+          {groups.map((g, i) => (
+            <TextField
+              key={g.label}
+              label={`${g.label} *`}
+              inputMode="numeric"
+              maxLength={7}
+              value={quantities[i] ?? ""}
+              hint={`Listed: ${g.quantity}`}
+              onChange={(e) => setQuantities((qs) => qs.map((q, j) => (j === i ? e.target.value : q)))}
+            />
+          ))}
+          <p className="text-xs font-semibold text-ink">Total printed: {total} pcs (ordered {job.quantity})</p>
+        </div>
+      )}
       <TextAreaField label="Notes" maxLength={1000} value={notes} onChange={(e) => setNotes(e.target.value)} />
       <div className="flex justify-end gap-2.5">
         <Button variant="secondary" onClick={onDone}>Cancel</Button>
@@ -204,7 +226,10 @@ function PrintingForm({ job, kind, onDone }: { job: PrintJob; kind: "start" | "c
           onClick={() =>
             kind === "start"
               ? m.start.mutate(notes, { onSuccess: () => (notify("Physical printing started", "success"), onDone()) })
-              : m.complete.mutate({ printed_quantity: qty, notes }, { onSuccess: () => (notify("Printing completed", "success"), onDone()) })
+              : m.complete.mutate(
+                  { groups: groups.map((g, i) => ({ label: g.label, quantity: parsed[i] ?? 0 })), notes },
+                  { onSuccess: () => (notify("Printing completed and invoice issued", "success"), onDone()) },
+                )
           }
         >
           {kind === "start" ? "Start physical printing" : "Mark printing completed"}

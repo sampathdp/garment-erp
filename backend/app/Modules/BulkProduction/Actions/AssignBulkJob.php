@@ -55,7 +55,7 @@ final class AssignBulkJob
                 throw ApiException::conflict('order_not_in_bulk_stage', "The job is {$order->status->label()}; bulk cannot be assigned now.");
             }
             if (! $order->meetsAdvanceRequirement()) {
-                throw ApiException::conflict('advance_short', 'The verified advance does not cover the required percentage of the invoice. Record the top-up first.');
+                throw ApiException::conflict('advance_short', 'The verified payments do not cover the agreed advance. Record the top-up first.');
             }
 
             $first = $job->mode === null;

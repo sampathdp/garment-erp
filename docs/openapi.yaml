@@ -488,16 +488,17 @@ paths:
       tags: [Orders]
       description: >-
         branch_id, page_id, customer_id OR customer{name, phone, whatsapp, other_phone?, address?, confirm_distinct?},
-        due_date (Y-m-d, after today), product_type_id, gross_quantity, unit_price_minor, delivery_fee_minor?, discount_minor?, submit?.
+        due_date (Y-m-d, after today), product_type_id, product_type_other? (required, max 100, when the category code is other),
+        gross_quantity, advance_amount_minor, delivery_fee_minor?, discount_minor?, submit?.
         Server-owned fields (status, order_no, totals, advance, is_urgent, urgent_status, payment_status, ...) are prohibited (422).
-        The job number, totals, 30% advance and urgency are calculated on the server.
+        The job number, totals, invoice price (at Printing Completed) and urgency are calculated on the server.
       responses: { "201": { description: Order detail } }
   /orders/{order}:
     get: { operationId: orders.show, tags: [Orders], responses: { "200": { description: "Order with advance, urgent_approval slots, history and abilities" } } }
     patch:
       operationId: orders.update
       tags: [Orders]
-      description: "version (required) + any of due_date, product_type_id, gross_quantity, unit_price_minor, delivery_fee_minor, discount_minor. Draft or pre-approval only (409 after approval); 409 version_conflict. A due-date change re-runs the seven-day rule."
+      description: "version (required) + any of due_date, product_type_id, product_type_other, gross_quantity, advance_amount_minor, delivery_fee_minor, discount_minor. product_type_other is required when the selected category code is other; it is cleared for other categories. Draft or pre-approval only (409 after approval); 409 version_conflict. A due-date change re-runs the seven-day rule."
       responses: { "200": { description: Order } }
   /orders/{order}/submit:
     post: { operationId: orders.submit, tags: [Orders], description: "{ version }. Draft only.", responses: { "200": { description: Order } } }

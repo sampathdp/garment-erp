@@ -9,38 +9,38 @@ use App\Modules\Orders\Models\OrderItem;
 use App\Support\Exceptions\ApiException;
 
 /**
- * Backend-only invoice totals (business invariant 1). The client sends the agreed unit price,
- * delivery fee and discount; every total and the required advance are calculated here:
+ * Intake figures (business invariant 1, client decision 2026-11-25). The price depends on the
+ * printed quantity, so nothing is priced at intake: the order form carries the gross quantity,
+ * delivery fee, discount and a fixed advance amount agreed with the customer. The totals stay 0
+ * ("price pending") until the invoice is issued at Printing Completed (ApplyInvoiceTotals).
  *
- *   subtotal = gross quantity × unit price
- *   total    = subtotal − discount + tax (0 until Q9) + delivery fee
- *   advance  = ceil(total × advance_percent / 100)
+ *   advance_required = the staff-entered advance, at least max(1, page minimum advance)
  */
 final class OrderPricing
 {
-    public static function apply(Order $order, OrderItem $item, int $quantity, int $unitPriceMinor, int $deliveryFeeMinor, int $discountMinor): void
+    public static function apply(Order $order, OrderItem $item, int $quantity, int $deliveryFeeMinor, int $discountMinor, int $advanceMinor, int $minimumAdvanceMinor): void
     {
-        $subtotal = $quantity * $unitPriceMinor;
-        if ($discountMinor > $subtotal) {
-            throw new ApiException(422, 'validation_failed', 'The discount cannot be larger than the subtotal.', ['discount_minor' => ['The discount cannot be larger than the subtotal.']]);
+        $minimum = max(1, $minimumAdvanceMinor);
+        if ($advanceMinor < $minimum) {
+            $message = $minimum > 1 ? 'The advance must be at least the page minimum.' : 'Enter the advance amount.';
+            throw new ApiException(422, 'validation_failed', $message, ['advance_amount_minor' => [$message]]);
         }
 
         $item->forceFill([
             'quantity' => $quantity,
-            'unit_price_minor' => $unitPriceMinor,
+            'unit_price_minor' => 0,
             'options_unit_minor' => 0,
-            'line_total_minor' => $subtotal,
+            'line_total_minor' => 0,
         ]);
 
-        $total = $subtotal - $discountMinor + 0 + $deliveryFeeMinor;
         $order->forceFill([
             'total_quantity' => $quantity,
-            'subtotal_minor' => $subtotal,
+            'subtotal_minor' => 0,
             'discount_minor' => $discountMinor,
             'tax_minor' => 0,
             'delivery_fee_minor' => $deliveryFeeMinor,
-            'total_minor' => $total,
-            'advance_required_minor' => AdvanceRule::requiredMinor($total, $order->advance_percent),
+            'total_minor' => 0,
+            'advance_required_minor' => $advanceMinor,
         ]);
     }
 }

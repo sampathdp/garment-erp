@@ -28,7 +28,7 @@ class Page extends Model
     protected $fillable = [
         'organization_id', 'code', 'name', 'platform', 'external_url',
         'contact_email', 'contact_phone_e164', 'address',
-        'currency', 'default_advance_percent', 'default_delivery_fee_minor',
+        'currency', 'default_advance_percent', 'default_delivery_fee_minor', 'min_advance_minor',
         'invoice_prefix', 'invoice_header_name', 'invoice_address', 'invoice_phone_e164', 'logo_document_id', 'is_active',
     ];
 
@@ -44,6 +44,7 @@ class Page extends Model
             'platform' => PagePlatform::class,
             'default_advance_percent' => 'integer',
             'default_delivery_fee_minor' => 'integer',
+            'min_advance_minor' => 'integer',
         ];
     }
 

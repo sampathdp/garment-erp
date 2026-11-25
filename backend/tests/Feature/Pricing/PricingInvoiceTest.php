@@ -9,17 +9,36 @@ use App\Modules\Notifications\WorkflowNotification;
 use App\Modules\Pricing\Models\PriceListItem;
 use App\Modules\Pricing\Models\PriceListItemCondition;
 use Illuminate\Support\Facades\Notification;
+use Tests\TestCase;
 
 beforeEach(function () {
-    designWorld($this);
+    bulkWorld($this);
     $this->order = approvedOrder($this);
 });
 
-it('prices each attribute group from the page price list and issues an invoice snapshot', function () {
-    fillList($this, $this->order); // 6 short adult (1,000) + 4 long kids (950)
-    $invoiceId = confirmList($this, $this->order)->assertOk()->json('data.invoice_id');
+/** The order of a print job, completed with the given printed quantities (null = as listed). */
+function invoiceAfterPrinting(TestCase $test, ?array $groups = null, array $overrides = []): array
+{
+    $job = printingInProgress($test, $overrides);
+    ($groups === null ? completePrinting($test, $job) : completePrintingByGroup($test, $job, $groups))->assertOk();
+    $invoice = Invoice::query()->where('order_id', $job->order_id)->sole();
 
-    $this->signedInAs($this->owner)->getJson("/api/v1/invoices/{$invoiceId}")->assertOk()
+    return [$job, $invoice];
+}
+
+it('issues no invoice when the list is confirmed: the price is pending until printing', function () {
+    fillList($this, $this->order);
+    confirmList($this, $this->order)->assertOk()->assertJsonMissingPath('data.invoice_id');
+
+    expect(Invoice::query()->count())->toBe(0);
+    $this->signedInAs($this->owner)->getJson("/api/v1/orders/{$this->order->id}")
+        ->assertJsonPath('data.pricing.total_minor', 0)->assertJsonPath('data.pricing.price_pending', true);
+});
+
+it('prices each attribute group at Printing Completed and issues an invoice snapshot', function () {
+    [$job, $invoice] = invoiceAfterPrinting($this); // 6 short adult (1,000) + 4 long kids (950), printed as listed
+
+    $this->signedInAs($this->owner)->getJson("/api/v1/invoices/{$invoice->id}")->assertOk()
         ->assertJsonPath('data.invoice_no', $this->pageA->invoice_prefix.'-2026-000001')
         ->assertJsonPath('data.status', 'issued')
         ->assertJsonPath('data.lines.0.quantity', 6)->assertJsonPath('data.lines.0.unit_price_minor', 100000)
@@ -27,28 +46,51 @@ it('prices each attribute group from the page price list and issues an invoice s
         ->assertJsonPath('data.subtotal_minor', 980000)
         ->assertJsonPath('data.tax_minor', 0)
         ->assertJsonPath('data.total_minor', 980000)
-        ->assertJsonPath('data.payments.advance_required_minor', 294000)  // ceil(980,000 × 30%)
+        ->assertJsonPath('data.payments.advance_required_minor', 300000) // the fixed advance, unchanged
         ->assertJsonPath('data.payments.verified_paid_minor', 300000)
         ->assertJsonPath('data.payments.balance_minor', 680000)
         ->assertJsonPath('data.pricing_date', '2026-11-09');
 
-    $this->signedInAs($this->owner)->getJson("/api/v1/orders/{$this->order->id}")->assertJsonPath('data.pricing.total_minor', 980000);
+    $this->signedInAs($this->owner)->getJson("/api/v1/orders/{$job->order_id}")
+        ->assertJsonPath('data.pricing.total_minor', 980000)->assertJsonPath('data.pricing.price_pending', false);
 });
 
-it('prices another page with its own price list and its own invoice numbering', function () {
-    priceList($this, $this->pageB, ['short|adult' => 150000, 'long|adult' => 150000, 'short|kids' => 150000, 'long|kids' => 150000]);
-    $orderB = createOrder($this, ['page_id' => $this->pageB->id], $this->ownerB);
-    verifyPayment($this, recordPayment($this, $orderB, 300000, $this->ownerB), $this->secondB);
+it('prices the printed quantity per group, with the tier from the printed total', function () {
+    $tierRule = PriceListItem::query()->create(['price_list_id' => $this->priceList->id, 'product_type_id' => $this->jersey->id, 'min_qty' => 12, 'unit_price_minor' => 90000, 'label' => 'short adult 12+']);
+    PriceListItemCondition::query()->create(['price_list_item_id' => $tierRule->id, 'field_key' => 'sleeve_type', 'option_code' => 'short']);
+    PriceListItemCondition::query()->create(['price_list_item_id' => $tierRule->id, 'field_key' => 'age_group', 'option_code' => 'adult']);
 
-    $list = garmentList($this, $orderB, $this->ownerB);
-    $this->signedInAs($this->ownerB)->postJson("/api/v1/garment-lists/{$list['id']}/rows", ['version' => $list['version'], 'rows' => jerseyRows($this)])->assertOk();
-    $list = garmentList($this, $orderB, $this->ownerB);
-    $invoiceId = $this->signedInAs($this->ownerB)->postJson("/api/v1/garment-lists/{$list['id']}/confirm", ['version' => $list['version'], 'acknowledge_warnings' => true])->assertOk()->json('data.invoice_id');
+    // 9 short adult + 4 long kids printed (13 in total → the 12+ tier for short adult).
+    [$job, $invoice] = invoiceAfterPrinting($this, ['Jersey — Short sleeve, Adult' => 9, 'Jersey — Long sleeve, Kids' => 4]);
 
-    $this->signedInAs($this->ownerB)->getJson("/api/v1/invoices/{$invoiceId}")->assertOk()
-        ->assertJsonPath('data.invoice_no', $this->pageB->invoice_prefix.'-2026-000001')
-        ->assertJsonPath('data.total_minor', 1500000);
-    $this->signedInAs($this->owner)->getJson("/api/v1/invoices/{$invoiceId}")->assertNotFound();
+    $lines = InvoiceItem::query()->where('invoice_id', $invoice->id)->orderBy('sort_order')->get(['quantity', 'unit_price_minor'])->toArray();
+    expect($lines)->toBe([['quantity' => 9, 'unit_price_minor' => 90000], ['quantity' => 4, 'unit_price_minor' => 95000]])
+        ->and($invoice->total_minor)->toBe(1190000)
+        ->and($job->fresh()->printed_quantity)->toBe(13);
+});
+
+it('needs every group, or a total equal to the list, to complete printing', function () {
+    $job = printingInProgress($this);
+
+    completePrinting($this, $job, 9)->assertStatus(422)->assertJsonValidationErrors('groups');
+    completePrintingByGroup($this, $job, ['Jersey — Short sleeve, Adult' => 6])->assertStatus(422)->assertJsonValidationErrors('groups');
+    completePrintingByGroup($this, $job, ['Jersey — Short sleeve, Adult' => 0, 'Jersey — Long sleeve, Kids' => 0])->assertStatus(422);
+    expect(Invoice::query()->count())->toBe(0)->and($job->fresh()->status->value)->toBe('physical_printing');
+});
+
+it('shows the list groups on the print job while printing is in progress', function () {
+    $job = printingInProgress($this);
+
+    expect(printJob($this, $job)['printing']['price_groups'])->toBe([
+        ['label' => 'Jersey — Short sleeve, Adult', 'quantity' => 6],
+        ['label' => 'Jersey — Long sleeve, Kids', 'quantity' => 4],
+    ]);
+});
+
+it('keeps invoices inside their page', function () {
+    [, $invoice] = invoiceAfterPrinting($this);
+
+    $this->signedInAs($this->ownerB)->getJson("/api/v1/invoices/{$invoice->id}")->assertNotFound();
 });
 
 it('applies page, material, branch and quantity-tier rules, most specific first', function () {
@@ -71,19 +113,19 @@ it('applies page, material, branch and quantity-tier rules, most specific first'
     expect(collect(garmentList($this, $this->order)['pricing_preview']['lines'])->pluck('unit_price_minor')->all())->toBe([90000, 99000]);
 });
 
-it('refuses to confirm when a garment group has no price', function () {
+it('refuses to complete printing when a printed group has no price', function () {
     PriceListItem::query()->where('label', 'long|kids')->delete();
-    fillList($this, $this->order);
+    $job = printingInProgress($this); // the list can still be confirmed: nothing is priced there
 
-    confirmList($this, $this->order)->assertStatus(409)->assertJsonPath('code', 'pricing_missing')
+    completePrinting($this, $job)->assertStatus(409)->assertJsonPath('code', 'pricing_missing')
         ->assertJsonFragment(['No price for Jersey — Long sleeve, Kids.']);
     expect(Invoice::query()->count())->toBe(0)
-        ->and(garmentList($this, $this->order)['current_version']['status'])->toBe('draft'); // nothing locked
+        ->and($job->fresh()->status->value)->toBe('physical_printing'); // nothing completed
 });
 
 it('never changes an issued invoice when prices change, and freezes the used price list', function () {
-    fillList($this, $this->order);
-    $invoiceId = confirmList($this, $this->order)->assertOk()->json('data.invoice_id');
+    [, $invoice] = invoiceAfterPrinting($this);
+    $invoiceId = $invoice->id;
     $rule = PriceListItem::query()->where('label', 'short|adult')->sole();
 
     // The used list is frozen.
@@ -115,9 +157,8 @@ it('gives discounts only to authorised users and applies tax only when configure
     $this->signedInAs($noDiscount)->postJson('/api/v1/orders', orderPayload($this, ['discount_minor' => 10000]))->assertStatus(422)->assertJsonValidationErrors('discount_minor');
 
     config(['invoices.tax_percent' => 18]);
-    $order = approvedOrder($this, ['discount_minor' => 80000, 'customer' => ['name' => 'Discounted', 'phone' => '0779990000', 'whatsapp' => '0779990000']]);
-    fillList($this, $order);
-    $invoiceId = confirmList($this, $order)->assertOk()->json('data.invoice_id');
+    [, $invoice] = invoiceAfterPrinting($this, overrides: ['discount_minor' => 80000, 'customer' => ['name' => 'Discounted', 'phone' => '0779990000', 'whatsapp' => '0779990000']]);
+    $invoiceId = $invoice->id;
 
     // (980,000 − 80,000) × 18% = 162,000 tax
     $this->signedInAs($this->owner)->getJson("/api/v1/invoices/{$invoiceId}")
@@ -125,21 +166,15 @@ it('gives discounts only to authorised users and applies tax only when configure
         ->assertJsonPath('data.tax_minor', 162000)->assertJsonPath('data.total_minor', 1062000);
 });
 
-it('recalculates the advance from the invoice and blocks production when it falls below 30%', function () {
+it('keeps the agreed advance after the invoice and lets the balance follow it', function () {
     Notification::fake();
-    // Paid exactly 30% of the 10,000 estimate; the invoice comes to 12,000 (all long adult).
-    $rows = array_map(fn (array $r) => [...$r, 'values' => ['sleeve_type' => 'long', 'age_group' => 'adult'], 'size_id' => $this->sizes['M']->id], jerseyRows($this));
-    fillList($this, $this->order, $rows);
-    confirmList($this, $this->order)->assertOk();
+    [$job] = invoiceAfterPrinting($this);
 
-    $order = $this->order->fresh();
-    expect($order->total_minor)->toBe(1200000)
-        ->and($order->advance_required_minor)->toBe(360000)
-        ->and($order->advanceShortfallMinor())->toBe(60000)
-        ->and($order->isProductionEligible())->toBeFalse();
-    Notification::assertSentTo($this->owner, WorkflowNotification::class, fn (WorkflowNotification $n) => $n->event === 'advance.below_minimum');
-    Notification::assertSentTo($this->ops, WorkflowNotification::class, fn (WorkflowNotification $n) => $n->event === 'advance.below_minimum'); // released job: operations told
-
-    verifyPayment($this, recordPayment($this, $order, 60000));
-    expect($order->fresh()->isProductionEligible())->toBeTrue();
+    $order = $job->order()->firstOrFail();
+    expect($order->total_minor)->toBe(980000)
+        ->and($order->advance_required_minor)->toBe(300000)
+        ->and($order->isProductionEligible())->toBeTrue()
+        ->and($order->total_minor - $order->verified_paid_minor)->toBe(680000);
+    Notification::assertSentTo($this->owner, WorkflowNotification::class, fn (WorkflowNotification $n) => $n->event === 'invoice.issued');
+    Notification::assertNotSentTo($this->owner, WorkflowNotification::class, fn (WorkflowNotification $n) => $n->event === 'advance.below_minimum');
 });

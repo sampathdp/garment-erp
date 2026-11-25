@@ -71,7 +71,7 @@ describe('direct status changes', function () {
 
     it('detects concurrent edits with the version', function () {
         $this->signedInAs($this->owner)->patchJson("/api/v1/orders/{$this->order->id}", ['gross_quantity' => 20, 'version' => $this->order->version])
-            ->assertOk()->assertJsonPath('data.pricing.total_minor', 2000000)->assertJsonPath('data.advance.required_minor', 600000);
+            ->assertOk()->assertJsonPath('data.gross_quantity', 20)->assertJsonPath('data.pricing.price_pending', true);
         $this->signedInAs($this->owner)->patchJson("/api/v1/orders/{$this->order->id}", ['gross_quantity' => 30, 'version' => $this->order->version])
             ->assertStatus(409)->assertJsonPath('code', 'version_conflict');
     });
@@ -80,11 +80,11 @@ describe('direct status changes', function () {
         $this->signedInAs($this->second)->patchJson("/api/v1/orders/{$this->order->id}", ['gross_quantity' => 5, 'version' => $this->order->version])->assertForbidden();
     });
 
-    it('re-checks the advance when the price changes before approval', function () {
-        verifyPayment($this, recordPayment($this, $this->order, 150000)); // 15% of 10,000
+    it('re-checks the advance when the advance amount changes before approval', function () {
+        verifyPayment($this, recordPayment($this, $this->order, 150000)); // half of the LKR 3,000 advance
         $order = $this->order->fresh();
-        $this->signedInAs($this->owner)->patchJson("/api/v1/orders/{$order->id}", ['unit_price_minor' => 50000, 'version' => $order->version])
-            ->assertOk()->assertJsonPath('data.status.value', 'confirmed'); // now 30% of 5,000
+        $this->signedInAs($this->owner)->patchJson("/api/v1/orders/{$order->id}", ['advance_amount_minor' => 150000, 'version' => $order->version])
+            ->assertOk()->assertJsonPath('data.status.value', 'confirmed'); // advance lowered to LKR 1,500
         expect(Order::query()->find($order->id)->isProductionEligible())->toBeTrue();
     });
 });

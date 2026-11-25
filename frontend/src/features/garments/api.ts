@@ -96,7 +96,7 @@ export function useGarmentMutations(orderId: number) {
     }),
     confirm: useMutation({
       mutationFn: ({ list, acknowledge }: { list: GarmentList; acknowledge: boolean }) =>
-        api.post<{ data: GarmentList & { invoice_id: number; invoice_no: string } }>(`garment-lists/${list.id}/confirm`, { version: list.version, acknowledge_warnings: acknowledge }).then((r) => r.data),
+        api.post<{ data: GarmentList }>(`garment-lists/${list.id}/confirm`, { version: list.version, acknowledge_warnings: acknowledge }).then((r) => r.data),
       onSuccess: (data) => {
         set(data);
         void queryClient.invalidateQueries({ queryKey: ["orders"] });

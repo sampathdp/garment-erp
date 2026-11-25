@@ -148,11 +148,10 @@ it('lets exactly one of several simultaneous requests win at every workflow step
             ->and(UrgentApprovalDecision::query()->whereHas('urgentApproval', fn ($q) => $q->where('order_id', $urgentOrder->id))->count())->toBe(2)
             ->and(Order::query()->findOrFail($urgentOrder->id)->urgent_status)->toBe(UrgentStatus::Approved);
 
-        // List confirmation (issues the invoice): three confirmations of the same version → one invoice.
+        // List confirmation: three confirmations of the same version → one winner, no invoice (priced after printing).
         $r = race('confirm-list', array_fill(0, 3, ['user' => $this->owner->id, 'list' => $list['id'], 'version' => $list['version']]));
         expect(winners($r))->toBe(1)
-            ->and(Invoice::query()->where('order_id', $listOrder->id)->count())->toBe(1)
-            ->and(Invoice::query()->pluck('invoice_no')->duplicates()->all())->toBe([]);
+            ->and(Invoice::query()->where('order_id', $listOrder->id)->count())->toBe(0);
 
         // Bulk job creation triggered from several places at once → one job per order.
         $r = race('create-bulk', array_fill(0, 4, ['order' => $bulkOrderId]));

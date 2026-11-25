@@ -87,7 +87,7 @@ final class EvaluateOrderRelease
         $verified = $summary['verified_minor'];
         $status = match (true) {
             $order->total_minor > 0 && $verified >= $order->total_minor => OrderPaymentStatus::Paid,
-            $order->total_minor > 0 && $verified >= $order->advance_required_minor => OrderPaymentStatus::AdvancePaid,
+            $order->advance_required_minor > 0 && $verified >= $order->advance_required_minor => OrderPaymentStatus::AdvancePaid,
             $verified > 0 || $summary['pending_count'] > 0 => OrderPaymentStatus::AdvancePending,
             default => OrderPaymentStatus::Unpaid,
         };

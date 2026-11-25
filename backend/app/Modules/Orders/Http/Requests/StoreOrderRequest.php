@@ -15,7 +15,7 @@ use Illuminate\Validation\Rule;
 
 /**
  * New order form: CUSTOMER INFORMATION (existing customer_id, or customer.*) and
- * JOB SPECIFICATIONS, plus the agreed price used for the 30% advance.
+ * JOB SPECIFICATIONS, plus the fixed advance amount (the price is set after printing).
  */
 final class StoreOrderRequest extends FormRequest
 {
@@ -43,7 +43,11 @@ final class StoreOrderRequest extends FormRequest
                     $fail('Select a page assigned to you.');
                 }
             }],
-            ...OrderRules::specification(partial: false, user: $user),
+            ...OrderRules::specification(
+                partial: false,
+                user: $user,
+                productTypeId: is_numeric($this->input('product_type_id')) ? (int) $this->input('product_type_id') : null,
+            ),
             'customer_id' => ['nullable', 'integer'],
             'customer' => $creatingCustomer ? ['required', 'array'] : ['prohibited'],
             ...($creatingCustomer ? CustomerRules::rules('customer.') : []),
@@ -71,8 +75,9 @@ final class StoreOrderRequest extends FormRequest
             'page_id' => (int) $v['page_id'],
             'due_date' => (string) $v['due_date'],
             'product_type_id' => (int) $v['product_type_id'],
+            'product_type_other' => isset($v['product_type_other']) ? trim((string) $v['product_type_other']) : null,
             'gross_quantity' => (int) $v['gross_quantity'],
-            'unit_price_minor' => (int) $v['unit_price_minor'],
+            'advance_amount_minor' => (int) $v['advance_amount_minor'],
             'delivery_fee_minor' => isset($v['delivery_fee_minor']) ? (int) $v['delivery_fee_minor'] : null,
             'discount_minor' => (int) ($v['discount_minor'] ?? 0),
             'customer_id' => isset($v['customer_id']) ? (int) $v['customer_id'] : null,

@@ -52,7 +52,8 @@ final class OrderResource extends JsonResource
                 'city' => $this->customer->city,
                 'district' => $this->customer->district,
             ]),
-            'product_category' => $item?->relationLoaded('productType') ? ['id' => $item->productType->id, 'name' => $item->productType->name] : null,
+            'product_category' => $item?->relationLoaded('productType') ? ['id' => $item->productType->id, 'code' => $item->productType->code, 'name' => $item->productType->name] : null,
+            'product_type_other' => $item?->product_type_other,
             'gross_quantity' => $this->total_quantity,
             'due_date' => $this->required_delivery_date->format('Y-m-d'),
             'currency' => $this->currency,
@@ -63,6 +64,8 @@ final class OrderResource extends JsonResource
                 'tax_minor' => $this->tax_minor,
                 'delivery_fee_minor' => $this->delivery_fee_minor,
                 'total_minor' => $this->total_minor,
+                // Priced after printing: the totals are 0 until the invoice is issued at Printing Completed.
+                'price_pending' => $this->subtotal_minor === 0,
             ],
             'advance' => [
                 'percent' => $this->advance_percent,
