@@ -68,7 +68,7 @@ export function RecordPaymentForm({ orderId, currency, suggestedMinor, onDone }:
           bank_name: evidenceMethod ? v.bank_name || null : null,
           reference_no: v.reference_no,
           payment_date: v.payment_date,
-          payment_time: evidenceMethod ? v.payment_time || null : null,
+          payment_time: v.payment_time || null,
           notes: v.notes,
           evidence: v.evidence,
         },
@@ -138,7 +138,7 @@ export function RecordPaymentForm({ orderId, currency, suggestedMinor, onDone }:
           {...form.register("reference_no")}
         />
         <TextField label="Payment date *" type="date" max={today()} error={errors.payment_date?.message} {...form.register("payment_date")} />
-        {EVIDENCE_REQUIRED_METHODS.has(method) && <TextField label="Payment time *" type="time" error={errors.payment_time?.message} {...form.register("payment_time")} />}
+        <TextField label={EVIDENCE_REQUIRED_METHODS.has(method) ? "Payment time *" : "Payment time"} type="time" error={errors.payment_time?.message} {...form.register("payment_time")} />
       </div>
       <div className="flex flex-col gap-2 rounded-xl border border-dashed border-line bg-subtle/30 p-4">
         <label htmlFor="payment-evidence" className="text-xs font-semibold uppercase tracking-wider text-muted">
