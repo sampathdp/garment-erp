@@ -136,19 +136,16 @@ export function OrderForm() {
   // Default the page to the signed-in user's own page: the page they own first, else their first
   // assigned page. Users with all-page access get a default only when there is a single active page.
   const { user } = useAuth();
-  // Company / Shop is hidden once a default page is picked; shown only when the user must choose.
-  const [pageAutoSelected, setPageAutoSelected] = useState(false);
+  const pageId = useWatch({ control: form.control, name: "page_id" });
+  const defaultPageChoice = pages.data && user ? defaultPageId(user.scope.pages, pages.data.data) : null;
+  const pageWasManuallyChanged = Boolean(formState.dirtyFields.page_id);
+
   useEffect(() => {
-    if (form.getValues("page_id") || !pages.data || !user) return;
-    const choice = defaultPageId(user.scope.pages, pages.data.data);
-    if (choice !== null) {
-      setValue("page_id", String(choice), { shouldValidate: false });
-      setPageAutoSelected(true);
-    }
-  }, [pages.data, user, setValue, form]);
+    if (pageId || pageWasManuallyChanged || defaultPageChoice === null) return;
+    setValue("page_id", String(defaultPageChoice), { shouldValidate: false });
+  }, [pageId, pageWasManuallyChanged, defaultPageChoice, setValue]);
 
   // Real-time watchers for dynamic summary & calculations
-  const pageId = useWatch({ control: form.control, name: "page_id" });
   const branchId = useWatch({ control: form.control, name: "branch_id" });
   const productTypeId = useWatch({ control: form.control, name: "product_type_id" });
   const productTypeIsOther = useWatch({ control: form.control, name: "product_type_is_other" });
@@ -160,6 +157,7 @@ export function OrderForm() {
   const customerPhone = useWatch({ control: form.control, name: "customer_phone" });
   const paymentEvidence = useWatch({ control: form.control, name: "payment_evidence" });
   const paymentMethod = useWatch({ control: form.control, name: "payment_method" });
+  const pageAutoSelected = defaultPageChoice !== null && pageId === String(defaultPageChoice) && !pageWasManuallyChanged;
 
   const days = daysUntil(dueDate);
   const isUrgent = days !== null && days < URGENT_DAYS && days >= 1;

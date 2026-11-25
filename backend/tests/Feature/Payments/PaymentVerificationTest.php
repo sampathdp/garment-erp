@@ -18,7 +18,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
-/* Total LKR 10,000.00 → required advance LKR 3,000.00 (300000 minor). */
+/* Required advance: LKR 3,000.00 (300000 minor). */
 beforeEach(function () {
     intakeWorld($this);
     Storage::fake('private');
@@ -57,7 +57,21 @@ it('validates payments: evidence and reference for bank transfers, no future dat
     $post(['amount_minor' => 1000, 'method' => 'cash', 'payment_date' => '2026-11-09'])->assertCreated();
 });
 
-it('keeps a verified payment below 30% out of production and shows the missing amount', function () {
+it('caps pre-invoice payments at the required advance, including payments waiting for verification', function () {
+    Notification::fake();
+    $post = fn (int $amount) => $this->signedInAs($this->owner)->postJson("/api/v1/orders/{$this->order->id}/payments", [
+        'amount_minor' => $amount,
+        'method' => 'cash',
+        'payment_date' => '2026-11-09',
+    ]);
+
+    $post(300001)->assertStatus(422)->assertJsonValidationErrors('amount_minor');
+    recordPayment($this, $this->order, 200000);
+    $post(100001)->assertStatus(422)->assertJsonValidationErrors('amount_minor');
+    $post(100000)->assertCreated();
+});
+
+it('keeps a verified payment below the required advance out of production and shows the missing amount', function () {
     Notification::fake();
     verifyPayment($this, recordPayment($this, $this->order, 299999));
 
@@ -75,7 +89,7 @@ it('keeps a verified payment below 30% out of production and shows the missing a
     Notification::assertNotSentTo($this->ops, WorkflowNotification::class);
 });
 
-it('approves the order when the verified advance is exactly 30%', function () {
+it('approves the order when the verified advance is met', function () {
     verifyPayment($this, recordPayment($this, $this->order, 300000));
 
     $order = $this->order->fresh();
