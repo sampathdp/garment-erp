@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Modules\BulkProduction\Actions\CreateBulkJobIfEligible;
 use App\Modules\BulkProduction\Models\BulkJob;
 use App\Modules\Identity\Support\Roles;
+use App\Modules\Invoices\Models\Invoice;
 use App\Modules\Notifications\WorkflowNotification;
 use Illuminate\Support\Facades\Notification;
 
@@ -43,7 +44,7 @@ it('creates the bulk job without an invoice: the price is set after printing', f
 
     $job = BulkJob::query()->sole();
     expect($job->getAttribute('invoice_id'))->toBeNull()
-        ->and(\App\Modules\Invoices\Models\Invoice::query()->count())->toBe(0);
+        ->and(Invoice::query()->count())->toBe(0);
     $checklist = collect($this->signedInAs($this->owner)->getJson("/api/v1/orders/{$this->order->id}")->json('data.bulk.checklist'))->pluck('met', 'key');
     expect($checklist->keys()->all())->toBe(['final_design', 'list_locked', 'advance', 'stage']);
 });
