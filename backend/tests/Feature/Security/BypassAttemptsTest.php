@@ -188,10 +188,10 @@ describe('financial information', function () {
         $this->signedInAs($sales)->postJson('/api/v1/orders', orderPayload($this, ['discount_minor' => 50000]))->assertStatus(422)->assertJsonValidationErrors('discount_minor');
     });
 
-    it('rejects payments that are zero, negative or above the unpaid balance, and verification without permission', function () {
+    it('rejects invalid payment amounts and verification without permission', function () {
         intakeWorld($this);
         $order = createOrder($this);
-        foreach ([0, -100, 1000001] as $amount) {
+        foreach ([0, -100, 100000000000001] as $amount) {
             $this->signedInAs($this->owner)->post("/api/v1/orders/{$order->id}/payments", [
                 'amount_minor' => $amount, 'method' => 'bank_transfer', 'reference_no' => 'X1', 'payment_date' => '2026-11-09', 'evidence' => slip(),
             ], ['Accept' => 'application/json'])->assertStatus(422);

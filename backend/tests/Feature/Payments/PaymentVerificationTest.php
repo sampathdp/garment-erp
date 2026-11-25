@@ -43,32 +43,18 @@ it('records an advance payment with evidence, pending verification', function ()
     Notification::assertNotSentTo($this->secondB, WorkflowNotification::class);
 });
 
-it('validates payments: evidence and reference for bank transfers, no future dates, no overpayment', function () {
+it('validates payment details and amount bounds', function () {
     $post = fn (array $data) => $this->signedInAs($this->owner)->post("/api/v1/orders/{$this->order->id}/payments", $data, ['Accept' => 'application/json']);
 
     $post(['amount_minor' => 300000, 'method' => 'bank_transfer', 'payment_date' => '2026-11-10'])
         ->assertStatus(422)->assertJsonValidationErrors(['evidence', 'reference_no', 'payment_date']);
     $post(['amount_minor' => 0, 'method' => 'cod', 'payment_date' => '2026-11-09'])->assertStatus(422)->assertJsonValidationErrors(['amount_minor', 'method']);
-    $post(['amount_minor' => 1000001, 'method' => 'cash', 'payment_date' => '2026-11-09'])->assertStatus(422)->assertJsonValidationErrors('amount_minor');
+    $post(['amount_minor' => 100000000000001, 'method' => 'cash', 'payment_date' => '2026-11-09'])->assertStatus(422)->assertJsonValidationErrors('amount_minor');
     $post(['amount_minor' => 1000, 'method' => 'cash', 'payment_date' => '2026-11-09', 'evidence' => UploadedFile::fake()->createWithContent('x.png', '<?php echo 1;')])
         ->assertStatus(422)->assertJsonValidationErrors('evidence');
 
     // Cash needs no slip.
     $post(['amount_minor' => 1000, 'method' => 'cash', 'payment_date' => '2026-11-09'])->assertCreated();
-});
-
-it('caps pre-invoice payments at the required advance, including payments waiting for verification', function () {
-    Notification::fake();
-    $post = fn (int $amount) => $this->signedInAs($this->owner)->postJson("/api/v1/orders/{$this->order->id}/payments", [
-        'amount_minor' => $amount,
-        'method' => 'cash',
-        'payment_date' => '2026-11-09',
-    ]);
-
-    $post(300001)->assertStatus(422)->assertJsonValidationErrors('amount_minor');
-    recordPayment($this, $this->order, 200000);
-    $post(100001)->assertStatus(422)->assertJsonValidationErrors('amount_minor');
-    $post(100000)->assertCreated();
 });
 
 it('keeps a verified payment below the required advance out of production and shows the missing amount', function () {

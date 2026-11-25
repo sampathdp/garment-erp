@@ -55,6 +55,20 @@ it('prices each attribute group at Printing Completed and issues an invoice snap
         ->assertJsonPath('data.pricing.total_minor', 980000)->assertJsonPath('data.pricing.price_pending', false);
 });
 
+it('limits payments to the invoiced balance, including payments waiting for verification', function () {
+    [$job, $invoice] = invoiceAfterPrinting($this);
+    $post = fn (int $amount) => $this->signedInAs($this->owner)->postJson("/api/v1/orders/{$job->order_id}/payments", [
+        'amount_minor' => $amount,
+        'method' => 'cash',
+        'payment_date' => '2026-11-09',
+    ]);
+    $balance = $invoice->total_minor - 300000;
+
+    $post($balance + 1)->assertStatus(422)->assertJsonValidationErrors('amount_minor');
+    $post($balance)->assertCreated();
+    $post(1)->assertStatus(422)->assertJsonValidationErrors('amount_minor');
+});
+
 it('prices the printed quantity per group, with the tier from the printed total', function () {
     $tierRule = PriceListItem::query()->create(['price_list_id' => $this->priceList->id, 'product_type_id' => $this->jersey->id, 'min_qty' => 12, 'unit_price_minor' => 90000, 'label' => 'short adult 12+']);
     PriceListItemCondition::query()->create(['price_list_item_id' => $tierRule->id, 'field_key' => 'sleeve_type', 'option_code' => 'short']);

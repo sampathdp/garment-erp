@@ -55,14 +55,13 @@ final class RecordPayment
                     throw ApiException::conflict('invalid_state', 'Payments can be recorded after the order is submitted and while it is active.');
                 }
 
-                $paymentLimit = $order->subtotal_minor === 0
-                    ? $order->advance_required_minor
-                    : $order->total_minor;
-                $outstanding = $paymentLimit - $this->openAmount($order->id);
-                if ($input['amount_minor'] > $outstanding) {
-                    throw new ApiException(422, 'validation_failed', 'The amount is more than the unpaid balance.', [
-                        'amount_minor' => ['The amount is more than the unpaid balance including payments waiting for verification.'],
-                    ]);
+                if ($order->subtotal_minor > 0) {
+                    $outstanding = $order->total_minor - $this->openAmount($order->id);
+                    if ($input['amount_minor'] > $outstanding) {
+                        throw new ApiException(422, 'validation_failed', 'The amount is more than the unpaid balance.', [
+                            'amount_minor' => ['The amount is more than the unpaid balance including payments waiting for verification.'],
+                        ]);
+                    }
                 }
 
                 $document = $stored === null ? null : $this->documents->record($stored, DocumentCategory::PaymentSlip, $actor, $order->branch_id);
