@@ -60,6 +60,7 @@ export const orderFormSchema = z
     payment_bank: z.string().trim().max(80),
     payment_reference: z.string().trim().max(80),
     payment_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Select the payment date"),
+    payment_time: z.string().refine((v) => v === "" || /^([01]\d|2[0-3]):[0-5]\d$/.test(v), "Enter the time as HH:MM"),
     payment_notes: z.string().trim().max(500),
     payment_evidence: z
       .custom<File | null>((v) => v === null || v instanceof File)
@@ -98,6 +99,9 @@ export const orderFormSchema = z
       if (v.payment_bank === "") {
         ctx.addIssue({ code: "custom", path: ["payment_bank"], message: "Select the bank" });
       }
+      if (v.payment_time === "") {
+        ctx.addIssue({ code: "custom", path: ["payment_time"], message: "Enter the time of the payment shown on the slip" });
+      }
       if (v.payment_reference === "") {
         ctx.addIssue({ code: "custom", path: ["payment_reference"], message: "Enter the transaction or deposit reference" });
       }
@@ -135,6 +139,7 @@ export const emptyOrderForm: OrderFormValues = {
   payment_bank: "",
   payment_reference: "",
   payment_date: todayColombo(),
+  payment_time: "",
   payment_notes: "",
   payment_evidence: null,
 };

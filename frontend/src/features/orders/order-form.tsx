@@ -204,6 +204,7 @@ export function OrderForm() {
             formData.set("amount_minor", String(advMinor));
             formData.set("method", values.payment_method);
             formData.set("payment_date", values.payment_date);
+            if (values.payment_time) formData.set("payment_time", values.payment_time);
             if (values.payment_bank) formData.set("bank_name", values.payment_bank);
             if (values.payment_reference) formData.set("reference_no", values.payment_reference);
             if (values.payment_notes) formData.set("notes", values.payment_notes);
@@ -572,6 +573,12 @@ export function OrderForm() {
                   type="date"
                   error={errors.payment_date?.message}
                   {...register("payment_date")}
+                />
+                <TextField
+                  label={EVIDENCE_REQUIRED_METHODS.has(paymentMethod) ? "Payment time *" : "Payment time"}
+                  type="time"
+                  error={errors.payment_time?.message}
+                  {...register("payment_time")}
                 />
               </div>
 
