@@ -22,6 +22,7 @@ function pagePayload(array $overrides = []): array
         'code' => 'jrsy2', 'invoice_prefix' => 'jr2', 'name' => 'Jersey World', 'platform' => 'facebook',
         'invoice_header_name' => 'Jersey World', 'contact_email' => 'hello@example.com', 'contact_phone' => '0112345678',
         'address' => '1 Main Street, Colombo', 'default_advance_percent' => 40, 'default_delivery_fee_minor' => 35000,
+        'min_advance_minor' => 250000,
     ], $overrides);
 }
 
@@ -81,7 +82,12 @@ describe('pages', function () {
             ->assertJsonPath('data.code', 'JRSY2')
             ->assertJsonPath('data.invoice_prefix', 'JR2')
             ->assertJsonPath('data.contact_phone', '+94112345678')
-            ->assertJsonPath('data.pricing', ['currency' => 'LKR', 'default_advance_percent' => 40, 'default_delivery_fee_minor' => 35000])
+            ->assertJsonPath('data.pricing', [
+                'currency' => 'LKR',
+                'default_advance_percent' => 40,
+                'default_delivery_fee_minor' => 35000,
+                'min_advance_minor' => 250000,
+            ])
             ->assertJsonPath('data.is_active', true);
     });
 
