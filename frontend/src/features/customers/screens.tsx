@@ -17,7 +17,7 @@ import { useAuth } from "@/features/auth/auth-provider";
 import { OrdersTableFor } from "@/features/orders/customer-orders";
 import { useBranches, usePages } from "@/features/organizations/api";
 import { ApiError } from "@/lib/api-client";
-import { SRI_LANKA_DISTRICTS } from "@/lib/districts";
+import { SRI_LANKA_DISTRICTS, districtOfTown, townsFor } from "@/lib/districts";
 import { formatDateTime } from "@/lib/format";
 import { useDebounced } from "@/lib/use-debounced";
 import { type Customer, type CustomerFormInput, useCustomer, useCustomers, useDeleteCustomer, useSaveCustomer } from "./api";
@@ -126,15 +126,23 @@ function CustomerForm({ customer, onDone }: { customer: Customer | null; onDone:
           />
           <TextField
             label="Main Town *"
-            placeholder="Nearest main town / city"
+            placeholder="Type to search or enter a town"
             maxLength={80}
+            list="customer-form-towns"
+            autoComplete="off"
             value={v.city}
             error={localErrors.city || errors.city?.[0]}
             onChange={(e) => {
-              setV({ ...v, city: e.target.value });
-              if (localErrors.city) setLocalErrors({ ...localErrors, city: undefined });
+              const district = districtOfTown(e.target.value);
+              setV({ ...v, city: e.target.value, district: district ?? v.district });
+              if (localErrors.city || (district && localErrors.district)) setLocalErrors({ ...localErrors, city: undefined, district: district ? undefined : localErrors.district });
             }}
           />
+          <datalist id="customer-form-towns">
+            {townsFor(v.district).map((t) => (
+              <option key={t} value={t} />
+            ))}
+          </datalist>
           <div className="sm:col-span-2">
             <SelectField
               label="District *"

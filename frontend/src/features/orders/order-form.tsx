@@ -33,7 +33,7 @@ import { EVIDENCE_REQUIRED_METHODS, PAYMENT_METHODS } from "@/features/payments/
 import { ApiError, apiRequest } from "@/lib/api-client";
 import { SRI_LANKA_BANKS } from "@/lib/banks";
 import { cn } from "@/lib/cn";
-import { SRI_LANKA_DISTRICTS } from "@/lib/districts";
+import { SRI_LANKA_DISTRICTS, districtOfTown, townsFor } from "@/lib/districts";
 import { formatMoney, parseMoneyToMinor } from "@/lib/format";
 import { useDebounced } from "@/lib/use-debounced";
 import { useCreateOrder, useProductCategories } from "./api";
@@ -157,6 +157,7 @@ export function OrderForm() {
   const customerPhone = useWatch({ control: form.control, name: "customer_phone" });
   const paymentEvidence = useWatch({ control: form.control, name: "payment_evidence" });
   const paymentMethod = useWatch({ control: form.control, name: "payment_method" });
+  const customerDistrict = useWatch({ control: form.control, name: "customer_district" });
   const pageAutoSelected = defaultPageChoice !== null && pageId === String(defaultPageChoice) && !pageWasManuallyChanged;
 
   const days = daysUntil(dueDate);
@@ -460,11 +461,23 @@ export function OrderForm() {
                         />
                         <TextField
                           label="Main Town *"
-                          placeholder="Nearest main town / city"
+                          placeholder="Type to search or enter a town"
                           maxLength={80}
+                          list="order-form-towns"
+                          autoComplete="off"
                           error={errors.customer_city?.message}
-                          {...register("customer_city")}
+                          {...register("customer_city", {
+                            onChange: (e: { target: { value: string } }) => {
+                              const district = districtOfTown(e.target.value);
+                              if (district) setValue("customer_district", district, { shouldValidate: true });
+                            },
+                          })}
                         />
+                        <datalist id="order-form-towns">
+                          {townsFor(customerDistrict).map((t) => (
+                            <option key={t} value={t} />
+                          ))}
+                        </datalist>
                         <div className="sm:col-span-2">
                           <SelectField
                             label="District *"
