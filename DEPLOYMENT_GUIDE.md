@@ -70,7 +70,7 @@ The workflow uploads code only. After a deploy that adds migrations or permissio
 cd ~/garment-erp.codeplaystudios.com/backend
 php artisan down --retry=60          # optional, for migrations that change busy tables
 php artisan migrate --force
-php artisan db:seed --class=PermissionSeeder --force     # when new permissions were added
+php artisan db:seed --class=PermissionSeeder --force     # optional: new permissions also sync on the first web request after a deploy
 php artisan db:seed --class=CatalogSeeder --force        # when new reference data was added
 php artisan up
 php artisan app:security-check

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Identity;
 
+use App\Modules\Identity\Actions\SyncPermissionCatalogue;
 use App\Modules\Identity\Models\Role;
 use App\Modules\Identity\Models\User;
 use App\Modules\Identity\Policies\RolePolicy;
@@ -12,7 +13,9 @@ use App\Support\Modules\ModuleServiceProvider;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
+use Throwable;
 
 final class IdentityServiceProvider extends ModuleServiceProvider
 {
@@ -20,6 +23,18 @@ final class IdentityServiceProvider extends ModuleServiceProvider
     {
         Gate::policy(User::class, UserPolicy::class);
         Gate::policy(Role::class, RolePolicy::class);
+
+        // New permissions work right after an FTP deploy, without running PermissionSeeder by hand:
+        // the first web request after a catalogue change syncs it (a file check on every other request).
+        if (! $this->app->runningInConsole()) {
+            $this->app->booted(function (): void {
+                try {
+                    $this->app->make(SyncPermissionCatalogue::class)->ensureCurrent();
+                } catch (Throwable $e) {
+                    Log::warning('Permission catalogue sync failed; run php artisan db:seed --class=PermissionSeeder.', ['error' => $e::class, 'message' => mb_substr($e->getMessage(), 0, 300)]);
+                }
+            });
+        }
 
         // 5 attempts/min per email+IP, plus 20/min per IP against credential stuffing across many emails.
         // LoginLockout adds an exponential lockout per email+IP on top.
