@@ -42,6 +42,14 @@ it('delivers pending outbox notifications without cron and writes the heartbeat'
         ->and(Cache::get(HealthController::HEARTBEAT_KEY))->not->toBeNull();
 });
 
+it('never puts a time limit on a console process (the test suite died 60 s after a tick)', function () {
+    $before = ini_get('max_execution_time');
+
+    app(RequestScheduler::class)->tick();
+
+    expect(ini_get('max_execution_time'))->toBe($before);
+});
+
 it('drains the database queue in-process (no worker, no cron)', function () {
     $row = pendingOutboxRow($this->alice->id);
     Queue::connection('database')->push(new DeliverOutboxNotifications([$row->id]));

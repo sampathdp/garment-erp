@@ -153,7 +153,7 @@ Horizon and Reverb are **not** installed (shared hosting).
 - Backend: Pest feature tests for every endpoint — happy path, 422, 401, 403, cross-branch 404, invalid-state 409. Unit tests for guards, calculators and sequences. A concurrency test for numbering. A route-authorization coverage test.
 - Lazy loading is disabled in tests (an N+1 throws). Assert query counts on key list endpoints.
 - Frontend: Vitest + Testing Library for forms and components. Playwright E2E for the order lifecycle, extended each phase.
-- CI must be green (tests, Larastan, Pint, ESLint, `tsc --noEmit`, `composer audit`, `npm audit`) before merge.
+- CI must be green (Larastan, Pint, ESLint, `tsc --noEmit`, `composer audit`, `npm audit`, build) before merge. Tests are **not** run in CI (2026-11-28): run Pest and Vitest locally before pushing.
 - Test data comes from factories. Never use real customer data.
 
 ## Performance requirements

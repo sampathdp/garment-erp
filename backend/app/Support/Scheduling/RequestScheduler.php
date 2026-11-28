@@ -46,8 +46,12 @@ final class RequestScheduler
             return;
         }
 
-        @set_time_limit(60);
-        ignore_user_abort(true);
+        // Web requests only: in the console (artisan, the test suite) the limit would apply to the
+        // whole remaining process — the CI suite died 60 s after RequestSchedulerTest ran a tick.
+        if (! app()->runningInConsole()) {
+            @set_time_limit(60);
+            ignore_user_abort(true);
+        }
 
         $this->safely('queue', fn () => Artisan::call('queue:work', [
             'connection' => 'database',
