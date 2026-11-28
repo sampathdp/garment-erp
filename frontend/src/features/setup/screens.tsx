@@ -30,6 +30,7 @@ export function WorkflowSettingsScreen() {
     bulk: string;
     autoDesigner: boolean;
     autoBulk: boolean;
+    directToBulk: boolean;
     rounds: string;
   } | null>(null);
 
@@ -50,6 +51,7 @@ export function WorkflowSettingsScreen() {
               autoDesigner: Boolean(s.auto_assign_designer),
               autoBulk: Boolean(s.auto_assign_bulk_designer),
               rounds: String(s.max_correction_rounds),
+              directToBulk: s.design_direct_to_bulk,
             };
 
             const designerOptions = [
@@ -89,6 +91,20 @@ export function WorkflowSettingsScreen() {
                         <span className="text-xs font-medium text-ink">Auto-assign free designer</span>
                       </label>
                     </div>
+                    <label className="mb-4 flex items-start gap-2 rounded-lg border border-line bg-surface p-3 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        className="mt-0.5 h-4 w-4 rounded border-line text-brand focus:ring-brand/20"
+                        checked={val.directToBulk}
+                        onChange={(e) => setV({ ...val, directToBulk: e.target.checked })}
+                      />
+                      <span className="text-xs text-ink">
+                        <span className="font-semibold">Send designs directly to bulk (no review)</span>
+                        <span className="mt-0.5 block text-muted">
+                          The designer&apos;s upload (PDF/CDR or Google Drive link) is the final design. The bulk job opens once the name list is locked and the advance is verified. Turn off to require Page Owner review and approval first.
+                        </span>
+                      </span>
+                    </label>
                     <div className="grid gap-4 sm:grid-cols-2">
                       <SelectField
                         label={val.autoDesigner ? "Default / Preferred designer (tie-breaker)" : "Responsible design designer"}
@@ -147,6 +163,7 @@ export function WorkflowSettingsScreen() {
                           auto_assign_designer: val.autoDesigner,
                           auto_assign_bulk_designer: val.autoBulk,
                           max_correction_rounds: Number(val.rounds),
+                          design_direct_to_bulk: val.directToBulk,
                         },
                         { onSuccess: () => (notify("Settings saved", "success"), setV(null)) },
                       )

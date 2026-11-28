@@ -153,6 +153,16 @@ Rules:
 - Printing may only use the **approved version**. If a newer version is approved later, any print work in progress is invalidated and must restart from print preparation.
 - [Q7] Limit on free corrections and correction charges.
 
+### 3.4a Direct-to-bulk design (2026-11-28 decision, default)
+
+Workflow setting **"Send designs directly to bulk (no review)"** (`design.direct_to_bulk`, on by default; Super Admin, Workflow settings). When on:
+
+- The designer's upload (`POST /design-tasks/{id}/versions`) **is the final design**. It must contain the PDF/CDR file(s) or the Google Drive link (preview optional). No Page Owner review, no customer approval record, no separate "final files" step.
+- The version is stored as final (`is_final`), the task becomes `completed` (`approved_version_id` = `final_version_id` = this version), the order moves `design_in_progress` → `design_approved`, and the bulk job is created as soon as the other §3.7a conditions hold (list locked, advance verified), whichever comes last.
+- **Customer changes after upload:** the designer may upload a replacement while the bulk job has not started (no bulk job yet, or `pending_assignment` / `assigned`). The task points at the newest version; the assigned bulk designer is notified. Once bulk work starts (measurements entered → `in_progress`) the design is frozen.
+- Deliberate exception to invariant 13 for the design step: in this mode no customer design approval is recorded in the system. The print sample approval (§3.9a) still records the customer's decision with evidence.
+- When off: the review flow of §3.4 applies unchanged. Tasks already in review when the setting changes finish the flow they are in.
+
 ### 3.5 Name and number list
 
 - Each order item can have a garment list with entries: name, number, size, fit (male/female/kids), sleeve, quantity, notes.

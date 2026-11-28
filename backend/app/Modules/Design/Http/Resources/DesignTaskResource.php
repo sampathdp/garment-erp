@@ -9,6 +9,7 @@ use App\Modules\Design\Models\DesignReview;
 use App\Modules\Design\Models\DesignTask;
 use App\Modules\Design\Models\DesignVersion;
 use App\Modules\Design\Models\DesignVersionFile;
+use App\Modules\Design\Support\DirectDesign;
 use App\Modules\Organizations\Support\WorkflowSettings;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -85,6 +86,8 @@ final class DesignTaskResource extends JsonResource
                 'requested_at' => $c->created_at?->toIso8601ZuluString(), 'resolved_in_version_id' => $c->getAttribute('resolved_in_version_id'),
                 'override_reason' => $c->override_reason,
             ])->all()),
+            // Direct-to-bulk mode: the upload is the final design (no review step); see DirectDesign.
+            'direct_to_bulk' => $this->when($detail, fn (): bool => app(DirectDesign::class)->enabled()),
             'abilities' => $this->when($detail, fn (): array => [
                 'assign' => Gate::allows('assignDesigner', $this->resource),
                 'upload_version' => Gate::allows('uploadVersion', $this->resource),

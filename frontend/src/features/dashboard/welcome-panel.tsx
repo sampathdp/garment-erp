@@ -27,6 +27,10 @@ export function WelcomePanel() {
   const greeting =
     currentHour < 12 ? "Good morning" : currentHour < 17 ? "Good afternoon" : "Good evening";
 
+  // Task roles (designers, cutting staff) only see their assigned work, so the order-wide shortcuts,
+  // workflow overview and company/shop scope are shown only to staff who can view all orders.
+  const showOverview = can("orders.view");
+
   const pages = user.scope.all_pages
     ? ["All authorized companies & shops"]
     : user.scope.pages.map((p) => p.name);
@@ -47,7 +51,9 @@ export function WelcomePanel() {
               {greeting}, {user.name}!
             </h1>
             <p className="text-sm text-muted max-w-xl">
-              Welcome to the Garment Production Management workspace. Track active orders, verify advance deposits, oversee urgent approvals, and monitor design queues.
+              {showOverview
+                ? "Welcome to the Garment Production Management workspace. Track active orders, verify advance deposits, oversee urgent approvals, and monitor design queues."
+                : "Welcome to the Garment Production Management workspace. Your assigned tasks are listed below."}
             </p>
           </div>
 
@@ -65,6 +71,7 @@ export function WelcomePanel() {
         </div>
       </div>
 
+      {showOverview && (<>
       {/* KPI & Fast Action Shortcuts */}
       <div>
         <h2 className="mb-4 text-xs font-bold uppercase tracking-wider text-muted">
@@ -201,6 +208,7 @@ export function WelcomePanel() {
           )}
         </div>
       </div>
+      </>)}
     </div>
   );
 }

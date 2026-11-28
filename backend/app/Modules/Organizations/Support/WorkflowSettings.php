@@ -25,6 +25,12 @@ final class WorkflowSettings
 
     public const MAX_CORRECTION_ROUNDS = 'design.max_correction_rounds';
 
+    /**
+     * On (default, 2026-11-28 decision): the designer's upload (PDF/CDR and/or Drive link) is the
+     * final design and goes straight to bulk — no Page Owner review. Off: review + approval + final files.
+     */
+    public const DESIGN_DIRECT_TO_BULK = 'design.direct_to_bulk';
+
     /** Client mentioned up to three correction rounds. */
     public const DEFAULT_MAX_CORRECTION_ROUNDS = 3;
 
@@ -50,12 +56,17 @@ final class WorkflowSettings
         return $this->bool(self::AUTO_ASSIGN_BULK_DESIGNER, false);
     }
 
+    public function designDirectToBulk(): bool
+    {
+        return $this->bool(self::DESIGN_DIRECT_TO_BULK, true);
+    }
+
     public function maxCorrectionRounds(): int
     {
         return $this->int(self::MAX_CORRECTION_ROUNDS) ?? self::DEFAULT_MAX_CORRECTION_ROUNDS;
     }
 
-    /** @return array{default_designer_id: int|null, default_bulk_designer_id: int|null, auto_assign_designer: bool, auto_assign_bulk_designer: bool, max_correction_rounds: int} */
+    /** @return array{default_designer_id: int|null, default_bulk_designer_id: int|null, auto_assign_designer: bool, auto_assign_bulk_designer: bool, max_correction_rounds: int, design_direct_to_bulk: bool} */
     public function all(): array
     {
         return [
@@ -64,6 +75,7 @@ final class WorkflowSettings
             'auto_assign_designer' => $this->autoAssignDesigner(),
             'auto_assign_bulk_designer' => $this->autoAssignBulkDesigner(),
             'max_correction_rounds' => $this->maxCorrectionRounds(),
+            'design_direct_to_bulk' => $this->designDirectToBulk(),
         ];
     }
 

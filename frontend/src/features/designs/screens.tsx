@@ -117,7 +117,7 @@ export function DesignDashboard() {
   );
 }
 
-function SubmissionForm({ final, onSubmit, pending, error, onCancel }: { final: boolean; onSubmit: (v: { preview: File | null; files: File[]; external_url: string; notes: string }) => void; pending: boolean; error: unknown; onCancel: () => void }) {
+function SubmissionForm({ final, direct = false, onSubmit, pending, error, onCancel }: { final: boolean; direct?: boolean; onSubmit: (v: { preview: File | null; files: File[]; external_url: string; notes: string }) => void; pending: boolean; error: unknown; onCancel: () => void }) {
   const [preview, setPreview] = useState<File | null>(null);
   const [files, setFiles] = useState<File[]>([]);
   const [url, setUrl] = useState("");
@@ -128,6 +128,11 @@ function SubmissionForm({ final, onSubmit, pending, error, onCancel }: { final: 
   return (
     <div className="flex flex-col gap-4">
       <FormError message={apiError ? (Object.values(apiError.fieldErrors)[0]?.[0] ?? apiError.message) : null} />
+      {direct && (
+        <p className="rounded-lg border border-brand/20 bg-brand/5 px-3 py-2 text-xs text-ink">
+          This upload is the <strong>final design</strong>. It goes straight to the bulk designer without a review. Add the PDF/CDR file(s) or the Google Drive link.
+        </p>
+      )}
       {!final && (
         <div className="flex flex-col gap-1.5">
           <label htmlFor="design-preview" className="text-xs font-semibold text-ink">Preview mockup image (JPG, PNG, WebP)</label>
@@ -135,15 +140,15 @@ function SubmissionForm({ final, onSubmit, pending, error, onCancel }: { final: 
         </div>
       )}
       <div className="flex flex-col gap-1.5">
-        <label htmlFor="design-files" className="text-xs font-semibold text-ink">{final ? "Final Vector / Production files (PDF, CDR)" : "Draft vector files (PDF, CDR)"}</label>
+        <label htmlFor="design-files" className="text-xs font-semibold text-ink">{final || direct ? "Final Vector / Production files (PDF, CDR)" : "Draft vector files (PDF, CDR)"}</label>
         <input id="design-files" type="file" multiple accept=".pdf,.cdr,application/pdf" className="text-xs text-muted file:mr-3 file:rounded-lg file:border-0 file:bg-subtle file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-ink hover:file:bg-line cursor-pointer" onChange={(e) => setFiles(Array.from(e.target.files ?? []).slice(0, 5))} />
       </div>
-      <TextField label={final ? "Final Google Drive Link" : "Google Drive Proof Link"} type="url" maxLength={500} placeholder="https://drive.google.com/..." value={url} error={urlHint} hint="Link is stored securely for staff review. The server never scrapes external credentials." onChange={(e) => setUrl(e.target.value.trim())} />
+      <TextField label={final || direct ? "Final Google Drive Link" : "Google Drive Proof Link"} type="url" maxLength={500} placeholder="https://drive.google.com/..." value={url} error={urlHint} hint="Link is stored securely for staff review. The server never scrapes external credentials." onChange={(e) => setUrl(e.target.value.trim())} />
       <TextAreaField label="Designer notes / specifications" placeholder="Special printing colors, placement notes, etc." maxLength={2000} value={notes} onChange={(e) => setNotes(e.target.value)} />
       <div className="flex justify-end gap-2.5 pt-2">
         <Button variant="secondary" onClick={onCancel}>Cancel</Button>
-        <Button loading={pending} disabled={urlHint !== undefined || (!preview && files.length === 0 && url === "")} onClick={() => onSubmit({ preview, files, external_url: url, notes })}>
-          {final ? "Submit final files" : "Submit for review"}
+        <Button loading={pending} disabled={urlHint !== undefined || (files.length === 0 && url === "" && (direct || !preview))} onClick={() => onSubmit({ preview, files, external_url: url, notes })}>
+          {final ? "Submit final files" : direct ? "Send to bulk" : "Submit for review"}
         </Button>
       </div>
     </div>
@@ -226,7 +231,7 @@ function DesignDetail({ id }: { id: number }) {
                 Assign designer
               </Button>
             )}
-            {a?.upload_version && <Button size="sm" onClick={() => setModal("version")}>Upload design</Button>}
+            {a?.upload_version && <Button size="sm" onClick={() => setModal("version")}>{t.direct_to_bulk && t.status.value === "completed" ? "Replace design" : "Upload design"}</Button>}
             {a?.request_correction && <Button size="sm" onClick={() => setModal("review")}>Review design</Button>}
             {a?.submit_final && <Button size="sm" onClick={() => setModal("final")}>Submit final files</Button>}
           </div>
@@ -376,10 +381,11 @@ function DesignDetail({ id }: { id: number }) {
       )}
 
       {/* Modals */}
-      <Modal open={modal === "version" || modal === "final"} title={modal === "final" ? "Submit Final Production Files" : "Upload Design Draft"} onClose={() => setModal(null)}>
+      <Modal open={modal === "version" || modal === "final"} title={modal === "final" ? "Submit Final Production Files" : t.direct_to_bulk ? "Upload Final Design (goes to bulk)" : "Upload Design Draft"} onClose={() => setModal(null)}>
         {(modal === "version" || modal === "final") && (
           <SubmissionForm
             final={modal === "final"}
+            direct={modal === "version" && t.direct_to_bulk === true}
             pending={m.submitVersion.isPending || m.submitFinal.isPending}
             error={modal === "final" ? m.submitFinal.error : m.submitVersion.error}
             onCancel={() => setModal(null)}

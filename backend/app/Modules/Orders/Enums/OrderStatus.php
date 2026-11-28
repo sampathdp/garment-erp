@@ -54,7 +54,8 @@ enum OrderStatus: string
             // A rejected urgent order is released again only after its due date is changed (new evaluation).
             self::UrgentApprovalRejected => [self::UrgentApprovalPending, self::PendingPaymentVerification, self::PaymentRejected],
             self::Confirmed => [self::DesignInProgress],
-            self::DesignInProgress => [self::DesignReview],
+            // Direct-to-bulk mode (WorkflowSettings::DESIGN_DIRECT_TO_BULK): the upload is the final design.
+            self::DesignInProgress => [self::DesignReview, self::DesignApproved],
             self::DesignReview => [self::DesignInProgress, self::DesignApproved],
             self::DesignApproved => [self::BulkAssigned],
             self::BulkAssigned => [self::BulkPreparation],

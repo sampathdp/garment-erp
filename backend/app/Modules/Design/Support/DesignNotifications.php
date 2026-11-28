@@ -61,6 +61,13 @@ final class DesignNotifications
             $this->make('design.completed', 'Final design files received', "The final design files for job {$order->order_no} were submitted.", $task, $order), $actor);
     }
 
+    /** Direct-to-bulk: a replacement design was uploaded after the bulk job was created (not started yet). */
+    public function replacedForBulk(DesignTask $task, Order $order, int $bulkDesignerId, int $versionNo, User $actor): void
+    {
+        $this->notify->send(fn (Recipients $r) => $r->users($bulkDesignerId),
+            $this->make('design.replaced', 'Design replaced', "The designer uploaded a new design (version {$versionNo}) for job {$order->order_no}. Use this version for the bulk work.", $task, $order), $actor);
+    }
+
     private function make(string $event, string $title, string $message, DesignTask $task, Order $order): WorkflowNotification
     {
         return new WorkflowNotification($event, $title, $message, "/designs/view/?id={$task->id}", ['order_id' => $order->id, 'order_no' => $order->order_no, 'design_task_id' => $task->id]);

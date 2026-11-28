@@ -37,6 +37,7 @@ function designWorld(TestCase $test): void
     app(WorkflowSettings::class)->update($test->admin, [
         WorkflowSettings::DEFAULT_DESIGNER => $test->designer->id,
         WorkflowSettings::DEFAULT_BULK_DESIGNER => $test->bulkDesigner->id,
+        WorkflowSettings::DESIGN_DIRECT_TO_BULK => false, // these fixtures walk the review flow; DirectDesignTest turns it on
     ]);
 
     $test->fabric = Material::query()->create(['code' => 'wet_look', 'name' => 'Wet look', 'is_active' => true]);

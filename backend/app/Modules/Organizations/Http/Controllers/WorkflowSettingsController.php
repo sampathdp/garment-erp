@@ -42,6 +42,7 @@ final class WorkflowSettingsController
             'auto_assign_designer' => ['sometimes', 'boolean'],
             'auto_assign_bulk_designer' => ['sometimes', 'boolean'],
             'max_correction_rounds' => ['required', 'integer', 'min:0', 'max:20'],
+            'design_direct_to_bulk' => ['sometimes', 'boolean'],
         ]);
 
         /** @var User $actor */
@@ -56,6 +57,10 @@ final class WorkflowSettingsController
         }
         if (array_key_exists('auto_assign_bulk_designer', $data)) {
             $payload[WorkflowSettings::AUTO_ASSIGN_BULK_DESIGNER] = (bool) $data['auto_assign_bulk_designer'];
+        }
+
+        if (array_key_exists('design_direct_to_bulk', $data)) {
+            $payload[WorkflowSettings::DESIGN_DIRECT_TO_BULK] = (bool) $data['design_direct_to_bulk'];
         }
 
         $settings->update($actor, $payload);

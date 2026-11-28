@@ -6,6 +6,7 @@ namespace App\Modules\Design\Policies;
 
 use App\Modules\Design\Enums\DesignTaskStatus;
 use App\Modules\Design\Models\DesignTask;
+use App\Modules\Design\Support\DirectDesign;
 use App\Modules\Identity\Models\User;
 use App\Modules\Identity\Support\Permissions;
 use App\Modules\Orders\Models\Order;
@@ -46,8 +47,8 @@ final class DesignTaskPolicy extends ScopedPolicy
         return $this->decide(
             $this->visible($user, $task),
             $user->can(Permissions::DESIGNS_UPLOAD_VERSION) && $this->isAssignee($user, $task),
-            in_array($task->status, self::WORKABLE, true),
-            'New versions cannot be uploaded while the design is in review or approved.',
+            in_array($task->status, self::WORKABLE, true) || app(DirectDesign::class)->canReplace($task),
+            'New versions cannot be uploaded while the design is in review or approved, or once bulk work has started.',
         );
     }
 

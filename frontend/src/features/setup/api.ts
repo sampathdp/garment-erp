@@ -9,6 +9,8 @@ export interface WorkflowSettings {
   auto_assign_designer: boolean;
   auto_assign_bulk_designer: boolean;
   max_correction_rounds: number;
+  /** On: the designer's upload is final and goes straight to bulk (no review). */
+  design_direct_to_bulk: boolean;
   designers: { id: number; name: string; active_tasks?: number; is_free?: boolean; has_access?: boolean }[];
   bulk_designers: { id: number; name: string; active_jobs?: number; is_free?: boolean; has_access?: boolean }[];
 }
@@ -26,6 +28,7 @@ export function useSaveWorkflowSettings() {
       auto_assign_designer?: boolean;
       auto_assign_bulk_designer?: boolean;
       max_correction_rounds: number;
+      design_direct_to_bulk?: boolean;
     }) =>
       api.put<{ data: WorkflowSettings }>("settings/workflow", input).then((r) => r.data),
     onSuccess: (data) => queryClient.setQueryData(["settings", "workflow"], data),

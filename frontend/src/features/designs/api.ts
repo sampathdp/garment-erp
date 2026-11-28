@@ -62,6 +62,8 @@ export interface DesignTask {
     attachment: { url: string } | null;
   };
   max_correction_rounds?: number;
+  /** Direct-to-bulk mode: the upload is the final design (no Page Owner review). */
+  direct_to_bulk?: boolean;
   versions?: DesignVersion[];
   corrections?: { round_no: number; reason: string; requested_by: string | null; requested_at: string | null; resolved_in_version_id: number | null; override_reason: string | null }[];
   abilities?: { assign: boolean; upload_version: boolean; request_correction: boolean; approve: boolean; submit_final: boolean };
