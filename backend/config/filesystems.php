@@ -43,7 +43,8 @@ return [
         // Business documents. On shared hosting set DOCUMENTS_ROOT to a folder OUTSIDE public_html.
         'private' => [
             'driver' => 'local',
-            'root' => env('DOCUMENTS_ROOT', storage_path('app/private/documents')),
+            // `?:` so a blank DOCUMENTS_ROOT= line falls back to the default instead of root "".
+            'root' => env('DOCUMENTS_ROOT') ?: storage_path('app/private/documents'),
             'visibility' => 'private',
             'serve' => false,
             'throw' => true,

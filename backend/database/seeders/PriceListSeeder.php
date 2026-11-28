@@ -6,6 +6,7 @@ namespace Database\Seeders;
 
 use App\Modules\Garments\Models\GarmentOption;
 use App\Modules\Garments\Models\GarmentOptionSet;
+use App\Modules\Identity\Models\User;
 use App\Modules\Organizations\Models\Page;
 use App\Modules\Pricing\Models\Material;
 use App\Modules\Pricing\Models\PriceList;
@@ -110,6 +111,7 @@ class PriceListSeeder extends Seeder
         ];
 
         $pages = Page::query()->where('is_active', true)->get();
+        $createdBy = User::query()->orderBy('id')->value('id') ?? throw new \RuntimeException('Create a user before seeding price lists (DatabaseSeeder creates the admin first).');
 
         foreach ($pages as $page) {
             $priceList = PriceList::query()->where('page_id', $page->id)->where('is_active', true)->first();
@@ -119,6 +121,7 @@ class PriceListSeeder extends Seeder
                     'name' => 'Price List 2026',
                     'valid_from' => CarbonImmutable::now()->startOfYear()->toDateString(),
                     'is_active' => true,
+                    'created_by' => $createdBy,
                 ]);
             }
 

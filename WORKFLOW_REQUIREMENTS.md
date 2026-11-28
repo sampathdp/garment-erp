@@ -329,6 +329,16 @@ Channels: in-app (database, always on). The UI polls for new notifications becau
 | Job delivered          | Page Owners, sales owner; payment verifiers when COD was collected      |
 | Job completed          | Page Owners, sales owner, `orders.complete` holders in scope            |
 
+### 3.15 Consolidated production plan (2026-11-28)
+
+One production plan shared by every page (`GET /production-plan`, screen **Production plan**), so page owners can check the daily load before they accept a new order.
+
+- **What counts:** every order line from creation (drafts included) until sewing is done. Cancelled orders and orders at `ready_for_delivery` or later are left out; an on-hold order counts while the status it was held in still counts. Abandoned drafts stay in the plan until they are cancelled.
+- **Grouping:** by due date (`required_delivery_date`), then by product category. Default range: today to 60 days ahead, plus every overdue date still in production; at most 120 days per request.
+- **Temporary (yellow):** the design is not completed or the name/size list is not locked. Quantity = the estimate entered at intake (`order_items.quantity`).
+- **Confirmed (red):** the line's design task is completed **and** its current list version is locked. Quantity = the locked list total. The change from yellow to red, and the new quantity, are automatic.
+- **Visibility:** `production_plan.view` (Page Owner) shows the combined load of all pages with the viewer's own pages by name and every other page as one anonymous "Other pages" figure. No page, customer or job number of another page is returned by the API. `production_plan.view_all_pages` (Super Admin) shows each page by name. This is a deliberate exception to page scoping (quantities only); branch scope still applies. Other roles can be given either permission in the role editor.
+
 ### 3.14 Audit history
 
 Every state transition, payment action, approval, price list change, invoice action, gate pass action, list lock/unlock, permission change and login is written to the append-only audit log with actor, time, IP, before/after values and a request ID.

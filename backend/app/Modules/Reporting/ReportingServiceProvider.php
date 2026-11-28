@@ -16,5 +16,6 @@ final class ReportingServiceProvider extends ModuleServiceProvider
         // Never name a Gate ability after a Spatie permission (it recurses).
         Gate::define('dashboard-view', fn (User $user): bool => $user->is_active);
         Gate::define('reports-access', fn (User $user): bool => $user->can(Permissions::REPORTS_VIEW));
+        Gate::define('production-plan-view', fn (User $user): bool => $user->canAny([Permissions::PRODUCTION_PLAN_VIEW, Permissions::PRODUCTION_PLAN_VIEW_ALL_PAGES]));
     }
 }

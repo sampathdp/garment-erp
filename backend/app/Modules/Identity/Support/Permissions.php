@@ -198,6 +198,11 @@ final class Permissions
 
     public const REPORTS_VIEW = 'reports.view';
 
+    // Production plan: combined load of every page (quantities only; other pages stay anonymous)
+    public const PRODUCTION_PLAN_VIEW = 'production_plan.view';
+
+    public const PRODUCTION_PLAN_VIEW_ALL_PAGES = 'production_plan.view_all_pages';
+
     /**
      * Grouped catalogue with human labels (used by the role editor).
      *
@@ -309,6 +314,10 @@ final class Permissions
                 self::DELIVERY_DISPATCH => 'Dispatch deliveries',
                 self::DELIVERY_CONFIRM => 'Confirm deliveries',
                 self::REPORTS_VIEW => 'View reports',
+            ]],
+            'production_plan' => ['label' => 'Production plan', 'permissions' => [
+                self::PRODUCTION_PLAN_VIEW => 'View the combined production plan of all pages (own pages named, other pages anonymous)',
+                self::PRODUCTION_PLAN_VIEW_ALL_PAGES => 'See which page every quantity in the production plan belongs to',
             ]],
         ];
     }

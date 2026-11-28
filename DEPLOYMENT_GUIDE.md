@@ -55,7 +55,7 @@ document-root layouts work. If that file is missing, Laravel falls back to `back
    `SEED_ADMIN_PASSWORD` empty it prints a random password **once**. Then remove the `SEED_*` lines from
    the settings file, sign in, change the password, and create branches, pages, users, sizes, fabrics and prices in the app.
    Never run the plain `db:seed` in production (it refuses to).
-9. **Cron** (cPanel → Cron Jobs, every minute):
+9. **Cron** (optional, recommended). Without cron, background work runs after HTTP responses (`SCHEDULE_ON_REQUESTS=true`, the default; `App\Support\Scheduling\RequestScheduler`): at most every 30 s, the database queue (notification fast path, password-reset mails) is drained and the notification outbox swept, driven by normal traffic and the 20 s notification polling. Work therefore pauses while nobody uses the app. A cron entry (cPanel → Cron Jobs, every minute) also processes work during quiet periods; both can run together:
    ```
    * * * * * cd /home/<user>/garment-erp.codeplaystudios.com/backend && php artisan schedule:run >> /dev/null 2>&1
    ```
@@ -107,7 +107,7 @@ Production starts from an empty MySQL database (steps above). Do not copy develo
 
 ## 7. Monitoring
 
-- **Uptime check** (any external monitor, every 5 minutes) on `GET /api/v1/health`. It answers 503 when the database or cache fails **or when the scheduler heartbeat is older than 5 minutes** (`checks.scheduler = stale`): on shared hosting that means the cron entry stopped and no queued job or notification is being processed. `unknown` means the scheduler never ran (fresh install).
+- **Uptime check** (any external monitor, every 5 minutes) on `GET /api/v1/health`. It answers 503 when the database or cache fails **or when the scheduler heartbeat is older than 5 minutes** (`checks.scheduler = stale`): on shared hosting that means the cron entry stopped and no queued job or notification is being processed. `unknown` means the scheduler never ran (fresh install). With `SCHEDULE_ON_REQUESTS=true` an old heartbeat is reported as `idle` (no traffic) and does not fail the probe.
 - **Logs**: `backend/storage/logs/` (JSON lines, `LOG_STACK=json`), `slow_queries` channel for queries over `DB_SLOW_QUERY_MS`. Download or tail them through cPanel; there is no error-tracking service yet (KNOWN_LIMITATIONS.md).
 - **Dead letters**: notifications that failed 8 times are logged at `error` level (`Notification outbox row gave up after retries`); failed queue jobs are in `failed_jobs` (`php artisan queue:failed`, pruned after 30 days).
 

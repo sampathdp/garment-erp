@@ -69,6 +69,7 @@ final class Roles
                     P::PRINTING_VIEW, P::PRINTING_APPROVE_SAMPLE,
                     P::CUTTING_VIEW, P::CUTTING_CONFIRM_CLIENT,
                     P::QC_VIEW, P::DELIVERY_VIEW, P::REPORTS_VIEW,
+                    P::PRODUCTION_PLAN_VIEW,
                 ],
             ],
             self::SECOND_ADMIN => [
@@ -88,7 +89,7 @@ final class Roles
                 'description' => 'Oversees daily production flow, cutting, sewing, and manufacturing schedules.',
                 'permissions' => [
                     P::SCOPE_ALL_BRANCHES, P::SCOPE_ALL_PAGES, P::BRANCHES_VIEW, P::PAGES_VIEW,
-                    P::ORDERS_VIEW, P::PRODUCTION_VIEW, P::BULK_VIEW, P::CUTTING_VIEW,
+                    P::ORDERS_VIEW, P::DESIGNS_VIEW, P::PRODUCTION_VIEW, P::BULK_VIEW, P::CUTTING_VIEW,
                     P::PRINTING_VIEW, P::QC_VIEW, P::DELIVERY_VIEW, P::REPORTS_VIEW,
                 ],
             ],

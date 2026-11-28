@@ -58,6 +58,21 @@ class DatabaseSeeder extends Seeder
             ]);
         }
 
+        // The admin exists before the price lists, which record who created them.
+        $email = (string) env('SEED_ADMIN_EMAIL', 'admin@example.com');
+        $password = (string) env('SEED_ADMIN_PASSWORD', '');
+        $generated = $password === '';
+        if ($generated) {
+            $password = Str::password(16);
+        }
+
+        if (! User::query()->where('email', $email)->exists()) {
+            $admin = User::query()->create(['name' => 'System Owner', 'email' => $email, 'password' => $password]);
+            $admin->assignRole(Roles::SUPER_ADMIN);
+            $admin->branches()->syncWithoutDetaching([$colombo->id]);
+            $this->command->info("Admin created: {$email}".($generated ? " / password: {$password} (shown once, change it)" : ''));
+        }
+
         $this->call(PriceListSeeder::class);
 
         // Development samples only (real sizes and fabrics are configured by the client).
@@ -85,20 +100,6 @@ class DatabaseSeeder extends Seeder
             Size::query()->firstOrCreate(['size_chart_id' => $chart->id, 'code' => $s['code']], ['label' => $s['label'], 'sort_order' => $s['sort_order']]);
         }
         Material::query()->firstOrCreate(['code' => 'sample_fabric'], ['name' => 'Sample fabric', 'is_active' => true]);
-
-        $email = (string) env('SEED_ADMIN_EMAIL', 'admin@example.com');
-        $password = (string) env('SEED_ADMIN_PASSWORD', '');
-        $generated = $password === '';
-        if ($generated) {
-            $password = Str::password(16);
-        }
-
-        if (! User::query()->where('email', $email)->exists()) {
-            $admin = User::query()->create(['name' => 'System Owner', 'email' => $email, 'password' => $password]);
-            $admin->assignRole(Roles::SUPER_ADMIN);
-            $admin->branches()->syncWithoutDetaching([$colombo->id]);
-            $this->command->info("Admin created: {$email}".($generated ? " / password: {$password} (shown once, change it)" : ''));
-        }
 
         AppSetting::query()->updateOrCreate(['key' => WorkflowSettings::AUTO_ASSIGN_DESIGNER], ['value' => '1']);
         AppSetting::query()->updateOrCreate(['key' => WorkflowSettings::AUTO_ASSIGN_BULK_DESIGNER], ['value' => '1']);

@@ -650,6 +650,8 @@ paths:
     post: { operationId: deliveries.complete, tags: [Delivery], description: "orders.complete. { version, notes? }. 409 job_incomplete with errors { production?, checks?, issues?, delivery?, documents?, balance? }.", responses: { "200": { description: Delivery } } }
   /dashboard:
     get: { operationId: dashboard.show, tags: [Reporting], description: "Signed-in users. { sections: [{ key, title, metrics: [{ key, label, value, link }], items?, jobs_by_status?, branches? }] } chosen by permission and limited to the user's scope; cached 60 s.", responses: { "200": { description: Dashboard } } }
+  /production-plan:
+    get: { operationId: production-plan.show, tags: [Reporting], description: "production_plan.view or production_plan.view_all_pages. filter[from], filter[to] (Y-m-d; default today .. +60 days, overdue dates included when from <= today; max 120 days). { from, to, today, page_names: all|own, own_pages: [{ id, code, name }], totals: { temporary, confirmed, total }, days: [{ date, is_overdue, totals, categories: [{ product_type: { id, name }, temporary, confirmed, total, pages: [{ page, is_own, temporary, confirmed, total }], other_pages: { temporary, confirmed, total } | null }] }] }. Without view_all_pages only the caller's own pages are named; every other page is summed into other_pages.", responses: { "200": { description: Production plan }, "422": { description: Invalid date range } } }
   /reports:
     get: { operationId: reports.index, tags: [Reporting], description: "reports.view. Report catalogue.", responses: { "200": { description: Reports } } }
   /reports/{report}:

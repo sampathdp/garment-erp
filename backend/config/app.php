@@ -131,4 +131,10 @@ return [
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
 
+    /*
+    | Shared hosting without cron: drain the queue and the notification outbox after HTTP responses
+    | (App\Support\Scheduling\RequestScheduler). Set to false on a VPS with a real queue worker.
+    */
+    'schedule_on_requests' => (bool) env('SCHEDULE_ON_REQUESTS', true),
+
 ];

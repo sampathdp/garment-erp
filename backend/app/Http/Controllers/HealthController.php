@@ -19,6 +19,8 @@ use Throwable;
  *   ok       heartbeat within the last 5 minutes
  *   stale    heartbeat older than that → 503 (cron stopped or failing)
  *   unknown  never ran yet (fresh install before the cron entry exists) → does not fail the probe
+ *   idle     request-driven mode (SCHEDULE_ON_REQUESTS, no cron): an old heartbeat only means
+ *            nobody used the app for a while; the next request runs the work → does not fail
  */
 final class HealthController
 {
@@ -56,7 +58,11 @@ final class HealthController
             return 'unknown';
         }
 
-        return now()->getTimestamp() - (int) $beat <= self::HEARTBEAT_STALE_SECONDS ? 'ok' : 'stale';
+        if (now()->getTimestamp() - (int) $beat <= self::HEARTBEAT_STALE_SECONDS) {
+            return 'ok';
+        }
+
+        return config('app.schedule_on_requests') ? 'idle' : 'stale';
     }
 
     private function check(callable $probe): bool

@@ -30,6 +30,7 @@
         <env name="DB_URL" value=""/>
         <env name="MAIL_MAILER" value="array"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
+        <env name="SCHEDULE_ON_REQUESTS" value="false"/>
         <env name="SESSION_DRIVER" value="array"/>
         <env name="SESSION_ENCRYPT" value="true"/>
         <env name="FRONTEND_URL" value="http://localhost:3000"/>

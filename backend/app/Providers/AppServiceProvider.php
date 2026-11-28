@@ -6,6 +6,7 @@ namespace App\Providers;
 
 use App\Support\Authorization\AuthorizationTracker;
 use App\Support\Database\MorphMap;
+use App\Support\Scheduling\RequestScheduler;
 use Illuminate\Database\Connection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\Relation;
@@ -31,6 +32,17 @@ class AppServiceProvider extends ServiceProvider
         $this->configureAuthorization();
         $this->configureQueryMonitoring();
         $this->configureSecurityDefaults();
+        $this->configureRequestScheduler();
+    }
+
+    /** Shared hosting without cron: drain the queue and the notification outbox after HTTP responses. */
+    private function configureRequestScheduler(): void
+    {
+        if ($this->app->runningInConsole() || ! config('app.schedule_on_requests')) {
+            return;
+        }
+
+        $this->app->terminating(fn () => $this->app->make(RequestScheduler::class)->tick());
     }
 
     private function configureModels(): void

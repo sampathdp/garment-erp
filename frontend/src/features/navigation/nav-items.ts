@@ -20,6 +20,7 @@ export const NAV_ITEMS: NavItem[] = [
   { label: "Approved orders", href: "/orders/approved/", permissions: ["orders.view"], section: "main" },
   { label: "Payment verification", href: "/payments/", permissions: ["payments.view"], section: "main" },
   { label: "Customers", href: "/customers/", permissions: ["customers.view"], section: "main" },
+  { label: "Production plan", href: "/production-plan/", permissions: ["production_plan.view", "production_plan.view_all_pages"], section: "main" },
   { label: "Design plan", href: "/designs/", permissions: ["designs.view", "designs.view_assigned"], section: "main" },
   { label: "Bulk management", href: "/bulk-jobs/", permissions: ["bulk.view"], section: "main" },
   { label: "My bulk jobs", href: "/bulk-jobs/mine/", permissions: ["bulk.view_assigned"], section: "main" },

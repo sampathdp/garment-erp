@@ -208,6 +208,7 @@ All routes except `health`, `auth/login`, `auth/forgot-password` and `auth/reset
 | GET | `/production-issues/{issue}/assignees` | `BulkProduction\ProductionIssueController@assignees` | |
 | GET | `/production-issues/{issue}/image` | `BulkProduction\ProductionIssueController@image` | signed URL |
 | POST | `/production-issues/{issue}/transitions` | `BulkProduction\ProductionIssueController@transition` | |
+| GET | `/production-plan` | `Reporting\ProductionPlanController@show` | `production_plan.view` / `production_plan.view_all_pages`; `filter[from]`, `filter[to]` |
 | GET | `/reports` | `Reporting\ReportController@catalogue` | |
 | GET | `/reports/{report}` | `Reporting\ReportController@show` | throttle exports |
 | GET | `/roles` | `Identity\RoleController@index` | |
